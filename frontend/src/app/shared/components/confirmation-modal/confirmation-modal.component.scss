@@ -1,0 +1,99 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: $z-modal;
+  padding: 16px;
+}
+
+.modal {
+  background: $bg-card;
+  border-radius: $radius-lg;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: $shadow-elevated;
+  overflow: hidden;
+  animation: modal-in $transition-modal both;
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 20px 16px;
+  h3 { flex: 1; font-size: 17px; }
+}
+
+.modal-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(192, 57, 43, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  mat-icon { color: $primary; font-size: 20px; }
+
+  &.dangerous { background: rgba(231, 76, 60, 0.1); mat-icon { color: $danger; } }
+}
+
+.close-btn {
+  @include icon-btn;
+  mat-icon { color: $text-secondary; }
+}
+
+.modal-body {
+  padding: 0 20px 16px;
+  p { font-size: 14px; color: $text-secondary; line-height: 1.6; }
+}
+
+.modal-detail {
+  margin: 0 20px 16px;
+  background: $bg-base;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  mat-icon { color: $secondary; font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  p { font-size: 13px; color: $text-secondary; line-height: 1.6; }
+}
+
+.modal-warning {
+  margin: 0 20px 16px;
+  background: rgba(230, 126, 34, 0.08);
+  border: 1px solid rgba(230, 126, 34, 0.2);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  mat-icon { color: $warning; font-size: 16px; flex-shrink: 0; }
+  p { font-size: 13px; color: $warning; font-weight: 500; line-height: 1.5; }
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid $border;
+}
+
+.btn-danger {
+  background: $danger;
+  color: #fff;
+  &:hover { background: #c0392b; }
+}

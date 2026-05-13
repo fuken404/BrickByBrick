@@ -1,0 +1,123 @@
+version: "3.9"
+
+# =============================================================
+# BrickByBrick — Docker Compose (desarrollo local)
+# Levanta todos los microservicios + PostgreSQL local
+# Para usar Neon/Supabase en producción, omitir el servicio postgres
+# =============================================================
+
+services:
+  # Base de datos local (alternativa a Neon para dev)
+  postgres:
+    image: postgres:16-alpine
+    container_name: brickbybrick_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: brickbybrick
+      POSTGRES_PASSWORD: brickbybrick_dev
+      POSTGRES_DB: brickbybrick
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ../database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brickbybrick"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Auth Service
+  auth-service:
+    build: ./services/auth-service
+    container_name: brickbybrick_auth
+    restart: unless-stopped
+    ports:
+      - "${PORT_AUTH:-3001}:3001"
+    env_file: .env
+    environment:
+      PORT: 3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./services/auth-service/src
+          target: /app/src
+        - action: rebuild
+          path: ./services/auth-service/package.json
+
+  # User Service
+  user-service:
+    build: ./services/user-service
+    container_name: brickbybrick_users
+    restart: unless-stopped
+    ports:
+      - "${PORT_USERS:-3002}:3002"
+    env_file: .env
+    environment:
+      PORT: 3002
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Material Service
+  material-service:
+    build: ./services/material-service
+    container_name: brickbybrick_materials
+    restart: unless-stopped
+    ports:
+      - "${PORT_MATERIALS:-3003}:3003"
+    env_file: .env
+    environment:
+      PORT: 3003
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Event Service
+  event-service:
+    build: ./services/event-service
+    container_name: brickbybrick_events
+    restart: unless-stopped
+    ports:
+      - "${PORT_EVENTS:-3004}:3004"
+    env_file: .env
+    environment:
+      PORT: 3004
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Publication Service
+  publication-service:
+    build: ./services/publication-service
+    container_name: brickbybrick_pubs
+    restart: unless-stopped
+    ports:
+      - "${PORT_PUBS:-3005}:3005"
+    env_file: .env
+    environment:
+      PORT: 3005
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Notification Service (Socket.io)
+  notification-service:
+    build: ./services/notification-service
+    container_name: brickbybrick_notif
+    restart: unless-stopped
+    ports:
+      - "${PORT_NOTIF:-3006}:3006"
+    env_file: .env
+    environment:
+      PORT: 3006
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

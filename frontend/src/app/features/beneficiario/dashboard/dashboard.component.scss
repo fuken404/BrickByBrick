@@ -1,0 +1,74 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.dashboard { padding: 32px; max-width: $content-max-w; }
+
+.welcome-header {
+  @include flex-between;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 16px;
+
+  .page-title   { font-family: $font-display; font-size: 28px; color: $text-primary; margin-bottom: 4px; }
+  .page-subtitle{ color: $text-secondary; font-size: 15px; }
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 40px;
+
+  @include tablet-down { grid-template-columns: repeat(2, 1fr); }
+  @include mobile      { grid-template-columns: 1fr; }
+}
+
+.section { margin-bottom: 40px; }
+
+.section-header {
+  @include flex-between;
+  margin-bottom: 20px;
+
+  .section-title { font-size: 20px; font-weight: 600; color: $text-primary; }
+}
+
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: $primary;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+
+  mat-icon { font-size: 18px; }
+  &:hover { text-decoration: underline; }
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+
+  @include tablet-down { grid-template-columns: repeat(2, 1fr); }
+  @include mobile      { grid-template-columns: 1fr; }
+}
+
+.events-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+
+  @include tablet-down { grid-template-columns: 1fr; }
+}
+
+.empty-msg {
+  color: $text-secondary;
+  font-size: 14px;
+  padding: 24px;
+  text-align: center;
+  background: $bg-card;
+  border-radius: $radius-card;
+  border: 1px solid $border;
+}

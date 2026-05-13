@@ -1,0 +1,73 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.page { padding: 32px; max-width: 900px; }
+
+.breadcrumb { margin-bottom: 16px; }
+.bc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: $text-secondary;
+  text-decoration: none;
+  font-size: 14px;
+  &:hover { color: $secondary; }
+  mat-icon { font-size: 18px; }
+}
+
+.page-title { font-family: $font-display; font-size: 28px; margin-bottom: 28px; }
+
+.loading-wrap { display: flex; justify-content: center; padding: 80px; }
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid $border;
+  border-top-color: $secondary;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.form-layout { display: flex; flex-direction: column; gap: 20px; }
+
+.form-card { padding: 28px; }
+
+.form-section-title { font-size: 17px; font-weight: 600; margin-bottom: 20px; }
+.form-hint-text { font-size: 13px; color: $text-secondary; margin-bottom: 16px; }
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+
+  .span-2 { grid-column: 1 / -1; }
+
+  @include mobile { grid-template-columns: 1fr; .span-2 { grid-column: 1; } }
+}
+
+.form-group { }
+.form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.form-control {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid $border;
+  border-radius: $radius-btn;
+  font-family: $font-body;
+  font-size: 14px;
+  box-sizing: border-box;
+  &:focus { outline: none; border-color: $secondary; }
+}
+
+.alert {
+  padding: 12px 16px;
+  border-radius: $radius-card;
+  font-size: 14px;
+  &-error   { background: $danger-light; color: $danger; }
+  &-success { background: rgba(39,174,96,.1); color: $accent; }
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}

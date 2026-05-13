@@ -1,0 +1,160 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.page { padding: 32px; max-width: $content-max-w; }
+
+.page-title { font-family: $font-display; font-size: 28px; margin-bottom: 28px; }
+
+.loading-wrap { display: flex; justify-content: center; padding: 80px; }
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid $border;
+  border-top-color: $primary;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.perfil-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+  align-items: start;
+
+  @include tablet-down { grid-template-columns: 1fr; }
+}
+
+.sidebar-card {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.avatar-wrap { margin-bottom: 14px; }
+
+.nombre { font-weight: 700; font-size: 17px; margin-bottom: 4px; }
+.email  { font-size: 13px; color: $text-secondary; margin-bottom: 14px; }
+
+.alimentador-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(39,174,96,.1);
+  color: $accent;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: $radius-pill;
+  margin-bottom: 14px;
+  mat-icon { font-size: 14px; }
+}
+
+.info-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: $bg-base;
+  border-radius: $radius-card;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: $text-secondary;
+  mat-icon { font-size: 16px; }
+}
+
+.form-card { padding: 28px; }
+
+.section-header-row {
+  @include flex-between;
+  margin-bottom: 24px;
+  .section-title { font-size: 18px; font-weight: 600; }
+  .section-desc  { font-size: 13px; color: $text-secondary; margin-top: 3px; }
+}
+
+.fields-grid, .form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+
+  @include mobile { grid-template-columns: 1fr; }
+}
+
+.field { }
+.field-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  color: $text-secondary;
+  margin-bottom: 4px;
+}
+.field-value { font-size: 15px; color: $text-primary; }
+
+.form-group { }
+.form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.form-control {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid $border;
+  border-radius: $radius-btn;
+  font-family: $font-body;
+  font-size: 14px;
+  box-sizing: border-box;
+  &:focus { outline: none; border-color: $primary; }
+}
+
+.alert {
+  padding: 12px 16px;
+  border-radius: $radius-card;
+  font-size: 14px;
+  margin: 16px 0 0;
+  &-error   { background: $danger-light;            color: $danger; }
+  &-success { background: rgba(39,174,96,.1); color: $accent; }
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.btn-sm { padding: 8px 16px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+
+// Security card
+.security-card {
+  padding: 24px 28px;
+}
+
+.security-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid $border;
+  margin-top: 16px;
+  flex-wrap: wrap;
+
+  > div:last-of-type { flex: 1; }
+}
+
+.security-icon {
+  width: 40px; height: 40px;
+  border-radius: 8px;
+  background: $bg-base;
+  @include flex-center;
+  mat-icon { color: $text-secondary; }
+}
+
+.security-label { font-weight: 600; font-size: 14px; }
+.security-desc  { font-size: 13px; color: $text-secondary; }

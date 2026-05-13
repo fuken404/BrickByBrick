@@ -1,0 +1,80 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.page { padding: 32px; max-width: 800px; }
+
+.page-header { margin-bottom: 24px; }
+.page-title  { font-family: $font-display; font-size: 28px; color: $text-primary; }
+.page-subtitle { color: $text-secondary; font-size: 14px; margin-top: 4px; }
+
+.new-post {
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.new-post-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  cursor: pointer;
+  mat-icon { color: $primary; }
+  span { flex: 1; color: $text-secondary; font-size: 15px; }
+  .toggle-icon { color: $text-secondary; font-size: 20px; }
+  &:hover { background: $bg-base; }
+}
+
+.new-post-form {
+  padding: 0 20px 20px;
+  border-top: 1px solid $border;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  @include mobile { grid-template-columns: 1fr; }
+}
+
+.form-group { margin-top: 16px; }
+.form-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.form-control {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid $border;
+  border-radius: $radius-btn;
+  font-family: $font-body;
+  font-size: 14px;
+  box-sizing: border-box;
+  &:focus { outline: none; border-color: $primary; }
+}
+
+.form-actions { margin-top: 16px; display: flex; justify-content: flex-end; }
+
+.filter-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.chip {
+  padding: 6px 14px;
+  border: 1px solid $border;
+  border-radius: $radius-pill;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  &:hover { border-color: $primary; color: $primary; }
+  &.active { background: $primary; color: #fff; border-color: $primary; }
+}
+
+.posts-list { display: flex; flex-direction: column; gap: 16px; }
+
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0 16px;
+}

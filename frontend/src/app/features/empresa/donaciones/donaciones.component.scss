@@ -1,0 +1,112 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.page { padding: 32px; max-width: $content-max-w; }
+.page-title    { font-family: $font-display; font-size: 28px; color: $text-primary; margin-bottom: 4px; }
+.page-subtitle { color: $text-secondary; font-size: 14px; margin-bottom: 24px; }
+
+.filter-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.chip {
+  padding: 6px 14px;
+  border: 1px solid $border;
+  border-radius: $radius-pill;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all $transition-fast;
+  &:hover { border-color: $secondary; color: $secondary; }
+  &.active { background: $secondary; color: #fff; border-color: $secondary; }
+}
+
+.solicitudes-list { display: flex; flex-direction: column; gap: 14px; }
+.solicitud-card { padding: 20px; }
+
+.sol-header {
+  @include flex-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mat-nombre { display: block; font-weight: 600; font-size: 16px; }
+.beneficiario-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: $text-secondary;
+  mat-icon { font-size: 14px; }
+}
+
+.estado-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: $radius-pill;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  flex-shrink: 0;
+
+  &.estado-pendiente { background: $warning-light;           color: $warning; }
+  &.estado-aprobada  { background: rgba(39,174,96,.1);       color: $accent; }
+  &.estado-entregada { background: rgba(46,134,171,.1);      color: $secondary; }
+  &.estado-rechazada { background: $danger-light;            color: $danger; }
+}
+
+.sol-body {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+  @include mobile { grid-template-columns: 1fr; }
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  .lbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: $text-secondary; }
+  span:not(.lbl) { font-size: 14px; }
+}
+
+.sol-actions {
+  padding-top: 14px;
+  border-top: 1px solid $border;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.instrucciones-form { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.instrucciones-actions { display: flex; gap: 8px; }
+.form-control {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid $border;
+  border-radius: $radius-btn;
+  font-family: $font-body;
+  font-size: 14px;
+  box-sizing: border-box;
+  resize: vertical;
+  &:focus { outline: none; border-color: $secondary; }
+}
+
+.instrucciones-display {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(46,134,171,.06);
+  border-left: 3px solid $secondary;
+  border-radius: 0 $radius-btn $radius-btn 0;
+  margin-top: 12px;
+  font-size: 13px;
+  color: $text-secondary;
+  mat-icon { font-size: 16px; color: $secondary; flex-shrink: 0; margin-top: 1px; }
+}
+
+.btn-sm { padding: 7px 14px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; mat-icon { font-size: 16px; } }
+.btn-success { background: $accent; color: #fff; border: none; border-radius: $radius-btn; cursor: pointer; font-family: $font-body; &:hover { background: #219a52; } }
+.btn-secondary { background: $secondary; color: #fff; border: none; border-radius: $radius-btn; cursor: pointer; font-family: $font-body; &:hover { background: $secondary-dark; } }
+.btn-danger-outline { background: transparent; color: $danger; border: 1.5px solid $danger; border-radius: $radius-btn; cursor: pointer; font-family: $font-body; display: inline-flex; align-items: center; gap: 6px; &:hover { background: $danger-light; } }

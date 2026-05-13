@@ -1,0 +1,45 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.page { padding: 32px; max-width: 700px; }
+
+.page-header-row { @include flex-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+.page-title  { font-family: $font-display; font-size: 28px; color: $text-primary; }
+.page-subtitle { color: $text-secondary; font-size: 14px; margin-top: 4px; }
+.btn-sm { padding: 8px 16px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+
+.notifs-list { display: flex; flex-direction: column; }
+
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px;
+  border-bottom: 1px solid $border;
+  cursor: pointer;
+  position: relative;
+  transition: background $transition-fast;
+
+  &:hover { background: $bg-base; }
+  &.unread { background: rgba(46,134,171,.02); }
+  &:first-child { border-radius: $radius-card $radius-card 0 0; border: 1px solid $border; border-bottom: none; }
+  &:last-child  { border-radius: 0 0 $radius-card $radius-card; border: 1px solid $border; border-top: none; }
+  &:not(:first-child):not(:last-child) { border-left: 1px solid $border; border-right: 1px solid $border; }
+}
+
+.notif-icon { width: 40px; height: 40px; border-radius: 50%; @include flex-center; flex-shrink: 0; mat-icon { font-size: 20px; } }
+.notif-content { flex: 1; }
+.notif-titulo  { font-weight: 600; font-size: 14px; margin-bottom: 3px; }
+.notif-mensaje { font-size: 13px; color: $text-secondary; line-height: 1.5; }
+.notif-fecha   { font-size: 11px; color: $text-secondary; margin-top: 6px; }
+
+.unread-dot { width: 8px; height: 8px; border-radius: 50%; background: $secondary; flex-shrink: 0; margin-top: 6px; }
+
+.del-btn {
+  background: none; border: none; cursor: pointer; color: $text-secondary;
+  display: flex; opacity: 0; transition: opacity $transition-fast;
+  padding: 4px; border-radius: $radius-btn;
+  mat-icon { font-size: 16px; }
+  &:hover { color: $danger; }
+}
+.notif-item:hover .del-btn { opacity: 1; }

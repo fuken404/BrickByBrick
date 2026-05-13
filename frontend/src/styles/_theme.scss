@@ -1,0 +1,143 @@
+@use '@angular/material' as mat;
+@use 'variables' as *;
+
+// =============================================================
+// BrickByBrick — Tema Angular Material personalizado
+// Primary: ladrillo (#C0392B)
+// Secondary/Accent: acero (#2E86AB)
+// Warn: danger (#E74C3C)
+// =============================================================
+
+// Paleta primaria: Ladrillo
+$primary-palette: (
+  50:  #fce8e6,
+  100: #f7c5c0,
+  200: #f19f97,
+  300: #eb796e,
+  400: #e75c4d,
+  500: #C0392B,   // base
+  600: #b83226,
+  700: #ae2a20,
+  800: #a6231a,
+  900: #921610,
+  A100: #ffb3af,
+  A200: #ff817b,
+  A400: #ff4f48,
+  A700: #ff362f,
+  contrast: (
+    50:  #000,
+    100: #000,
+    200: #000,
+    300: #000,
+    400: #fff,
+    500: #fff,
+    600: #fff,
+    700: #fff,
+    800: #fff,
+    900: #fff,
+    A100: #000,
+    A200: #000,
+    A400: #fff,
+    A700: #fff,
+  )
+);
+
+// Paleta accent: Acero
+$accent-palette: (
+  50:  #e5f1f7,
+  100: #bfdcec,
+  200: #94c6e0,
+  300: #68afd3,
+  400: #479ec9,
+  500: #2E86AB,   // base
+  600: #277ea4,
+  700: #1f739a,
+  800: #196991,
+  900: #0f5680,
+  A100: #b3dbff,
+  A200: #80c4ff,
+  A400: #4dacff,
+  A700: #34a0ff,
+  contrast: (
+    50:  #000,
+    100: #000,
+    200: #000,
+    300: #000,
+    400: #fff,
+    500: #fff,
+    600: #fff,
+    700: #fff,
+    800: #fff,
+    900: #fff,
+    A100: #000,
+    A200: #000,
+    A400: #000,
+    A700: #fff,
+  )
+);
+
+// Definir el tema
+$bbb-theme: mat.define-theme((
+  color: (
+    theme-type: light,
+    primary: mat.$azure-palette,
+    tertiary: mat.$blue-palette,
+  ),
+  typography: (
+    plain-family: '#{$font-body}',
+    brand-family: '#{$font-display}',
+  ),
+));
+
+// =============================================================
+// Sobrescrituras personalizadas de Angular Material
+// =============================================================
+
+.mat-mdc-button.mat-primary,
+.mat-mdc-raised-button.mat-primary {
+  --mdc-protected-button-container-color: #{$primary};
+  --mdc-filled-button-container-color: #{$primary};
+}
+
+// Inputs
+.mat-mdc-form-field {
+  --mdc-outlined-text-field-focus-label-text-color: #{$primary};
+  --mdc-outlined-text-field-focus-outline-color: #{$primary};
+  --mat-form-field-focus-select-arrow-color: #{$primary};
+}
+
+// Checkbox / Toggle
+.mat-mdc-checkbox.mat-primary {
+  --mdc-checkbox-selected-checkmark-color: #fff;
+  --mdc-checkbox-selected-focus-icon-color: #{$primary};
+  --mdc-checkbox-selected-hover-icon-color: #{$primary-dark};
+  --mdc-checkbox-selected-icon-color: #{$primary};
+}
+
+// Tabs
+.mat-mdc-tab-group {
+  --mat-tab-header-active-label-text-color: #{$primary};
+  --mat-tab-header-active-indicator-color: #{$primary};
+}
+
+// Progress bar
+.mat-mdc-progress-bar {
+  --mdc-linear-progress-active-indicator-color: #{$accent};
+}
+
+// Snackbar (toast)
+.mat-mdc-snack-bar-container.success {
+  --mdc-snackbar-container-color: #{$accent};
+  --mdc-snackbar-supporting-text-color: #fff;
+}
+
+.mat-mdc-snack-bar-container.error {
+  --mdc-snackbar-container-color: #{$danger};
+  --mdc-snackbar-supporting-text-color: #fff;
+}
+
+// Chips
+.mat-mdc-chip.mat-primary {
+  --mdc-chip-elevated-container-color: rgba(192, 57, 43, 0.1);
+  --mdc-chip-label-text-color: #{$primary};
+}

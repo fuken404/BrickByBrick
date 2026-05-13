@@ -1,0 +1,550 @@
+// =============================================================
+// BrickByBrick — Prisma Schema
+// Equivalente a database/schema.sql
+// Generado: 2026-05-02
+// =============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================
+// ENUMS
+// =============================================================
+
+enum RolUsuario {
+  BENEFICIARIO
+  CONSTRUCTORA
+  ADMINISTRADOR
+  @@map("rol_usuario")
+}
+
+enum EstadoUsuario {
+  activo
+  inactivo
+  suspendido
+  @@map("estado_usuario")
+}
+
+enum GeneroTipo {
+  masculino
+  femenino
+  no_binario
+  prefiero_no_decir
+  @@map("genero_tipo")
+}
+
+enum EstadoMaterial {
+  nuevo
+  buen_estado
+  usado
+  @@map("estado_material")
+}
+
+enum EstadoPubMaterial {
+  borrador
+  activo
+  pausado
+  agotado
+  vencido
+  @@map("estado_pub_material")
+}
+
+enum EstadoSolicitud {
+  pendiente
+  aprobada
+  rechazada
+  entregada
+  cancelada
+  @@map("estado_solicitud")
+}
+
+enum TipoEvento {
+  entrega_masiva
+  taller
+  feria
+  otro
+  @@map("tipo_evento")
+}
+
+enum EstadoEvento {
+  borrador
+  publicado
+  en_curso
+  finalizado
+  cancelado
+  @@map("estado_evento")
+}
+
+enum TipoPublicacion {
+  reutilizacion
+  tutorial
+  proyecto
+  noticia
+  recurso
+  @@map("tipo_publicacion")
+}
+
+enum VisibilidadPub {
+  publica
+  grupo
+  @@map("visibilidad_pub")
+}
+
+enum EstadoPublicacion {
+  borrador
+  publicada
+  suspendida
+  @@map("estado_publicacion")
+}
+
+enum TipoReporte {
+  publicacion
+  material
+  comentario
+  usuario
+  @@map("tipo_reporte")
+}
+
+enum EstadoReporte {
+  pendiente
+  resuelto
+  ignorado
+  @@map("estado_reporte")
+}
+
+enum RolMiembro {
+  admin
+  miembro
+  @@map("rol_miembro")
+}
+
+enum TipoNotificacion {
+  material_nuevo
+  solicitud_aprobada
+  solicitud_rechazada
+  solicitud_entregada
+  evento_inscripcion
+  evento_cupos_bajos
+  comentario
+  like
+  grupo_invitacion
+  verificacion
+  material_vence
+  @@map("tipo_notificacion")
+}
+
+enum TipoDocumento {
+  rut
+  camara_comercio
+  @@map("tipo_documento")
+}
+
+enum EstadoDocumento {
+  pendiente
+  aprobado
+  vencido
+  rechazado
+  @@map("estado_documento")
+}
+
+// =============================================================
+// MODELOS
+// =============================================================
+
+model Localidad {
+  id            Int             @id @default(autoincrement()) @db.SmallInt
+  nombre        String          @unique @db.VarChar(60)
+  beneficiarios Beneficiario[]
+  constructoras Constructora[]
+  eventos       Evento[]
+
+  @@map("localidades")
+}
+
+model Usuario {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email            String        @unique @db.VarChar(255)
+  passwordHash     String        @map("password_hash")
+  rol              RolUsuario
+  estado           EstadoUsuario @default(activo)
+  emailVerificado  Boolean       @default(false) @map("email_verificado")
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  beneficiario     Beneficiario?
+  tokensUsuario    TokenUsuario[]
+  constructora     Constructora?
+  publicaciones    Publicacion[]
+  comentarios      Comentario[]
+  likes            Like[]
+  reportes         Reporte[]
+  gruposCreados    Grupo[]
+  membresiaGrupos  MiembroGrupo[]
+  mensajesGrupo    MensajeGrupo[]
+  notificaciones   Notificacion[]
+
+  @@map("usuarios")
+}
+
+model Beneficiario {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId        String      @unique @map("usuario_id") @db.Uuid
+  nombreCompleto   String      @map("nombre_completo") @db.VarChar(150)
+  cedula           String      @unique @db.VarChar(20)
+  fechaNacimiento  DateTime?   @map("fecha_nacimiento") @db.Date
+  genero           GeneroTipo?
+  estrato          Int?        @db.SmallInt
+  localidadId      Int?        @map("localidad_id") @db.SmallInt
+  esAlimentadorWeb Boolean     @default(false) @map("es_alimentador_web")
+
+  usuario             Usuario               @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  localidad           Localidad?            @relation(fields: [localidadId], references: [id], onDelete: SetNull)
+  solicitudesMaterial SolicitudMaterial[]
+  inscripcionesEvento InscripcionEvento[]
+
+  @@map("beneficiarios")
+}
+
+model Constructora {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId          String    @unique @map("usuario_id") @db.Uuid
+  razonSocial        String    @map("razon_social") @db.VarChar(200)
+  nit                String    @unique @db.VarChar(20)
+  representanteLegal String?   @map("representante_legal") @db.VarChar(150)
+  cargoRepresentante String?   @map("cargo_representante") @db.VarChar(100)
+  numEmpleados       Int?      @map("num_empleados")
+  direccion          String?
+  localidadId        Int?      @map("localidad_id") @db.SmallInt
+  descripcion        String?
+  logoUrl            String?   @map("logo_url")
+  sitioWeb           String?   @map("sitio_web")
+  verificada         Boolean   @default(false)
+  fechaVerificacion  DateTime? @map("fecha_verificacion") @db.Timestamptz
+
+  usuario               Usuario                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  localidad             Localidad?             @relation(fields: [localidadId], references: [id], onDelete: SetNull)
+  materiales            Material[]
+  eventos               Evento[]
+  documentosEmpresa     DocumentoEmpresa[]
+  certificadosDonacion  CertificadoDonacion[]
+
+  @@map("constructoras")
+}
+
+model CategoriaMaterial {
+  id       Int        @id @default(autoincrement()) @db.SmallInt
+  nombre   String     @unique @db.VarChar(60)
+  colorHex String     @map("color_hex") @db.Char(7)
+  icono    String     @db.VarChar(60)
+
+  materiales Material[]
+
+  @@map("categorias_material")
+}
+
+model Material {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  constructoraId    String            @map("constructora_id") @db.Uuid
+  categoriaId       Int               @map("categoria_id") @db.SmallInt
+  nombre            String            @db.VarChar(200)
+  descripcion       String?
+  estadoMaterial    EstadoMaterial    @map("estado_material")
+  cantidad          Decimal           @db.Decimal(10, 2)
+  unidadMedida      String            @map("unidad_medida") @db.VarChar(30)
+  condicionesRetiro String?           @map("condiciones_retiro")
+  fechaLimite       DateTime?         @map("fecha_limite") @db.Date
+  maxSolicitudes    Int?              @map("max_solicitudes")
+  estadoPublicacion EstadoPubMaterial @default(borrador) @map("estado_publicacion")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  constructora           Constructora            @relation(fields: [constructoraId], references: [id], onDelete: Cascade)
+  categoria              CategoriaMaterial       @relation(fields: [categoriaId], references: [id])
+  fotos                  FotoMaterial[]
+  solicitudes            SolicitudMaterial[]
+  materialesEvento       MaterialEvento[]
+  materialesPublicacion  MaterialPublicacion[]
+
+  @@map("materiales")
+}
+
+model FotoMaterial {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  materialId String @map("material_id") @db.Uuid
+  url        String
+  orden      Int    @default(0) @db.SmallInt
+
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@map("fotos_material")
+}
+
+model SolicitudMaterial {
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  materialId            String          @map("material_id") @db.Uuid
+  beneficiarioId        String          @map("beneficiario_id") @db.Uuid
+  cantidadSolicitada    Decimal         @map("cantidad_solicitada") @db.Decimal(10, 2)
+  propositoUso          String?         @map("proposito_uso") @db.VarChar(200)
+  descripcionProyecto   String?         @map("descripcion_proyecto")
+  estado                EstadoSolicitud @default(pendiente)
+  instruccionesRetiro   String?         @map("instrucciones_retiro")
+  fechaSolicitud        DateTime        @default(now()) @map("fecha_solicitud") @db.Timestamptz
+  fechaRespuesta        DateTime?       @map("fecha_respuesta") @db.Timestamptz
+  fechaEntrega          DateTime?       @map("fecha_entrega") @db.Timestamptz
+  calificacion          Int?            @db.SmallInt
+  comentarioCalificacion String?        @map("comentario_calificacion")
+
+  material     Material     @relation(fields: [materialId], references: [id])
+  beneficiario Beneficiario @relation(fields: [beneficiarioId], references: [id])
+
+  @@unique([materialId, beneficiarioId])
+  @@map("solicitudes_material")
+}
+
+model Evento {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  constructoraId  String       @map("constructora_id") @db.Uuid
+  nombre          String       @db.VarChar(200)
+  tipoEvento      TipoEvento   @map("tipo_evento")
+  descripcion     String?
+  fechaInicio     DateTime     @map("fecha_inicio") @db.Timestamptz
+  fechaFin        DateTime     @map("fecha_fin") @db.Timestamptz
+  direccion       String?
+  localidadId     Int?         @map("localidad_id") @db.SmallInt
+  capacidadMaxima Int?         @map("capacidad_maxima")
+  imagenUrl       String?      @map("imagen_url")
+  estado          EstadoEvento @default(borrador)
+
+  constructora  Constructora        @relation(fields: [constructoraId], references: [id], onDelete: Cascade)
+  localidad     Localidad?          @relation(fields: [localidadId], references: [id], onDelete: SetNull)
+  materiales    MaterialEvento[]
+  inscripciones InscripcionEvento[]
+
+  @@map("eventos")
+}
+
+model MaterialEvento {
+  eventoId   String @map("evento_id") @db.Uuid
+  materialId String @map("material_id") @db.Uuid
+
+  evento   Evento   @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@id([eventoId, materialId])
+  @@map("materiales_evento")
+}
+
+model InscripcionEvento {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventoId         String   @map("evento_id") @db.Uuid
+  beneficiarioId   String   @map("beneficiario_id") @db.Uuid
+  fechaInscripcion DateTime @default(now()) @map("fecha_inscripcion") @db.Timestamptz
+  asistio          Boolean  @default(false)
+
+  evento       Evento       @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  beneficiario Beneficiario @relation(fields: [beneficiarioId], references: [id], onDelete: Cascade)
+
+  @@unique([eventoId, beneficiarioId])
+  @@map("inscripciones_evento")
+}
+
+model Publicacion {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  autorId     String            @map("autor_id") @db.Uuid
+  tipo        TipoPublicacion
+  titulo      String            @db.VarChar(300)
+  contenido   String
+  visibilidad VisibilidadPub    @default(publica)
+  estado      EstadoPublicacion @default(borrador)
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  autor      Usuario               @relation(fields: [autorId], references: [id], onDelete: Cascade)
+  fotos      FotoPublicacion[]
+  materiales MaterialPublicacion[]
+  comentarios Comentario[]
+  likes       Like[]
+
+  @@map("publicaciones")
+}
+
+model FotoPublicacion {
+  id            String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  publicacionId String @map("publicacion_id") @db.Uuid
+  url           String
+  orden         Int    @default(0) @db.SmallInt
+
+  publicacion Publicacion @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+
+  @@map("fotos_publicacion")
+}
+
+model MaterialPublicacion {
+  publicacionId String @map("publicacion_id") @db.Uuid
+  materialId    String @map("material_id") @db.Uuid
+
+  publicacion Publicacion @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+  material    Material    @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@id([publicacionId, materialId])
+  @@map("materiales_publicacion")
+}
+
+model Comentario {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  publicacionId String   @map("publicacion_id") @db.Uuid
+  autorId       String   @map("autor_id") @db.Uuid
+  contenido     String
+  parentId      String?  @map("parent_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  publicacion Publicacion  @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+  autor       Usuario      @relation(fields: [autorId], references: [id], onDelete: Cascade)
+  parent      Comentario?  @relation("ComentarioRespuesta", fields: [parentId], references: [id], onDelete: Cascade)
+  respuestas  Comentario[] @relation("ComentarioRespuesta")
+
+  @@map("comentarios")
+}
+
+model Like {
+  usuarioId     String   @map("usuario_id") @db.Uuid
+  publicacionId String   @map("publicacion_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  usuario     Usuario     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  publicacion Publicacion @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, publicacionId])
+  @@map("likes")
+}
+
+model Reporte {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tipoContenido TipoReporte  @map("tipo_contenido")
+  contenidoId  String        @map("contenido_id") @db.Uuid  // polimórfico: no FK
+  reportadoPor String        @map("reportado_por") @db.Uuid
+  motivo       String
+  estado       EstadoReporte @default(pendiente)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  usuario Usuario @relation(fields: [reportadoPor], references: [id], onDelete: Cascade)
+
+  @@map("reportes")
+}
+
+model Grupo {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre      String   @db.VarChar(150)
+  descripcion String?
+  imagenUrl   String?  @map("imagen_url")
+  creadorId   String   @map("creador_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  creador   Usuario        @relation(fields: [creadorId], references: [id], onDelete: Restrict)
+  temas     TemaGrupo[]
+  miembros  MiembroGrupo[]
+  mensajes  MensajeGrupo[]
+
+  @@map("grupos")
+}
+
+model TemaGrupo {
+  grupoId String @map("grupo_id") @db.Uuid
+  tema    String @db.VarChar(80)
+
+  grupo Grupo @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+
+  @@id([grupoId, tema])
+  @@map("temas_grupo")
+}
+
+model MiembroGrupo {
+  grupoId    String     @map("grupo_id") @db.Uuid
+  usuarioId  String     @map("usuario_id") @db.Uuid
+  rol        RolMiembro @default(miembro)
+  fechaUnion DateTime   @default(now()) @map("fecha_union") @db.Timestamptz
+
+  grupo   Grupo   @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@id([grupoId, usuarioId])
+  @@map("miembros_grupo")
+}
+
+model MensajeGrupo {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  grupoId    String   @map("grupo_id") @db.Uuid
+  autorId    String   @map("autor_id") @db.Uuid
+  contenido  String
+  adjuntoUrl String?  @map("adjunto_url")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  grupo Grupo   @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  autor Usuario @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  @@map("mensajes_grupo")
+}
+
+model Notificacion {
+  id         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId  String           @map("usuario_id") @db.Uuid
+  tipo       TipoNotificacion
+  titulo     String           @db.VarChar(200)
+  mensaje    String
+  urlDestino String?          @map("url_destino")
+  leida      Boolean          @default(false)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@map("notificaciones")
+}
+
+model DocumentoEmpresa {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  constructoraId   String          @map("constructora_id") @db.Uuid
+  tipo             TipoDocumento
+  url              String
+  fechaSubida      DateTime        @default(now()) @map("fecha_subida") @db.Timestamptz
+  fechaVencimiento DateTime?       @map("fecha_vencimiento") @db.Date
+  estado           EstadoDocumento @default(pendiente)
+
+  constructora Constructora @relation(fields: [constructoraId], references: [id], onDelete: Cascade)
+
+  @@map("documentos_empresa")
+}
+
+model CertificadoDonacion {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  constructoraId          String   @map("constructora_id") @db.Uuid
+  periodo                 String   @db.VarChar(20)
+  totalMaterialesDonados  Int      @default(0) @map("total_materiales_donados")
+  valorEstimadoCop        Decimal  @default(0) @map("valor_estimado_cop") @db.Decimal(15, 2)
+  deduccionEstimadaCop    Decimal  @default(0) @map("deduccion_estimada_cop") @db.Decimal(15, 2)
+  pdfUrl                  String?  @map("pdf_url")
+  generatedAt             DateTime @default(now()) @map("generated_at") @db.Timestamptz
+
+  constructora Constructora @relation(fields: [constructoraId], references: [id], onDelete: Cascade)
+
+  @@unique([constructoraId, periodo])
+  @@map("certificados_donacion")
+}
+
+model TokenUsuario {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuarioId String   @map("usuario_id") @db.Uuid
+  tipo      String   @db.VarChar(30)   // 'reset_password' | 'verify_email'
+  tokenHash String   @map("token_hash")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  usado     Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, tipo, usado])
+  @@map("tokens_usuario")
+}

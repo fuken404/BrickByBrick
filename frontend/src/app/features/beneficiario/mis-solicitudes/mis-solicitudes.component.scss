@@ -1,0 +1,175 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.page { padding: 32px; max-width: $content-max-w; }
+
+.page-header { margin-bottom: 24px; }
+.page-title  { font-family: $font-display; font-size: 28px; color: $text-primary; }
+.page-subtitle { color: $text-secondary; font-size: 14px; margin-top: 4px; }
+
+.filters-bar { padding: 16px 20px; margin-bottom: 24px; }
+
+.estado-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.chip {
+  padding: 6px 14px;
+  border: 1px solid $border;
+  border-radius: $radius-pill;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  &:hover { border-color: $primary; color: $primary; }
+  &.active { background: $primary; color: #fff; border-color: $primary; }
+}
+
+.solicitudes-list { display: flex; flex-direction: column; gap: 16px; }
+
+.solicitud-card {
+  padding: 0;
+  overflow: hidden;
+
+  &.card-aprobada { border-color: $accent; }
+  &.card-rechazada { border-color: $danger; }
+  &.card-entregada { border-color: $secondary; }
+
+  .solicitud-header,
+  .solicitud-body,
+  .calificar-section,
+  .calificacion-display,
+  .solicitud-actions { padding-inline: 20px; }
+
+  .solicitud-header { padding-top: 20px; }
+  .solicitud-body   { padding-bottom: 4px; }
+}
+
+// Estado banners
+.estado-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  margin-bottom: 4px;
+
+  mat-icon { font-size: 22px; flex-shrink: 0; }
+
+  div {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    strong { font-size: 14px; font-weight: 700; }
+    span   { font-size: 12px; opacity: .85; }
+  }
+
+  &.banner-aprobada {
+    background: rgba(39,174,96,.12);
+    color: darken(#27AE60, 10%);
+    mat-icon { color: $accent; }
+  }
+  &.banner-rechazada {
+    background: rgba(192,57,43,.08);
+    color: $danger;
+    mat-icon { color: $danger; }
+  }
+  &.banner-entregada {
+    background: rgba(46,134,171,.10);
+    color: darken(#2E86AB, 5%);
+    mat-icon { color: $secondary; }
+  }
+}
+
+.solicitud-header {
+  @include flex-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mat-nombre { font-weight: 600; font-size: 16px; margin-bottom: 2px; display: block; }
+.mat-cat    { font-size: 12px; color: $text-secondary; }
+
+.solicitud-body {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+
+  @include mobile { grid-template-columns: 1fr; }
+}
+
+.detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  .label {
+    font-size: 11px;
+    font-weight: 600;
+    color: $text-secondary;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+  span:not(.label) {
+    font-size: 14px;
+    color: $text-primary;
+  }
+  .instrucciones {
+    background: rgba(46,134,171,.06);
+    border-left: 3px solid $secondary;
+    padding: 6px 10px;
+    border-radius: 0 $radius-btn $radius-btn 0;
+    font-size: 13px;
+  }
+}
+
+.calificar-section {
+  border-top: 1px solid $border;
+  padding-top: 16px;
+  margin-top: 8px;
+}
+
+.calificar-prompt { font-size: 13px; color: $text-secondary; margin-bottom: 8px; }
+
+.stars { display: flex; gap: 4px; margin-bottom: 12px; }
+
+.star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  mat-icon { font-size: 24px; color: $border; transition: color $transition-fast; }
+  &.active mat-icon { color: #F4C542; }
+  &:hover mat-icon { color: #F4C542; }
+}
+
+.calificacion-display {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 12px;
+  border-top: 1px solid $border;
+}
+
+.star-icon { font-size: 18px; color: $border; &.filled { color: #F4C542; } }
+.cal-comment { font-size: 13px; color: $text-secondary; margin-left: 8px; }
+
+.solicitud-actions {
+  padding-top: 16px;
+  border-top: 1px solid $border;
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-sm { padding: 6px 16px; font-size: 13px; }
+.btn-danger-outline {
+  background: transparent;
+  color: $danger;
+  border: 1.5px solid $danger;
+  border-radius: $radius-btn;
+  cursor: pointer;
+  font-family: $font-body;
+  transition: all $transition-fast;
+  &:hover { background: $danger-light; }
+}

@@ -1,0 +1,97 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.page { padding: 32px; max-width: $content-max-w; }
+
+.page-header-row { @include flex-between; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+.page-title    { font-family: $font-display; font-size: 28px; color: $text-primary; }
+.page-subtitle { color: $text-secondary; font-size: 14px; margin-top: 4px; }
+
+.filter-wrap { display: flex; gap: 8px; }
+.chip {
+  padding: 7px 14px; border: 1px solid $border; border-radius: $radius-pill;
+  background: #fff; font-size: 13px; cursor: pointer; transition: all $transition-fast;
+  &:hover { border-color: $secondary; color: $secondary; }
+  &.active { background: $secondary; color: #fff; border-color: $secondary; }
+}
+
+.table-card { overflow-x: auto; padding: 0; }
+
+table { width: 100%; border-collapse: collapse;
+  th { padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; color: $text-secondary; border-bottom: 1px solid $border; white-space: nowrap; }
+  td { padding: 12px 16px; font-size: 14px; border-bottom: 1px solid $border; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: $bg-base; }
+}
+
+.user-cell { display: flex; align-items: center; gap: 10px; min-width: 200px; }
+.logo-sm { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; }
+.user-name  { font-weight: 500; font-size: 14px; }
+.user-email { font-size: 12px; color: $text-secondary; }
+
+.pill {
+  display: inline-block; padding: 2px 10px; border-radius: $radius-pill;
+  font-size: 11px; font-weight: 600; background: $warning-light; color: $warning;
+  &.on { background: rgba(39,174,96,.1); color: $accent; }
+}
+
+.estado-pill {
+  display: inline-block; padding: 2px 10px; border-radius: $radius-pill;
+  font-size: 11px; font-weight: 600; text-transform: uppercase; background: $danger-light; color: $danger;
+  &.activo { background: rgba(39,174,96,.1); color: $accent; }
+}
+
+.action-btn {
+  width: 30px; height: 30px; border: none; background: none; cursor: pointer;
+  border-radius: 6px; @include flex-center; color: $text-secondary; transition: all $transition-fast;
+  mat-icon { font-size: 18px; }
+  &.success:hover { background: rgba(39,174,96,.1); color: $accent; }
+}
+
+.verified-check { color: $accent; display: flex; mat-icon { font-size: 20px; } }
+
+// Panel lateral de documentos
+.panel-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 200;
+}
+
+.doc-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 420px; max-width: 100vw;
+  background: #fff; z-index: 201; display: flex; flex-direction: column;
+  box-shadow: -4px 0 24px rgba(0,0,0,.12); overflow-y: auto;
+}
+
+.panel-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 24px; border-bottom: 1px solid $border;
+  .panel-title { font-family: $font-display; font-size: 20px; color: $text-primary; margin: 0; }
+  .panel-sub   { font-size: 13px; color: $text-secondary; margin-top: 4px; }
+}
+
+.panel-section { padding: 24px; flex: 1; }
+.panel-section-title { font-size: 14px; font-weight: 600; color: $text-primary; margin: 0 0 16px; text-transform: uppercase; letter-spacing: .5px; }
+
+.no-docs { color: $text-secondary; font-size: 14px; }
+
+.doc-list { display: flex; flex-direction: column; gap: 12px; }
+
+.doc-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px; border: 1px solid $border; border-radius: $radius-card; background: $bg-base;
+}
+
+.doc-icon {
+  width: 36px; height: 36px; border-radius: 8px; background: rgba(46,134,171,.1);
+  @include flex-center; flex-shrink: 0;
+  mat-icon { color: $secondary; font-size: 20px; }
+}
+
+.doc-info { flex: 1; min-width: 0; }
+.doc-tipo { font-size: 14px; font-weight: 500; color: $text-primary; }
+.doc-meta { font-size: 12px; color: $text-secondary; margin-top: 2px; }
+
+.panel-actions {
+  display: flex; gap: 12px; padding: 20px 24px;
+  border-top: 1px solid $border; background: #fff;
+  .btn { flex: 1; justify-content: center; }
+}

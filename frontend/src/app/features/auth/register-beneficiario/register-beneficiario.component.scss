@@ -1,0 +1,204 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.register-page {
+  min-height: 100vh;
+  background: $bg-base;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.register-container {
+  width: 100%;
+  max-width: 560px;
+}
+
+.register-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 40px;
+
+  .brand-icon {
+    width: 32px; height: 32px;
+    background: $primary;
+    border-radius: 8px;
+    @include flex-center;
+    mat-icon { color: #fff; font-size: 16px; }
+  }
+
+  span {
+    font-family: $font-display;
+    font-weight: 700;
+    font-size: 20px;
+  }
+}
+
+// ─── Stepper ───────────────────────────────────────────────────
+.stepper {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.step-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: $border;
+  color: $text-secondary;
+  @include flex-center;
+  font-weight: 700;
+  font-size: 14px;
+  transition: all $transition-fast;
+
+  mat-icon { font-size: 16px; }
+
+  &.active { background: $primary; color: #fff; }
+  &.done   { background: $accent; color: #fff; }
+}
+
+.step-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: $text-secondary;
+  text-align: center;
+  white-space: nowrap;
+  &.active { color: $primary; }
+}
+
+.step-line {
+  flex: 1;
+  height: 2px;
+  background: $border;
+  margin: 17px 8px 0;
+  transition: background $transition-fast;
+  &.done { background: $accent; }
+}
+
+// ─── Card ─────────────────────────────────────────────────────
+.register-card {
+  padding: 40px;
+
+  h2 { margin-bottom: 6px; }
+}
+
+.step-subtitle {
+  color: $text-secondary;
+  font-size: 14px;
+  margin-bottom: 28px;
+}
+
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+
+  @include mobile { grid-template-columns: 1fr; }
+}
+
+.pass-wrapper { position: relative; }
+.pass-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  mat-icon { color: $text-secondary; font-size: 18px; }
+}
+
+// ─── Summary ──────────────────────────────────────────────────
+.summary-box {
+  background: $bg-base;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid $border;
+  &:last-child { border-bottom: none; }
+}
+
+.summary-key { font-size: 13px; color: $text-secondary; }
+.summary-val { font-size: 13px; font-weight: 500; }
+
+.terms-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  margin-bottom: 20px;
+
+  input { margin-top: 3px; accent-color: $primary; width: 15px; height: 15px; flex-shrink: 0; }
+  span { font-size: 13px; color: $text-secondary; line-height: 1.6; }
+  a { color: $primary; font-weight: 600; text-decoration: none; }
+}
+
+.form-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: $danger-light;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: $danger;
+  margin-bottom: 16px;
+  mat-icon { font-size: 16px; }
+}
+
+.form-success-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(39, 174, 96, 0.08);
+  border: 1px solid rgba(39, 174, 96, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: $accent;
+  margin-bottom: 16px;
+  mat-icon { font-size: 16px; }
+}
+
+// ─── Navigation ───────────────────────────────────────────────
+.step-nav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 32px;
+}
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.login-link {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 14px;
+  color: $text-secondary;
+  a { color: $primary; font-weight: 600; text-decoration: none; }
+}

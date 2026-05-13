@@ -1,0 +1,297 @@
+// =============================================================
+// BrickByBrick — Global Styles
+// TODOS los @use deben estar primero, antes de cualquier regla CSS
+// =============================================================
+@use '@angular/material' as mat;
+@use 'styles/variables' as *;
+@use 'styles/mixins' as *;
+@use 'styles/typography';
+@use 'styles/theme';
+
+// Angular Material M3 theme con paleta BrickByBrick
+html {
+  height: 100%;
+  @include mat.theme((
+    color: (
+      primary: mat.$red-palette,
+      tertiary: mat.$cyan-palette,
+    ),
+    typography: 'DM Sans',
+    density: 0,
+  ));
+}
+
+// Reset
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: $font-body;
+  background: $bg-base;
+  color: $text-primary;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: light;
+  height: 100%;
+}
+
+// =============================================================
+// Utility classes globales
+// =============================================================
+
+// Layout
+.container {
+  max-width: $content-max-w;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.page-content {
+  margin-top: $topbar-height;
+  padding: 32px;
+  min-height: calc(100vh - #{$topbar-height});
+}
+
+.section-header {
+  @include flex-between;
+  margin-bottom: 18px;
+}
+
+// Cards
+.card {
+  @include card-base;
+}
+
+// Buttons — clases utilitarias que complementan Angular Material
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 20px;
+  border-radius: $radius-btn;
+  border: none;
+  cursor: pointer;
+  font-family: $font-body;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all $transition-fast;
+  text-decoration: none;
+  white-space: nowrap;
+  @include focus-ring;
+
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+.btn-primary   { background: $primary;   color: #fff; &:hover { background: $primary-dark; } }
+.btn-secondary { background: transparent; border: 1.5px solid $secondary; color: $secondary; &:hover { background: $secondary; color: #fff; } }
+.btn-ghost     { background: transparent; color: $primary; &:hover { background: rgba(192, 57, 43, 0.08); } }
+.btn-accent    { background: $accent;    color: #fff; &:hover { background: #1e8a4a; } }
+.btn-danger    { background: $danger;    color: #fff; &:hover { background: #c0392b; } }
+.btn-sm { height: 32px; padding: 0 14px; font-size: 13px; }
+.btn-lg { height: 48px; padding: 0 28px; font-size: 16px; }
+
+// Badges
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: $radius-pill;
+  font-size: $font-size-xs;
+  font-weight: 600;
+}
+.badge-disponible           { @include badge-variant($accent-light, $accent); }
+.badge-pendiente            { @include badge-variant($warning-light, $warning); }
+.badge-entregado            { @include badge-variant(#efefef, $text-secondary); }
+.badge-rechazado            { @include badge-variant($danger-light, $danger); }
+.badge-aprobado             { @include badge-variant($accent-light, $accent); }
+.badge-verificado           { @include badge-variant($accent-light, $accent); }
+.badge-pendiente-verificacion { @include badge-variant($warning-light, $warning); }
+.badge-secundario           { @include badge-variant(rgba(46,134,171,0.12), $secondary); }
+.badge-primary              { @include badge-variant(rgba(192,57,43,0.1), $primary); }
+
+// Form elements
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: $text-secondary;
+}
+
+.form-input {
+  height: 40px;
+  padding: 0 14px;
+  border: 1.5px solid $border;
+  border-radius: $radius-btn;
+  font-family: $font-body;
+  font-size: 14px;
+  color: $text-primary;
+  background: #fff;
+  transition: border-color $transition-fast;
+  width: 100%;
+  @include focus-ring($primary);
+
+  &:focus { outline: none; border-color: $primary; }
+  &.error { border-color: $danger; }
+}
+
+.form-textarea {
+  padding: 12px 14px;
+  min-height: 100px;
+  resize: vertical;
+  border: 1.5px solid $border;
+  border-radius: $radius-btn;
+  font-family: $font-body;
+  font-size: 14px;
+  color: $text-primary;
+  background: #fff;
+  transition: border-color $transition-fast;
+  width: 100%;
+
+  &:focus { outline: none; border-color: $primary; }
+}
+
+.form-select {
+  height: 40px;
+  padding: 0 14px;
+  border: 1.5px solid $border;
+  border-radius: $radius-btn;
+  font-family: $font-body;
+  font-size: 14px;
+  color: $text-primary;
+  background: #fff;
+  appearance: none;
+  cursor: pointer;
+  width: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6B6B' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+
+  &:focus { outline: none; border-color: $primary; }
+}
+
+.form-error {
+  font-size: $font-size-xs;
+  color: $danger;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+// Table
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th {
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: $text-secondary;
+    background: $bg-base;
+    border-bottom: 1px solid $border;
+    user-select: none;
+  }
+
+  td {
+    padding: 14px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(221, 213, 204, 0.5);
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td      { background: rgba(245, 240, 235, 0.5); }
+}
+
+// Modal (para cuando NO usamos Angular Material dialog)
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: $z-modal;
+  animation: fadeIn $transition-modal;
+}
+
+.modal {
+  background: $bg-card;
+  border-radius: $radius-card;
+  box-shadow: $shadow-elevated;
+  max-width: 540px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp $transition-modal;
+}
+
+.modal-header {
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid $border;
+  @include flex-between;
+}
+
+.modal-body    { padding: 24px; }
+.modal-footer  { padding: 16px 24px; border-top: 1px solid $border; display: flex; gap: 12px; justify-content: flex-end; }
+
+// Animaciones globales
+@keyframes fadeIn    { from { opacity: 0; }                 to { opacity: 1; } }
+@keyframes slideUp   { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes pulse     { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+// Scrollbar personalizado
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: $border; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: darken($border, 10%); }
+
+// Grids reutilizables
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+
+@include tablet-down {
+  .grid-3, .grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@include mobile {
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .page-content { padding: 16px; }
+}
+
+// Spacing utilities
+.mt-4  { margin-top: 4px; }
+.mt-8  { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.mt-32 { margin-top: 32px; }
+.mb-16 { margin-bottom: 16px; }
+.mb-24 { margin-bottom: 24px; }
+.mb-32 { margin-bottom: 32px; }
+
+// Material Icons — centrado y tamaño heredado
+mat-icon {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: inherit;
+  width: 1em;
+  height: 1em;
+  line-height: 1 !important;
+  vertical-align: middle;
+  overflow: visible;
+}

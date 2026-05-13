@@ -1,0 +1,105 @@
+// =============================================================
+// BrickByBrick — Variables SCSS
+// Extraídas de /designs/design-system.css
+// =============================================================
+
+// --- Colores principales ---
+$primary:        #C0392B;
+$primary-dark:   #922B21;
+$secondary:      #2E86AB;
+$secondary-dark: #1a6080;
+$accent:         #27AE60;
+$accent-light:   #d5f5e3;
+
+// --- Fondos ---
+$bg-base:   #F5F0EB;
+$bg-card:   #FFFFFF;
+$bg-dark:   #1C1C1E;
+
+// --- Texto ---
+$text-primary:    #1A1A1A;
+$text-secondary:  #6B6B6B;
+$text-on-primary: #FFFFFF;
+
+// --- Bordes ---
+$border: #DDD5CC;
+
+// --- Estados / semántica ---
+$warning:        #E67E22;
+$warning-light:  #fdebd0;
+$danger:         #E74C3C;
+$danger-light:   #fde8e7;
+
+// --- Radios ---
+$radius-card: 8px;
+$radius-btn:  6px;
+$radius-pill: 24px;
+$radius-lg:   12px;
+
+// --- Sombras ---
+$shadow-card:     0 2px 12px rgba(0, 0, 0, 0.08);
+$shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.14);
+
+// --- Layout ---
+$sidebar-width:  240px;
+$topbar-height:  64px;
+$content-max-w:  1200px;
+
+// --- Tipografía ---
+$font-display: 'Playfair Display', Georgia, serif;
+$font-body:    'DM Sans', 'Helvetica Neue', sans-serif;
+
+$font-size-base: 15px;
+$font-size-sm:   13px;
+$font-size-xs:   12px;
+$font-size-lg:   16px;
+
+// --- Transiciones ---
+$transition-fast:  200ms ease;
+$transition-modal: 300ms ease;
+
+// --- Breakpoints ---
+$breakpoint-mobile:  768px;
+$breakpoint-tablet:  1024px;
+$breakpoint-desktop: 1280px;
+
+// --- Z-index ---
+$z-sidebar:   100;
+$z-topbar:     90;
+$z-dropdown:  200;
+$z-modal:    1000;
+$z-toast:    2000;
+
+// =============================================================
+// CSS Custom Properties (para compatibilidad con legacy CSS)
+// =============================================================
+:root {
+  --primary:        #{$primary};
+  --primary-dark:   #{$primary-dark};
+  --secondary:      #{$secondary};
+  --secondary-dark: #{$secondary-dark};
+  --accent:         #{$accent};
+  --accent-light:   #{$accent-light};
+  --bg-base:        #{$bg-base};
+  --bg-card:        #{$bg-card};
+  --bg-dark:        #{$bg-dark};
+  --text-primary:   #{$text-primary};
+  --text-secondary: #{$text-secondary};
+  --text-on-primary:#{$text-on-primary};
+  --border:         #{$border};
+  --warning:        #{$warning};
+  --warning-light:  #{$warning-light};
+  --danger:         #{$danger};
+  --danger-light:   #{$danger-light};
+  --radius-card:    #{$radius-card};
+  --radius-btn:     #{$radius-btn};
+  --radius-pill:    #{$radius-pill};
+  --shadow-card:    #{$shadow-card};
+  --shadow-elevated:#{$shadow-elevated};
+  --sidebar-width:  #{$sidebar-width};
+  --topbar-height:  #{$topbar-height};
+  --font-display:   #{$font-display};
+  --font-body:      #{$font-body};
+  --transition-fast:  #{$transition-fast};
+  --transition-modal: #{$transition-modal};
+}
