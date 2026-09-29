@@ -6,8 +6,12 @@
  *
  * Credenciales de prueba (solo entornos de desarrollo):
  *   Administrador : admin@brickbybrick.co        / Admin@BrickByBrick2024  (MFA por correo; en dev el código se imprime en el log)
- *   Beneficiarios : beneficiario1..3@test.co      / Demo1234!
- *   Constructoras : constructora1..2@test.co      / Demo1234!  (la 1 está verificada)
+ *   Beneficiarios : beneficiario1..3@test.co      / Test@1234
+ *   Constructoras : constructora1..2@test.co      / Test@1234  (la 1 está verificada, la 2 pendiente de verificación)
+ *
+ * Con SEED_DEMO=true las cuentas anteriores se dejan siempre en ese estado aunque
+ * ya existan: contraseña, cuenta activa y correo verificado (útil para reiniciar
+ * las pruebas). Sin SEED_DEMO nunca se modifica un administrador existente.
  */
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const bcrypt = require('bcryptjs');
@@ -47,6 +51,9 @@ const CONFIGURACION = {
   modoMantenimiento: false,
 };
 
+const PASSWORD_ADMIN = 'Admin@BrickByBrick2024';
+const PASSWORD_DEMO = 'Test@1234';
+
 const hash = (plain) => bcrypt.hash(plain, 12);
 const dias = (n) => new Date(Date.now() + n * 24 * 60 * 60 * 1000);
 
@@ -62,14 +69,15 @@ async function catalogos() {
   }
 }
 
-async function administrador() {
+async function administrador({ restablecer = false } = {}) {
   const email = 'admin@brickbybrick.co';
+  const passwordHash = await hash(PASSWORD_ADMIN);
   await prisma.usuario.upsert({
     where: { email },
-    update: {},
+    update: restablecer ? { passwordHash, estado: 'activo', emailVerificado: true, mfaHabilitado: true } : {},
     create: {
       email,
-      passwordHash: await hash('Admin@BrickByBrick2024'),
+      passwordHash,
       rol: 'ADMINISTRADOR',
       estado: 'activo',
       emailVerificado: true,
@@ -81,7 +89,9 @@ async function administrador() {
 async function demo() {
   const localidad = async (nombre) => (await prisma.localidad.findUnique({ where: { nombre } })).id;
   const categoria = async (nombre) => (await prisma.categoriaMaterial.findUnique({ where: { nombre } })).id;
-  const passwordHash = await hash('Demo1234!');
+  const passwordHash = await hash(PASSWORD_DEMO);
+  /** Estado garantizado de las cuentas demo aunque ya existan (MFA apagado para entrar directo). */
+  const cuentaDemo = { passwordHash, estado: 'activo', emailVerificado: true, mfaHabilitado: false };
 
   // Beneficiarios
   const beneficiarios = [
@@ -93,7 +103,7 @@ async function demo() {
   for (const b of beneficiarios) {
     const u = await prisma.usuario.upsert({
       where: { email: b.email },
-      update: {},
+      update: cuentaDemo,
       create: {
         email: b.email, passwordHash, rol: 'BENEFICIARIO', emailVerificado: true, telefono: '3001234567',
         beneficiario: {
@@ -119,7 +129,7 @@ async function demo() {
   for (const c of constructoras) {
     const u = await prisma.usuario.upsert({
       where: { email: c.email },
-      update: {},
+      update: cuentaDemo,
       create: {
         email: c.email, passwordHash, rol: 'CONSTRUCTORA', emailVerificado: true, telefono: '6013201234',
         constructora: {
@@ -189,8 +199,9 @@ async function demo() {
 
 async function main() {
   await catalogos();
-  await administrador();
-  if (process.env.SEED_DEMO === 'true') await demo();
+  const conDemo = process.env.SEED_DEMO === 'true';
+  await administrador({ restablecer: conDemo });
+  if (conDemo) await demo();
   // eslint-disable-next-line no-console
   console.log(`Seed completado${process.env.SEED_DEMO === 'true' ? ' (con datos demo)' : ''}.`);
 }
