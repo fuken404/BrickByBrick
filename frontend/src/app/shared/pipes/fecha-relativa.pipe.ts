@@ -4,6 +4,8 @@ import { Pipe, PipeTransform } from '@angular/core';
  * Transforma una fecha ISO en texto relativo: "hace 2 horas", "ayer", "hace 3 días"
  * Locale: es-CO
  */
+const plural = (n: number, uno: string, varios: string) => `hace ${n} ${n === 1 ? uno : varios}`;
+
 @Pipe({ name: 'fechaRelativa', standalone: true, pure: false })
 export class FechaRelativaPipe implements PipeTransform {
   transform(value: string | Date | null | undefined): string {
@@ -22,8 +24,8 @@ export class FechaRelativaPipe implements PipeTransform {
     if (diffHr  < 24)   return `hace ${diffHr} ${diffHr  === 1 ? 'hora'   : 'horas'}`;
     if (diffDay === 1)  return 'ayer';
     if (diffDay < 7)    return `hace ${diffDay} días`;
-    if (diffDay < 30)   return `hace ${Math.floor(diffDay / 7)} semanas`;
-    if (diffDay < 365)  return `hace ${Math.floor(diffDay / 30)} meses`;
-    return `hace ${Math.floor(diffDay / 365)} años`;
+    if (diffDay < 30)   return plural(Math.floor(diffDay / 7), 'semana', 'semanas');
+    if (diffDay < 365)  return plural(Math.floor(diffDay / 30), 'mes', 'meses');
+    return plural(Math.floor(diffDay / 365), 'año', 'años');
   }
 }
