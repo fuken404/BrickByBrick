@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -34,6 +36,20 @@ function crearGateway() {
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' }, contentSecurityPolicy: false }));
   app.use(cors({ origin: config.FRONTEND_URL, credentials: true }));
   if (!config.isTest) app.use(morgan('dev'));
+
+  // Frontend compilado (imagen Docker todo en uno): archivos estáticos con caché larga
+  // para los que llevan hash en el nombre; index.html nunca se cachea.
+  const frontendDist = process.env.FRONTEND_DIST && fs.existsSync(path.join(process.env.FRONTEND_DIST, 'index.html'))
+    ? process.env.FRONTEND_DIST : null;
+  if (frontendDist) {
+    app.use(express.static(frontendDist, {
+      index: false,
+      setHeaders: (res, archivo) => {
+        const conHash = /-[A-Z0-9]{8}\.(js|css)$/.test(archivo);
+        res.setHeader('Cache-Control', conHash ? 'public, max-age=31536000, immutable' : 'public, max-age=3600');
+      },
+    }));
+  }
 
   // Archivos subidos (fotos, logos, documentos)
   app.use('/uploads', express.static(uploadsRoot(), { maxAge: '7d', fallthrough: false }));
@@ -88,6 +104,15 @@ function crearGateway() {
     pathFilter: '/ws',
   });
   app.use(wsProxy);
+
+  // Rutas de la SPA (p. ej. /beneficiario/materiales): se responde index.html y Angular enruta
+  if (frontendDist) {
+    app.get(/^\/(?!api\/|ws\/|uploads\/|health$).*/, (req, res, next) => {
+      if (!req.accepts('html')) return next();
+      res.setHeader('Cache-Control', 'no-cache');
+      res.sendFile(path.join(frontendDist, 'index.html'));
+    });
+  }
 
   app.use((req, res) => sendError(res, `Ruta no encontrada: ${req.method} ${req.path}`, 404));
 

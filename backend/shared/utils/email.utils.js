@@ -4,8 +4,31 @@ const logger = require('./logger');
 let transporter;
 
 function smtpConfigurado() {
-  if (process.env.MAIL_TRANSPORT === 'log') return false;
+  if (['log', 'resend'].includes((process.env.MAIL_TRANSPORT || '').toLowerCase())) return false;
   return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+}
+
+/**
+ * Transporte de correo según MAIL_TRANSPORT:
+ *   log    → se escribe en el log (desarrollo, o plataformas sin correo configurado)
+ *   resend → API HTTPS de Resend (RESEND_API_KEY); útil donde el SMTP está bloqueado, como Railway
+ *   smtp   → nodemailer con SMTP_* (valor por defecto si hay credenciales SMTP)
+ */
+function transporte() {
+  const elegido = (process.env.MAIL_TRANSPORT || '').toLowerCase();
+  if (elegido === 'log') return 'log';
+  if (elegido === 'resend') return process.env.RESEND_API_KEY ? 'resend' : 'log';
+  return smtpConfigurado() ? 'smtp' : 'log';
+}
+
+async function enviarPorResend(correo) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...correo, to: [correo.to] }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new Error(`Resend respondió ${res.status}: ${(await res.text()).slice(0, 300)}`);
 }
 
 const registrarEnLog = (to, subject, plain) =>
@@ -44,8 +67,8 @@ function getTransporter() {
 }
 
 /**
- * Envía un correo. Con MAIL_TRANSPORT=log o sin SMTP configurado se escribe
- * en el log (útil en desarrollo para ver códigos OTP y enlaces).
+ * Envía un correo con el transporte configurado (ver transporte()). Sin
+ * transporte real se escribe en el log (útil para ver códigos OTP y enlaces).
  * @param {{ to: string, subject: string, html: string, text?: string }} options
  */
 async function sendEmail({ to, subject, html, text }) {
@@ -53,19 +76,16 @@ async function sendEmail({ to, subject, html, text }) {
 
   const plain = text || aTextoPlano(html);
 
-  if (!smtpConfigurado()) {
+  const via = transporte();
+  if (via === 'log') {
     registrarEnLog(to, subject, plain);
     return;
   }
 
+  const correo = { from: process.env.EMAIL_FROM || 'BrickByBrick <noreply@brickbybrick.co>', to, subject, html, text: plain };
   try {
-    await getTransporter().sendMail({
-      from: process.env.EMAIL_FROM || 'BrickByBrick <noreply@brickbybrick.co>',
-      to,
-      subject,
-      html,
-      text: plain,
-    });
+    if (via === 'resend') await enviarPorResend(correo);
+    else await getTransporter().sendMail(correo);
     logger.debug(`Email enviado a ${to}: ${subject}`);
   } catch (err) {
     logger.error(`Error enviando email a ${to}: ${err.message}`);

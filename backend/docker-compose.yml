@@ -1,29 +1,11 @@
 # =============================================================
 # BrickByBrick — Docker Compose
-#   docker compose up -d postgres            → solo la base de datos (desarrollo)
-#   docker compose --profile app up -d       → base de datos + migraciones + todos los servicios
+#   docker compose up -d postgres          → solo la base de datos (desarrollo con npm run dev)
+#   docker compose --profile app up --build → base de datos + aplicación completa en http://localhost:8080
+#
+# La aplicación usa la misma imagen "todo en uno" que se despliega en Railway
+# (Dockerfile en la raíz del repositorio).
 # =============================================================
-
-x-servicio: &servicio
-  build: .
-  restart: unless-stopped
-  env_file: .env
-  environment: &entorno
-    NODE_ENV: production
-    DATABASE_URL: postgresql://brickbybrick:brickbybrick_dev@postgres:5432/brickbybrick
-    UPLOADS_DIR: /app/uploads
-    AUTH_SERVICE_URL: http://auth-service:3001
-    USER_SERVICE_URL: http://user-service:3002
-    MATERIAL_SERVICE_URL: http://material-service:3003
-    EVENT_SERVICE_URL: http://event-service:3004
-    PUB_SERVICE_URL: http://publication-service:3005
-    NOTIF_SERVICE_URL: http://notification-service:3006
-  volumes:
-    - uploads:/app/uploads
-  depends_on:
-    migraciones:
-      condition: service_completed_successfully
-  profiles: [app]
 
 services:
   postgres:
@@ -44,52 +26,25 @@ services:
       timeout: 5s
       retries: 10
 
-  migraciones:
-    build: .
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: brickbybrick_app
+    restart: unless-stopped
     env_file: .env
     environment:
       DATABASE_URL: postgresql://brickbybrick:brickbybrick_dev@postgres:5432/brickbybrick
-    command: sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma && node prisma/seed.js"
+      FRONTEND_URL: http://localhost:${APP_PORT:-8080}
+      PORT: 3000
+    ports:
+      - "${APP_PORT:-8080}:3000"
+    volumes:
+      - uploads:/data/uploads
     depends_on:
       postgres:
         condition: service_healthy
     profiles: [app]
-
-  api-gateway:
-    <<: *servicio
-    build: { context: ., args: { SERVICE: api-gateway } }
-    ports: ["${PORT_GATEWAY:-3000}:3000"]
-    environment: { <<: *entorno, SERVICE: api-gateway, PORT_GATEWAY: 3000 }
-
-  auth-service:
-    <<: *servicio
-    build: { context: ., args: { SERVICE: auth-service } }
-    environment: { <<: *entorno, SERVICE: auth-service, PORT_AUTH: 3001 }
-
-  user-service:
-    <<: *servicio
-    build: { context: ., args: { SERVICE: user-service } }
-    environment: { <<: *entorno, SERVICE: user-service, PORT_USERS: 3002 }
-
-  material-service:
-    <<: *servicio
-    build: { context: ., args: { SERVICE: material-service } }
-    environment: { <<: *entorno, SERVICE: material-service, PORT_MATERIALS: 3003 }
-
-  event-service:
-    <<: *servicio
-    build: { context: ., args: { SERVICE: event-service } }
-    environment: { <<: *entorno, SERVICE: event-service, PORT_EVENTS: 3004 }
-
-  publication-service:
-    <<: *servicio
-    build: { context: ., args: { SERVICE: publication-service } }
-    environment: { <<: *entorno, SERVICE: publication-service, PORT_PUBS: 3005 }
-
-  notification-service:
-    <<: *servicio
-    build: { context: ., args: { SERVICE: notification-service } }
-    environment: { <<: *entorno, SERVICE: notification-service, PORT_NOTIF: 3006 }
 
 volumes:
   brickbybrick_pgdata:

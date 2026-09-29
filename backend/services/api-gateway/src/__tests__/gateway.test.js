@@ -2,6 +2,9 @@
  * Gateway: enrutamiento por segmento completo, salud agregada y métrica TRP.
  * Los microservicios se simulan con servidores HTTP que responden su nombre.
  */
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const http = require('http');
 const request = require('supertest');
 
@@ -23,6 +26,11 @@ beforeAll(async () => {
     servidores.push(srv);
     process.env[variable] = `http://127.0.0.1:${srv.address().port}`;
   }
+  // Frontend compilado de mentira para probar el modo "todo en uno"
+  const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'bbb-dist-'));
+  fs.writeFileSync(path.join(dist, 'index.html'), '<!doctype html><title>SPA</title>');
+  fs.writeFileSync(path.join(dist, 'main-ABCD1234.js'), 'console.log(1)');
+  process.env.FRONTEND_DIST = dist;
   ({ app } = require('../app').crearGateway());
   metricas = require('../metrics');
 });
@@ -79,5 +87,28 @@ describe('salud y métricas', () => {
 
   it('el endpoint de rendimiento es exclusivo del administrador', async () => {
     await request(app).get('/api/v1/metricas/rendimiento').expect(401);
+  });
+});
+
+describe('frontend compilado (imagen todo en uno)', () => {
+  it('sirve index.html en la raíz y en las rutas de Angular sin caché', async () => {
+    for (const ruta of ['/', '/beneficiario/materiales', '/restablecer-password/abc']) {
+      const res = await request(app).get(ruta).set('Accept', 'text/html');
+      expect(res.status).toBe(200);
+      expect(res.text).toContain('<title>SPA</title>');
+    }
+    const res = await request(app).get('/login').set('Accept', 'text/html');
+    expect(res.headers['cache-control']).toBe('no-cache');
+  });
+
+  it('los archivos con hash se cachean de forma permanente', async () => {
+    const res = await request(app).get('/main-ABCD1234.js');
+    expect(res.headers['cache-control']).toContain('immutable');
+  });
+
+  it('no intercepta la API, el health ni rutas inexistentes de la API', async () => {
+    expect((await request(app).get('/api/v1/materiales').set('Accept', 'text/html')).body.servicio).toBe('materials');
+    expect((await request(app).get('/health')).body.servicios).toHaveLength(6);
+    expect((await request(app).get('/api/v1/publicacionesfalsas').set('Accept', 'text/html')).status).toBe(404);
   });
 });

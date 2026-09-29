@@ -133,14 +133,16 @@ Abre **http://localhost:4200**. El servidor de desarrollo redirige `/api`, `/ws`
 
 ---
 
-## Docker Compose (stack completo)
+## Docker y despliegue
+
+La aplicación se empaqueta en **una sola imagen** (`Dockerfile` en la raíz): compila el frontend, instala el backend y arranca el gateway y los seis microservicios en el mismo contenedor. El gateway sirve también el frontend, así que todo queda en un solo dominio. Al arrancar aplica las migraciones y carga los catálogos.
 
 ```bash
 cd backend
-docker compose --profile app up --build
+docker compose --profile app up --build     # aplicación completa en http://localhost:8080
 ```
 
-Construye una imagen para los servicios, ejecuta las migraciones y el seed (`migraciones`) y levanta el gateway en `:3000` junto con los seis servicios. Los archivos subidos se guardan en el volumen `uploads`.
+**Despliegue en Railway:** guía paso a paso en [`DESPLIEGUE.md`](DESPLIEGUE.md).
 
 ---
 
@@ -181,8 +183,11 @@ cd frontend && npm test -- --watch=false
 | `FRONTEND_URL` | Sí | Origen permitido por CORS y base de los enlaces de los correos |
 | `PORT_GATEWAY`, `PORT_AUTH` … `PORT_NOTIF` | No | Puertos (3000–3006 por defecto) |
 | `*_SERVICE_URL` | No | URLs internas de los servicios (Docker las define con el nombre del contenedor) |
-| `MAIL_TRANSPORT` | No | `log` para imprimir los correos, `smtp` para enviarlos con `SMTP_*` |
+| `MAIL_TRANSPORT` | No | `log` para imprimir los correos, `smtp` para enviarlos con `SMTP_*`, `resend` para la API de Resend |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | Solo con SMTP | Envío de correos (verificación, MFA, recuperación, avisos) |
 | `UPLOADS_DIR`, `MAX_UPLOAD_MB` | No | Carpeta y tamaño máximo de los archivos subidos |
 | `TEST_DATABASE_URL` | No | Base para las pruebas (debe terminar en `_test`) |
-| `LOG_LEVEL` | No | Nivel del logger (`debug` en desarrollo, `error` en pruebas, `warn` en producción) |
+| `LOG_LEVEL` | No | Nivel del logger (`debug` en desarrollo, `error` en pruebas, `warn` en producción; la imagen Docker usa `info`) |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | En producción | Administrador inicial; sin `ADMIN_PASSWORD` no se crea en producción |
+| `CLIENT_IP_HEADER` | En la nube | Cabecera con la IP real del cliente detrás del proxy (`x-real-ip` en Railway) |
+| `RESEND_API_KEY` | Con `MAIL_TRANSPORT=resend` | Envío de correos por la API de Resend (donde el SMTP está bloqueado) |

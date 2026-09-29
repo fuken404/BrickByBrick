@@ -12,6 +12,9 @@
  * Con SEED_DEMO=true las cuentas anteriores se dejan siempre en ese estado aunque
  * ya existan: contraseña, cuenta activa y correo verificado (útil para reiniciar
  * las pruebas). Sin SEED_DEMO nunca se modifica un administrador existente.
+ *
+ * Producción (NODE_ENV=production): el administrador se crea con ADMIN_EMAIL y
+ * ADMIN_PASSWORD; si ADMIN_PASSWORD no está definida no se crea.
  */
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const bcrypt = require('bcryptjs');
@@ -69,9 +72,23 @@ async function catalogos() {
   }
 }
 
+/**
+ * Crea el administrador. En producción la contraseña debe venir en ADMIN_PASSWORD
+ * (el repositorio es público: la contraseña de desarrollo no sirve allí).
+ */
 async function administrador({ restablecer = false } = {}) {
-  const email = 'admin@brickbybrick.co';
-  const passwordHash = await hash(PASSWORD_ADMIN);
+  const produccion = process.env.NODE_ENV === 'production';
+  const email = (process.env.ADMIN_EMAIL || 'admin@brickbybrick.co').trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD || (produccion ? null : PASSWORD_ADMIN);
+  if (!password) {
+    // eslint-disable-next-line no-console
+    console.warn('[seed] ADMIN_PASSWORD no está definida: no se crea ni modifica el administrador.');
+    return;
+  }
+  if (password.length < 10 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+    throw new Error('ADMIN_PASSWORD debe tener al menos 10 caracteres, con mayúscula, minúscula y número.');
+  }
+  const passwordHash = await hash(password);
   await prisma.usuario.upsert({
     where: { email },
     update: restablecer ? { passwordHash, estado: 'activo', emailVerificado: true, mfaHabilitado: true } : {},

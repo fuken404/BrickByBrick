@@ -1,0 +1,19 @@
+# Dependencias y compilaciones locales (se instalan/compilan dentro de la imagen)
+**/node_modules
+frontend/dist
+frontend/.angular
+**/coverage
+
+# Secretos y datos locales
+**/.env
+**/.env.*
+!**/.env.example
+backend/uploads
+
+# Repositorio, editor y copias de iCloud
+.git
+.claude
+**/.DS_Store
+**/* 2
+**/* 2.*
+*.log
