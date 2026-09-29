@@ -14,6 +14,9 @@ const OTP_MAX_INTENTOS = 5;
 const HORA = 60 * 60 * 1000;
 
 // Hash de referencia para igualar tiempos cuando el email no existe
+const ENLACE_INVALIDO = 'El enlace es inválido, ya se usó o expiró. Solicita uno nuevo.';
+const enmascararEmail = (email) => email.replace(/^(.{2}).*(@.*)$/, '$1•••$2');
+
 const HASH_FICTICIO = bcrypt.hashSync('usuario-inexistente', BCRYPT_ROUNDS);
 
 const requiereMfa = (usuario) => usuario.rol === 'ADMINISTRADOR' || usuario.mfaHabilitado;
@@ -159,7 +162,7 @@ const authService = {
     if (requiereMfa(usuario)) {
       const desafioId = await crearDesafioMfa(usuario);
       usuarioRepository.registrarIntento({ email, usuarioId: usuario.id, exito: true, motivo: 'mfa_pendiente', ip }).catch(() => {});
-      return { mfaRequerido: true, desafioId, emailParcial: email.replace(/^(.{2}).*(@.*)$/, '$1•••$2') };
+      return { mfaRequerido: true, desafioId, emailParcial: enmascararEmail(email) };
     }
 
     usuarioRepository.registrarIntento({ email, usuarioId: usuario.id, exito: true, motivo: 'ok', ip }).catch(() => {});
@@ -218,9 +221,14 @@ const authService = {
     return Promise.resolve();
   },
 
+  /**
+   * Genera y envía el enlace de restablecimiento. El controlador responde
+   * antes de que esto termine, así el tiempo de respuesta es el mismo exista
+   * o no la cuenta (no permite averiguar qué correos están registrados).
+   */
   async forgotPassword(email) {
     const usuario = await usuarioRepository.findByEmail(email);
-    if (!usuario || usuario.estado === 'suspendido') return; // no revelar si existe
+    if (!usuario || usuario.estado !== 'activo') return;
 
     await tokenRepository.invalidarTodos(usuario.id, 'reset_password');
     const raw = generateToken();
@@ -229,25 +237,46 @@ const authService = {
     });
 
     await sendEmail({
-      to: email,
+      to: usuario.email,
       subject: 'Restablecer contraseña — BrickByBrick',
       html: plantillaCorreo({
         titulo: 'Restablece tu contraseña',
-        cuerpoHtml: '<p>Recibimos una solicitud para restablecer tu contraseña. El enlace es válido por 1 hora.</p><p style="color:#6B6B6B;font-size:13px">Si no la solicitaste, ignora este mensaje.</p>',
+        cuerpoHtml: '<p>Recibimos una solicitud para restablecer tu contraseña. El enlace es válido por 1 hora y solo se puede usar una vez.</p><p style="color:#6B6B6B;font-size:13px">Si no la solicitaste, ignora este mensaje: tu contraseña actual sigue funcionando.</p>',
         ctaTexto: 'Crear nueva contraseña',
         ctaUrl: `${config.FRONTEND_URL}/restablecer-password/${raw}`,
       }),
-    }).catch(() => {});
+    });
+  },
+
+  /** Comprueba el enlace antes de mostrar el formulario (no lo consume). */
+  async validarTokenReset(token) {
+    const registro = await tokenRepository.findVigente({ tokenHash: hashToken(token), tipo: 'reset_password' });
+    const usuario = registro && await usuarioRepository.findById(registro.usuarioId);
+    if (!usuario || usuario.estado !== 'activo') throw new BadRequestError(ENLACE_INVALIDO);
+    return { emailParcial: enmascararEmail(usuario.email), expiraEn: registro.expiresAt };
   },
 
   async resetPassword(token, newPassword) {
     const registro = await tokenRepository.findVigente({ tokenHash: hashToken(token), tipo: 'reset_password' });
-    if (!registro) throw new BadRequestError('El enlace es inválido o expiró. Solicita uno nuevo.');
+    const usuario = registro && await usuarioRepository.findById(registro.usuarioId);
+    if (!usuario || usuario.estado !== 'activo') throw new BadRequestError(ENLACE_INVALIDO);
 
-    await usuarioRepository.update(registro.usuarioId, { passwordHash: await bcrypt.hash(newPassword, BCRYPT_ROUNDS) });
-    await tokenRepository.marcarUsado(registro.id);
-    await sessionService.revocarTodas(registro.usuarioId);
-    registrarAuditoria({ usuarioId: registro.usuarioId, accion: 'password_restablecida', entidad: 'usuario', entidadId: registro.usuarioId });
+    // Consumo atómico: si el enlace se envía dos veces a la vez, solo una petición cambia la contraseña
+    if (!(await tokenRepository.consumir(registro.id))) throw new BadRequestError(ENLACE_INVALIDO);
+
+    await usuarioRepository.update(usuario.id, { passwordHash: await bcrypt.hash(newPassword, BCRYPT_ROUNDS) });
+    await sessionService.revocarTodas(usuario.id);
+    registrarAuditoria({ usuarioId: usuario.id, accion: 'password_restablecida', entidad: 'usuario', entidadId: usuario.id });
+    sendEmail({
+      to: usuario.email,
+      subject: 'Tu contraseña fue cambiada — BrickByBrick',
+      html: plantillaCorreo({
+        titulo: 'Tu contraseña fue cambiada',
+        cuerpoHtml: '<p>La contraseña de tu cuenta se restableció y cerramos las sesiones abiertas en otros dispositivos.</p><p style="color:#6B6B6B;font-size:13px">Si no fuiste tú, solicita un nuevo enlace de inmediato y escribe a soporte.</p>',
+        ctaTexto: 'Iniciar sesión',
+        ctaUrl: `${config.FRONTEND_URL}/login`,
+      }),
+    }).catch(() => {});
   },
 
   async cambiarPassword(usuarioId, { passwordActual, passwordNueva }) {

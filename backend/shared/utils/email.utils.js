@@ -9,7 +9,27 @@ function smtpConfigurado() {
 }
 
 const registrarEnLog = (to, subject, plain) =>
-  logger.warn(`[email:log] Para: ${to} | Asunto: ${subject} | ${plain.slice(0, 500)}`);
+  logger.warn(`[email:log] Para: ${to} | Asunto: ${subject} | ${plain}`);
+
+const ENTIDADES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&nbsp;': ' ' };
+const decodificar = (t) => t.replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (e) => ENTIDADES[e]);
+
+/**
+ * Versión en texto plano del correo. Conserva la URL de cada enlace
+ * ("Texto: https://…"): sin ella los botones de acción quedarían inservibles
+ * en clientes de solo texto y en el log de desarrollo.
+ */
+function aTextoPlano(html) {
+  const texto = html
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<a\b[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (_m, url, etiqueta) => {
+      const nombre = etiqueta.replace(/<[^>]+>/g, '').trim();
+      return nombre ? `${nombre}: ${url}` : url;
+    })
+    .replace(/<\/(p|div|h[1-6]|li|tr)>|<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ');
+  return decodificar(texto).replace(/[ \t]+/g, ' ').replace(/\s*\n\s*/g, '\n').trim();
+}
 
 function getTransporter() {
   if (!transporter) {
@@ -31,7 +51,7 @@ function getTransporter() {
 async function sendEmail({ to, subject, html, text }) {
   if (process.env.NODE_ENV === 'test') return;
 
-  const plain = text || html.replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const plain = text || aTextoPlano(html);
 
   if (!smtpConfigurado()) {
     registrarEnLog(to, subject, plain);
@@ -58,4 +78,4 @@ async function sendEmail({ to, subject, html, text }) {
   }
 }
 
-module.exports = { sendEmail, smtpConfigurado };
+module.exports = { sendEmail, smtpConfigurado, aTextoPlano };

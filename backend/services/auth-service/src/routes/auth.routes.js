@@ -72,6 +72,7 @@ router.post('/refresh-token', ctrl.refreshToken);
 router.post('/logout', ctrl.logout);
 
 router.post('/forgot-password', passwordLimiter, validateBody(v.forgotPasswordSchema), ctrl.forgotPassword);
+router.get('/reset-password/:token', passwordLimiter, ctrl.validarTokenReset);
 router.post('/reset-password/:token', passwordLimiter, validateBody(v.resetPasswordSchema), ctrl.resetPassword);
 router.patch('/password', authMiddleware, validateBody(v.cambiarPasswordSchema), ctrl.cambiarPassword);
 

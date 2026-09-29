@@ -1,5 +1,5 @@
 const authService = require('../services/auth.service');
-const { sendSuccess, sendError, config } = require('@brickbybrick/shared');
+const { sendSuccess, sendError, config, logger } = require('@brickbybrick/shared');
 
 const COOKIE = 'refreshToken';
 const COOKIE_OPTS = {
@@ -79,10 +79,16 @@ const authController = {
     } catch (err) { next(err); }
   },
 
-  async forgotPassword(req, res, next) {
+  forgotPassword(req, res) {
+    // Se responde de inmediato y el envío sigue en segundo plano (misma respuesta y tiempo exista o no la cuenta)
+    authService.forgotPassword(req.validatedBody.email)
+      .catch((err) => logger.error(`forgot-password: ${err.message}`));
+    sendSuccess(res, null, 'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.');
+  },
+
+  async validarTokenReset(req, res, next) {
     try {
-      await authService.forgotPassword(req.validatedBody.email);
-      sendSuccess(res, null, 'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.');
+      sendSuccess(res, await authService.validarTokenReset(req.params.token), 'Enlace válido');
     } catch (err) { next(err); }
   },
 

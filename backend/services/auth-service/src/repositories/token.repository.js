@@ -19,6 +19,12 @@ const tokenRepository = {
     return prisma.tokenUsuario.findUnique({ where: { id } });
   },
 
+  /** Marca el token como usado solo si nadie lo usó antes; devuelve si lo consumió. */
+  async consumir(id, db = prisma) {
+    const { count } = await db.tokenUsuario.updateMany({ where: { id, usado: false }, data: { usado: true } });
+    return count === 1;
+  },
+
   marcarUsado(id) {
     return prisma.tokenUsuario.update({ where: { id }, data: { usado: true } });
   },

@@ -60,6 +60,10 @@ export class AuthApiService {
     return this.http.post<ApiResponse<null>>(`${this.base}/forgot-password`, { email });
   }
 
+  validarTokenReset(token: string): Observable<ApiResponse<{ emailParcial: string; expiraEn: string }>> {
+    return this.http.get<ApiResponse<{ emailParcial: string; expiraEn: string }>>(`${this.base}/reset-password/${encodeURIComponent(token)}`);
+  }
+
   resetPassword(token: string, password: string): Observable<ApiResponse<null>> {
     return this.http.post<ApiResponse<null>>(`${this.base}/reset-password/${encodeURIComponent(token)}`, { password });
   }

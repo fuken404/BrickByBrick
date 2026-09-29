@@ -4,11 +4,13 @@
 jest.mock('@brickbybrick/shared', () => ({
   ...jest.requireActual('@brickbybrick/shared'),
   generateOtp: jest.fn(() => '246810'),
+  sendEmail: jest.fn(async () => undefined),
 }));
 
 const request = require('supertest');
 const app = require('../app');
-const { prisma, PASSWORD, localidad, crearBeneficiario, crearAdmin } = require('../../../../test/helpers');
+const { sendEmail } = require('@brickbybrick/shared');
+const { prisma, PASSWORD, esperarHasta, localidad, crearBeneficiario, crearAdmin } = require('../../../../test/helpers');
 
 const cookieDe = (res) => res.headers['set-cookie']?.find((c) => c.startsWith('refreshToken='))?.split(';')[0];
 
@@ -152,5 +154,70 @@ describe('cambio de contraseña', () => {
 
     await request(app).post('/api/v1/auth/refresh-token').set('Cookie', cookieDe(otraSesion)).expect(401);
     await request(app).post('/api/v1/auth/login').send({ email: usuario.email, password: 'NuevaClave9' }).expect(200);
+  });
+});
+
+describe('olvidé mi contraseña', () => {
+  /** Pide el enlace y devuelve el token que llegó por correo. */
+  async function solicitarEnlace(email) {
+    sendEmail.mockClear();
+    const res = await request(app).post('/api/v1/auth/forgot-password').send({ email });
+    expect(res.status).toBe(200);
+    const correo = await esperarHasta(() => sendEmail.mock.calls.find(([c]) => c.to === email)?.[0]);
+    return correo?.html.match(/restablecer-password\/([a-f0-9]+)/)[1];
+  }
+
+  it('responde lo mismo exista o no la cuenta, y solo envía correo si existe', async () => {
+    const { usuario } = await crearBeneficiario();
+    sendEmail.mockClear();
+    const a = await request(app).post('/api/v1/auth/forgot-password').send({ email: usuario.email });
+    const b = await request(app).post('/api/v1/auth/forgot-password').send({ email: 'no-existe@test.co' });
+    expect(a.status).toBe(200);
+    expect(b.body.message).toBe(a.body.message);
+    await esperarHasta(() => sendEmail.mock.calls.length > 0);
+    await new Promise((r) => setTimeout(r, 100));
+    expect(sendEmail.mock.calls.map(([c]) => c.to)).toEqual([usuario.email]);
+  });
+
+  it('flujo completo: validar enlace, cambiar contraseña, cerrar sesiones y no reutilizar el enlace', async () => {
+    const { usuario } = await crearBeneficiario();
+    const sesion = await request(app).post('/api/v1/auth/login').send({ email: usuario.email, password: PASSWORD });
+    const token = await solicitarEnlace(usuario.email);
+    expect(token).toEqual(expect.any(String));
+
+    const validar = await request(app).get(`/api/v1/auth/reset-password/${token}`);
+    expect(validar.status).toBe(200);
+    expect(validar.body.data.emailParcial).toMatch(/^.{2}•••@test\.co$/);
+
+    await request(app).post(`/api/v1/auth/reset-password/${token}`).send({ password: 'debil' }).expect(400);
+    await request(app).post(`/api/v1/auth/reset-password/${token}`).send({ password: 'Restablecida1' }).expect(200);
+
+    await request(app).post('/api/v1/auth/refresh-token').set('Cookie', cookieDe(sesion)).expect(401);
+    await request(app).post('/api/v1/auth/login').send({ email: usuario.email, password: 'Restablecida1' }).expect(200);
+    await request(app).get(`/api/v1/auth/reset-password/${token}`).expect(400);
+    await request(app).post(`/api/v1/auth/reset-password/${token}`).send({ password: 'OtraClave22' }).expect(400);
+  });
+
+  it('un enlace nuevo invalida el anterior', async () => {
+    const { usuario } = await crearBeneficiario();
+    const viejo = await solicitarEnlace(usuario.email);
+    const nuevo = await solicitarEnlace(usuario.email);
+    await request(app).get(`/api/v1/auth/reset-password/${viejo}`).expect(400);
+    await request(app).get(`/api/v1/auth/reset-password/${nuevo}`).expect(200);
+  });
+
+  it('el mismo enlace enviado dos veces a la vez solo cambia la contraseña una vez', async () => {
+    const { usuario } = await crearBeneficiario();
+    const token = await solicitarEnlace(usuario.email);
+    const res = await Promise.all(['Primera111A', 'Segunda22B'].map((password) =>
+      request(app).post(`/api/v1/auth/reset-password/${token}`).send({ password })));
+    expect(res.map((r) => r.status).sort()).toEqual([200, 400]);
+  });
+
+  it('una cuenta suspendida no puede usar el enlace', async () => {
+    const { usuario } = await crearBeneficiario();
+    const token = await solicitarEnlace(usuario.email);
+    await prisma.usuario.update({ where: { id: usuario.id }, data: { estado: 'suspendido' } });
+    await request(app).post(`/api/v1/auth/reset-password/${token}`).send({ password: 'Restablecida1' }).expect(400);
   });
 });
