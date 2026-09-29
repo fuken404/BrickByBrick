@@ -32,6 +32,7 @@ const { escapeHtml, plantillaCorreo } = require('./utils/html');
 const { registrarAuditoria } = require('./utils/audit');
 const configSistema = require('./utils/config-sistema');
 const { asyncHandler } = require('./utils/async-handler');
+const { toCsv } = require('./utils/csv');
 
 module.exports = {
   config,
@@ -81,4 +82,5 @@ module.exports = {
   registrarAuditoria,
   configSistema,
   asyncHandler,
+  toCsv,
 };

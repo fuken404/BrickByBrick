@@ -1,11 +1,10 @@
 const {
-  prisma, parsePaginacion, pagina, createNotification, registrarAuditoria, configSistema,
+  prisma, parsePaginacion, pagina, createNotification, registrarAuditoria, configSistema, toCsv,
   NotFoundError, BadRequestError, ForbiddenError,
 } = require('@brickbybrick/shared');
 const usuarioRepository = require('../repositories/usuario.repository');
 const constructoraRepository = require('../repositories/constructora.repository');
 const metricasRepository = require('../repositories/metricas.repository');
-const { toCsv } = require('../utils/csv');
 
 const adminService = {
   async listarUsuarios(query) {
