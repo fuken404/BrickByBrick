@@ -1,0 +1,96 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Solicitudes recibidas</h1>
+      <p class="page-subtitle">Aprueba, coordina y registra la entrega de tus materiales donados.</p>
+    </div>
+  </header>
+
+  @if (materialId()) {
+    <div class="alert info"><mat-icon>filter_alt</mat-icon><span>Mostrando solicitudes de un material. <button type="button" class="btn-link" (click)="quitarFiltroMaterial()">Ver todas</button></span></div>
+  }
+
+  <div class="tabs" role="tablist">
+    @for (p of pestanas; track p.label) {
+      <button type="button" role="tab" class="tab" [class.active]="estado() === p.estado" [attr.aria-selected]="estado() === p.estado" (click)="cambiar(p.estado)">
+        {{ p.label }} @if (conteo(p.estado) !== null) { <span class="count">{{ conteo(p.estado) }}</span> }
+      </button>
+    }
+  </div>
+
+  @if (cargando()) {
+    <app-skeleton-loader type="list" [count]="5" />
+  } @else if (!items().length) {
+    <div class="card"><app-empty-state icon="inbox" title="No hay solicitudes en esta sección" /></div>
+  } @else {
+    <div class="stack">
+      @for (s of items(); track s.id) {
+        @let m = s.material;
+        @let ben = s.beneficiario;
+        <article class="card card-pad stack-sm sol" [id]="'sol-' + s.id" [class.resaltada]="resaltada() === s.id">
+          <div class="row-between">
+            <div class="row">
+              <mat-icon [style.color]="m?.categoria?.colorHex">{{ m?.categoria?.icono ?? 'inventory_2' }}</mat-icon>
+              <div>
+                <div class="strong">{{ ben?.nombreCompleto }}</div>
+                <div class="xsmall muted">{{ ben?.localidad?.nombre ?? 'Sin localidad' }} · solicitó {{ s.fechaSolicitud | fechaRelativa }}</div>
+              </div>
+            </div>
+            @let b = s.estado | estadoBadge:'solicitud';
+            <span class="badge" [class]="b.cssClass">{{ b.label }}</span>
+          </div>
+
+          <dl class="dl">
+            <dt>Material</dt><dd><a class="btn-link" [routerLink]="['/empresa/materiales', s.materialId, 'editar']">{{ m?.nombre }}</a></dd>
+            <dt>Cantidad</dt>
+            <dd>
+              <strong>{{ s.cantidadSolicitada | number:'1.0-2' }} {{ m?.unidadMedida }}</strong>
+              @if (s.estado === 'pendiente') { <span class="small muted"> · disponibles: {{ m?.cantidad | number:'1.0-2' }}</span>
+                @if ((m?.cantidad ?? 0) < s.cantidadSolicitada) { <span class="badge badge-warning">Stock insuficiente</span> } }
+            </dd>
+            @if (s.propositoUso) { <dt>Uso</dt><dd>{{ s.propositoUso }}</dd> }
+            @if (s.descripcionProyecto) { <dt>Proyecto</dt><dd class="pre-line">{{ s.descripcionProyecto }}</dd> }
+            @if (s.estado === 'aprobada' || s.estado === 'entregada') {
+              <dt>Contacto</dt>
+              <dd>
+                @if (ben?.usuario?.telefono) { <a [href]="'tel:' + ben?.usuario?.telefono">{{ ben?.usuario?.telefono }}</a> · }
+                <a [href]="'mailto:' + ben?.usuario?.email">{{ ben?.usuario?.email }}</a>
+                @if (ben?.cedula) { <span class="small muted"> · C.C. {{ ben?.cedula }}</span> }
+              </dd>
+            }
+            @if (s.instruccionesRetiro && s.estado === 'aprobada') { <dt>Instrucciones</dt><dd class="pre-line small">{{ s.instruccionesRetiro }}</dd> }
+            @if (s.motivoRechazo && (s.estado === 'rechazada' || s.estado === 'cancelada')) { <dt>Motivo</dt><dd>{{ s.motivoRechazo }}</dd> }
+            @if (s.estado === 'entregada') {
+              <dt>Entregada</dt><dd>{{ s.fechaEntrega | date:'mediumDate' }} · {{ s.fechaConfirmacion ? 'Recepción confirmada' : 'Pendiente de confirmación del beneficiario' }}</dd>
+              @if (s.valorDonadoCop !== null) { <dt>Valor donado</dt><dd>{{ s.valorDonadoCop | copCurrency }}</dd> }
+              @if (s.calificacion) {
+                <dt>Calificación</dt>
+                <dd><span class="estrellas">@for (on of estrellas(s.calificacion); track $index) { <mat-icon [class.on]="on">star</mat-icon> }</span>
+                  @if (s.comentarioCalificacion) { <span class="small muted"> “{{ s.comentarioCalificacion }}”</span> }</dd>
+              }
+            }
+          </dl>
+
+          <div class="row">
+            @switch (s.estado) {
+              @case ('pendiente') {
+                <button type="button" class="btn btn-sm btn-accent" (click)="aprobar(s)" [disabled]="procesando() === s.id"><mat-icon>check</mat-icon>Aprobar</button>
+                <button type="button" class="btn btn-sm btn-danger-outline" (click)="rechazar(s)" [disabled]="procesando() === s.id">Rechazar</button>
+              }
+              @case ('aprobada') {
+                <button type="button" class="btn btn-sm btn-primary" (click)="entregar(s)" [disabled]="procesando() === s.id"><mat-icon>local_shipping</mat-icon>Marcar como entregada</button>
+                <button type="button" class="btn btn-sm btn-danger-outline" (click)="cancelar(s)" [disabled]="procesando() === s.id">Cancelar</button>
+              }
+              @case ('entregada') {
+                @if (s.numeroConstancia) {
+                  <button type="button" class="btn btn-sm btn-ghost" (click)="constancia(s)"><mat-icon>picture_as_pdf</mat-icon>Constancia {{ s.numeroConstancia }}</button>
+                }
+              }
+            }
+          </div>
+        </article>
+      }
+    </div>
+    @if (hayMas()) { <div class="load-more"><button type="button" class="btn btn-ghost" (click)="cargar(true)">Cargar más</button></div> }
+  }
+</div>

@@ -1,0 +1,37 @@
+<article class="material-card card" (click)="abrir.emit(material())" (keydown.enter)="abrir.emit(material())"
+         tabindex="0" role="button" [attr.aria-label]="'Ver ' + material().nombre">
+  <div class="card-header" [style.background]="fondo()">
+    @if (material().fotos.length) {
+      <img [src]="material().fotos[0].url | uploadUrl" [alt]="material().nombre" class="card-img" loading="lazy" />
+    } @else {
+      <div class="card-placeholder">
+        <div class="placeholder-circle" [style.background]="color() + '25'">
+          <mat-icon [style.color]="color()">{{ material().categoria.icono || 'inventory_2' }}</mat-icon>
+        </div>
+      </div>
+    }
+    <span class="badge cat-badge" [style.background]="'#ffffffe6'" [style.color]="color()">{{ material().categoria.nombre }}</span>
+    @let estado = material().estadoPublicacion | estadoBadge:'material';
+    <span class="badge status-badge" [class]="estado.cssClass">{{ estado.label }}</span>
+  </div>
+
+  <div class="card-body">
+    <h3 class="card-title clamp-2">{{ material().nombre }}</h3>
+    <div class="card-qty">
+      {{ material().cantidad | number:'1.0-2':'es-CO' }} <span class="card-unit">{{ material().unidadMedida }}</span>
+    </div>
+    <div class="card-meta">
+      <div class="meta-row">
+        <mat-icon>business</mat-icon><span class="truncate">{{ material().constructora.razonSocial }}</span>
+        @if (material().constructora.verificada) { <mat-icon class="verificada" aria-label="Empresa verificada">verified</mat-icon> }
+      </div>
+      @if (material().constructora.localidad) {
+        <div class="meta-row"><mat-icon>location_on</mat-icon><span>{{ material().constructora.localidad!.nombre }}</span></div>
+      }
+      @if (material().fechaLimite) {
+        <div class="meta-row"><mat-icon>event</mat-icon><span>Hasta {{ vence() }}</span></div>
+      }
+      <div class="meta-row time">Publicado {{ (material().publicadoEn ?? material().createdAt) | fechaRelativa }}</div>
+    </div>
+  </div>
+</article>

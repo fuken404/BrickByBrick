@@ -1,0 +1,121 @@
+<div class="page" style="max-width:980px">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Mis solicitudes</h1>
+      <p class="page-subtitle">Sigue el estado de los materiales que has solicitado.</p>
+    </div>
+    <div class="actions"><a class="btn btn-primary" routerLink="/beneficiario/materiales"><mat-icon>add</mat-icon>Solicitar material</a></div>
+  </header>
+
+  <div class="tabs" role="tablist">
+    @for (p of pestanas; track p.label) {
+      <button type="button" role="tab" class="tab" [class.active]="estado() === p.estado" [attr.aria-selected]="estado() === p.estado" (click)="cambiar(p.estado)">
+        {{ p.label }} @if (conteo(p.estado) !== null) { <span class="count">{{ conteo(p.estado) }}</span> }
+      </button>
+    }
+  </div>
+
+  @if (cargando()) {
+    <app-skeleton-loader type="list" [count]="5" />
+  } @else if (!items().length) {
+    <div class="card"><app-empty-state icon="assignment" title="No hay solicitudes aquí" description="Cuando solicites materiales del catálogo aparecerán en esta sección." /></div>
+  } @else {
+    <div class="stack">
+      @for (s of items(); track s.id) {
+        @let m = s.material;
+        <article class="card sol" [id]="'sol-' + s.id" [class.resaltada]="resaltada() === s.id">
+          <div class="thumb" [style.background]="(m?.categoria?.colorHex ?? '#999') + '22'">
+            @if (m?.fotos?.length) { <img [src]="m!.fotos[0].url | uploadUrl" alt="" /> }
+            @else { <mat-icon [style.color]="m?.categoria?.colorHex">{{ m?.categoria?.icono ?? 'inventory_2' }}</mat-icon> }
+          </div>
+          <div class="stack-sm">
+            <div class="row-between">
+              <div>
+                <a class="strong" [routerLink]="['/beneficiario/materiales', s.materialId]">{{ m?.nombre }}</a>
+                <div class="small muted">{{ m?.constructora?.razonSocial }} · {{ s.cantidadSolicitada | number:'1.0-2' }} {{ m?.unidadMedida }}</div>
+              </div>
+              @let b = s.estado | estadoBadge:'solicitud';
+              <span class="badge" [class]="b.cssClass">{{ b.label }}</span>
+            </div>
+
+            <div class="timeline">
+              <span>Solicitada {{ s.fechaSolicitud | date:'d MMM' }}</span>
+              @if (s.fechaRespuesta) { <span>{{ s.estado === 'rechazada' ? 'Rechazada' : 'Respondida' }} {{ s.fechaRespuesta | date:'d MMM' }}</span> }
+              @if (s.fechaEntrega) { <span>Entregada {{ s.fechaEntrega | date:'d MMM' }}</span> }
+              @if (s.fechaConfirmacion) { <span>Recibido {{ s.fechaConfirmacion | date:'d MMM' }}</span> }
+              @if (s.fechaCancelacion) { <span>Cancelada {{ s.fechaCancelacion | date:'d MMM' }}</span> }
+            </div>
+
+            @if (s.propositoUso) { <p class="small"><strong>Uso:</strong> {{ s.propositoUso }}</p> }
+
+            @switch (s.estado) {
+              @case ('aprobada') {
+                <div class="alert success"><mat-icon>local_shipping</mat-icon>
+                  <div>
+                    <div class="alert-title">¡Aprobada! Coordina el retiro</div>
+                    <div class="small pre-line">{{ s.instruccionesRetiro }}</div>
+                    @if (m?.constructora?.direccion || m?.constructora?.usuario?.telefono) {
+                      <div class="small mt-4">
+                        @if (m?.constructora?.direccion) { <mat-icon style="font-size:14px;width:14px;height:14px">place</mat-icon> {{ m?.constructora?.direccion }}{{ m?.constructora?.localidad ? ', ' + m?.constructora?.localidad?.nombre : '' }} }
+                        @if (m?.constructora?.usuario?.telefono) { · <mat-icon style="font-size:14px;width:14px;height:14px">call</mat-icon> <a [href]="'tel:' + m?.constructora?.usuario?.telefono">{{ m?.constructora?.usuario?.telefono }}</a> }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+              @case ('rechazada') {
+                @if (s.motivoRechazo) { <div class="alert danger"><mat-icon>info</mat-icon><span><strong>Motivo:</strong> {{ s.motivoRechazo }}</span></div> }
+              }
+              @case ('cancelada') {
+                @if (s.motivoRechazo) { <p class="small muted">Motivo: {{ s.motivoRechazo }}</p> }
+              }
+              @case ('entregada') {
+                @if (!s.fechaConfirmacion) {
+                  <div class="alert info"><mat-icon>task_alt</mat-icon><span>La constructora marcó este material como entregado. Confirma que lo recibiste.</span></div>
+                }
+              }
+            }
+
+            @if (s.calificacion && calificando() !== s.id) {
+              <div class="row small">
+                <span class="estrellas">@for (i of [1,2,3,4,5]; track i) { <mat-icon [class.on]="i <= s.calificacion!">star</mat-icon> }</span>
+                @if (s.comentarioCalificacion) { <span class="muted">“{{ s.comentarioCalificacion }}”</span> }
+              </div>
+            }
+
+            @if (calificando() === s.id) {
+              <div class="card card-pad stack-sm" style="background:var(--bg-base)">
+                <span class="form-label">{{ s.fechaConfirmacion ? 'Califica la donación' : 'Confirma la recepción y califica (opcional)' }}</span>
+                <div class="estrellas" role="radiogroup" aria-label="Calificación">
+                  @for (i of [1,2,3,4,5]; track i) {
+                    <button type="button" [class.on]="i <= estrellas()" (click)="estrellas.set(i)" [attr.aria-label]="i + ' estrellas'" role="radio" [attr.aria-checked]="i === estrellas()"><mat-icon>star</mat-icon></button>
+                  }
+                </div>
+                <textarea class="form-textarea" rows="2" [(ngModel)]="comentario" maxlength="1000" placeholder="¿Cómo fue la experiencia? (opcional)" aria-label="Comentario"></textarea>
+                <div class="form-actions">
+                  <button type="button" class="btn btn-sm btn-ghost" (click)="calificando.set(null)">Cancelar</button>
+                  <button type="button" class="btn btn-sm btn-accent" (click)="enviarCalificacion(s)" [disabled]="procesando() === s.id || (!!s.fechaConfirmacion && !estrellas())">
+                    {{ s.fechaConfirmacion ? 'Guardar calificación' : 'Confirmar recepción' }}
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <div class="row">
+                @if (s.estado === 'pendiente' || s.estado === 'aprobada') {
+                  <button type="button" class="btn btn-sm btn-danger-outline" (click)="cancelar(s)" [disabled]="procesando() === s.id">Cancelar solicitud</button>
+                }
+                @if (s.estado === 'entregada' && !s.fechaConfirmacion) {
+                  <button type="button" class="btn btn-sm btn-accent" (click)="abrirCalificacion(s)"><mat-icon>task_alt</mat-icon>Confirmar recepción</button>
+                }
+                @if (s.estado === 'entregada' && s.fechaConfirmacion && !s.calificacion) {
+                  <button type="button" class="btn btn-sm btn-ghost" (click)="abrirCalificacion(s)"><mat-icon>star</mat-icon>Calificar</button>
+                }
+              </div>
+            }
+          </div>
+        </article>
+      }
+    </div>
+    @if (hayMas()) { <div class="load-more"><button type="button" class="btn btn-ghost" (click)="cargar(true)">Cargar más</button></div> }
+  }
+</div>

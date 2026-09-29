@@ -1,51 +1,86 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { ApiResponse, PaginatedResponse, Evento, InscripcionEvento, FiltrosEvento } from '../models';
+import { ApiResponse, EstadoEvento, EstadoInscripcion, Evento, FiltrosEvento, Inscripcion, Pagina } from '../models';
+import { toParams } from '../utils/http';
+
+export interface DatosEvento {
+  nombre: string;
+  tipoEvento: string;
+  descripcion?: string | null;
+  fechaInicio: string;
+  fechaFin: string;
+  direccion: string;
+  localidadId: number;
+  capacidadMaxima?: number | null;
+  materialIds?: string[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class EventApiService {
   private readonly http = inject(HttpClient);
-  private readonly base = `${environment.services.events}/eventos`;
+  private readonly base = `${environment.apiUrl}/eventos`;
 
-  getAll(filtros: FiltrosEvento = {}): Observable<ApiResponse<PaginatedResponse<Evento>>> {
-    let params = new HttpParams();
-    Object.entries(filtros).forEach(([k, v]) => { if (v !== undefined) params = params.set(k, String(v)); });
-    return this.http.get<ApiResponse<PaginatedResponse<Evento>>>(this.base, { params });
+  publicos(filtros: FiltrosEvento = {}): Observable<ApiResponse<Pagina<Evento>>> {
+    return this.http.get<ApiResponse<Pagina<Evento>>>(this.base, { params: toParams(filtros) });
   }
 
-  getMisEventos(filtros: { estado?: string; page?: number; limit?: number } = {}): Observable<ApiResponse<PaginatedResponse<Evento>>> {
-    let params = new HttpParams();
-    Object.entries(filtros).forEach(([k, v]) => { if (v !== undefined) params = params.set(k, String(v)); });
-    return this.http.get<ApiResponse<PaginatedResponse<Evento>>>(`${this.base}/mis-eventos`, { params });
+  misEventos(filtros: FiltrosEvento = {}): Observable<ApiResponse<Pagina<Evento>>> {
+    return this.http.get<ApiResponse<Pagina<Evento>>>(`${this.base}/mis-eventos`, { params: toParams(filtros) });
   }
 
-  getById(id: string): Observable<ApiResponse<Evento>> {
+  adminEventos(filtros: FiltrosEvento = {}): Observable<ApiResponse<Pagina<Evento>>> {
+    return this.http.get<ApiResponse<Pagina<Evento>>>(`${this.base}/admin`, { params: toParams(filtros) });
+  }
+
+  misInscripciones(filtros: FiltrosEvento = {}): Observable<ApiResponse<Pagina<Inscripcion>>> {
+    return this.http.get<ApiResponse<Pagina<Inscripcion>>>(`${this.base}/mis-inscripciones`, { params: toParams(filtros) });
+  }
+
+  obtener(id: string): Observable<ApiResponse<Evento>> {
     return this.http.get<ApiResponse<Evento>>(`${this.base}/${id}`);
   }
 
-  create(data: Partial<Evento>): Observable<ApiResponse<Evento>> {
+  crear(data: DatosEvento & { estado: 'borrador' | 'publicado' }): Observable<ApiResponse<Evento>> {
     return this.http.post<ApiResponse<Evento>>(this.base, data);
   }
 
-  update(id: string, data: Partial<Evento>): Observable<ApiResponse<Evento>> {
+  actualizar(id: string, data: Partial<DatosEvento>): Observable<ApiResponse<Evento>> {
     return this.http.put<ApiResponse<Evento>>(`${this.base}/${id}`, data);
   }
 
-  delete(id: string): Observable<ApiResponse<null>> {
+  cambiarEstado(id: string, estado: Exclude<EstadoEvento, 'borrador'>, motivo?: string): Observable<ApiResponse<Evento>> {
+    return this.http.patch<ApiResponse<Evento>>(`${this.base}/${id}/estado`, { estado, motivo });
+  }
+
+  eliminar(id: string): Observable<ApiResponse<null>> {
     return this.http.delete<ApiResponse<null>>(`${this.base}/${id}`);
   }
 
-  inscribirse(eventoId: string): Observable<ApiResponse<InscripcionEvento>> {
-    return this.http.post<ApiResponse<InscripcionEvento>>(`${this.base}/${eventoId}/inscribirme`, {});
+  subirImagen(id: string, file: File): Observable<ApiResponse<Evento>> {
+    const form = new FormData();
+    form.append('imagen', file);
+    return this.http.post<ApiResponse<Evento>>(`${this.base}/${id}/imagen`, form);
   }
 
-  cancelarInscripcion(eventoId: string): Observable<ApiResponse<null>> {
-    return this.http.delete<ApiResponse<null>>(`${this.base}/${eventoId}/inscribirme`);
+  inscribirse(id: string): Observable<ApiResponse<Inscripcion>> {
+    return this.http.post<ApiResponse<Inscripcion>>(`${this.base}/${id}/inscripcion`, {});
   }
 
-  getInscritos(eventoId: string): Observable<ApiResponse<InscripcionEvento[]>> {
-    return this.http.get<ApiResponse<InscripcionEvento[]>>(`${this.base}/${eventoId}/inscritos`);
+  cancelarInscripcion(id: string): Observable<ApiResponse<null>> {
+    return this.http.delete<ApiResponse<null>>(`${this.base}/${id}/inscripcion`);
+  }
+
+  inscritos(id: string, estado?: EstadoInscripcion): Observable<ApiResponse<Inscripcion[]>> {
+    return this.http.get<ApiResponse<Inscripcion[]>>(`${this.base}/${id}/inscritos`, { params: toParams({ estado }) });
+  }
+
+  registrarAsistencia(id: string, inscripciones: { id: string; asistio: boolean }[]): Observable<ApiResponse<Inscripcion[]>> {
+    return this.http.patch<ApiResponse<Inscripcion[]>>(`${this.base}/${id}/asistencia`, { inscripciones });
+  }
+
+  exportarInscritos(id: string): Observable<HttpResponse<Blob>> {
+    return this.http.get(`${this.base}/${id}/inscritos/export`, { responseType: 'blob', observe: 'response' });
   }
 }

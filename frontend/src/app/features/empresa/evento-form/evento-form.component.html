@@ -1,0 +1,111 @@
+<div class="page" style="max-width:900px">
+  <a class="btn-link" routerLink="/empresa/eventos"><mat-icon>arrow_back</mat-icon>Mis eventos</a>
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">{{ esEdicion() ? 'Editar evento' : 'Crear evento' }}</h1>
+      <p class="page-subtitle">Al publicarlo, avisaremos a los beneficiarios de la localidad.</p>
+    </div>
+  </header>
+
+  @if (!verificada() && !esEdicion()) {
+    <div class="alert warning"><mat-icon>pending</mat-icon><span>Podrás publicar eventos cuando tu empresa esté verificada. Mientras tanto, guárdalo como borrador.</span></div>
+  }
+
+  @if (cargando()) {
+    <div class="card card-pad-lg center muted"><mat-icon class="spin">sync</mat-icon></div>
+  } @else {
+    <form class="stack" [formGroup]="form" (ngSubmit)="guardar(!esEdicion() && verificada())">
+      <section class="card card-pad-lg stack">
+        <h2 class="section-title"><mat-icon>event</mat-icon>Información</h2>
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label class="form-label" for="e-nombre">Nombre *</label>
+            <input id="e-nombre" class="form-input" formControlName="nombre" placeholder="Ej: Jornada de entrega de ladrillo — Bosa" />
+            <app-campo-error [control]="form.controls.nombre" [servidor]="errores()['nombre']" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="e-tipo">Tipo *</label>
+            <select id="e-tipo" class="form-select" formControlName="tipoEvento">
+              @for (t of tipos; track t[0]) { <option [value]="t[0]">{{ t[1] }}</option> }
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="e-cap">Cupos</label>
+            <input id="e-cap" type="number" min="1" step="1" class="form-input" formControlName="capacidadMaxima" placeholder="Sin límite" />
+            @if (evento(); as ev) { <span class="form-hint">{{ ev.inscritos }} inscritos actualmente.</span> }
+            <app-campo-error [control]="form.controls.capacidadMaxima" [servidor]="errores()['capacidadMaxima']" />
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="e-desc">Descripción</label>
+            <textarea id="e-desc" class="form-textarea" rows="4" formControlName="descripcion" placeholder="¿Qué se entregará o enseñará? ¿Qué deben traer los asistentes?"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="card card-pad-lg stack">
+        <h2 class="section-title"><mat-icon>schedule</mat-icon>Fecha y lugar</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="e-ini">Inicio *</label>
+            <input id="e-ini" type="datetime-local" class="form-input" formControlName="fechaInicio" [min]="minimo" />
+            <app-campo-error [control]="form.controls.fechaInicio" [servidor]="errores()['fechaInicio']" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="e-fin">Fin *</label>
+            <input id="e-fin" type="datetime-local" class="form-input" formControlName="fechaFin" [min]="form.controls.fechaInicio.value || minimo" />
+            <app-campo-error [control]="form.controls.fechaFin" [servidor]="errores()['fechaFin']" />
+            @if (form.hasError('fechas') && form.controls.fechaFin.touched) { <span class="form-error">La fecha de fin debe ser posterior al inicio</span> }
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="e-dir">Dirección *</label>
+            <input id="e-dir" class="form-input" formControlName="direccion" placeholder="Ej: Parque principal, Calle 57R Sur # 72-10" />
+            <app-campo-error [control]="form.controls.direccion" [servidor]="errores()['direccion']" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="e-loc">Localidad *</label>
+            <select id="e-loc" class="form-select" formControlName="localidadId">
+              <option [ngValue]="null" disabled>Selecciona</option>
+              @for (l of catalogo.localidades(); track l.id) { <option [ngValue]="l.id">{{ l.nombre }}</option> }
+            </select>
+            <app-campo-error [control]="form.controls.localidadId" [servidor]="errores()['localidadId']" />
+          </div>
+        </div>
+      </section>
+
+      <section class="card card-pad-lg stack">
+        <h2 class="section-title"><mat-icon>inventory_2</mat-icon>Materiales que se entregarán</h2>
+        @if (!materiales().length) {
+          <p class="small muted">No tienes materiales disponibles. <a class="btn-link" routerLink="/empresa/materiales/nuevo">Publica uno</a> para asociarlo.</p>
+        } @else {
+          <ul class="list-card">
+            @for (m of materiales(); track m.id) {
+              <li class="list-item">
+                <label class="check grow">
+                  <input type="checkbox" [checked]="seleccionados().has(m.id)" (change)="alternar(m.id)" />
+                  <mat-icon [style.color]="m.categoria.colorHex">{{ m.categoria.icono }}</mat-icon>
+                  <span class="grow">{{ m.nombre }}</span>
+                  <span class="small muted">{{ m.cantidad | number:'1.0-2' }} {{ m.unidadMedida }}</span>
+                </label>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="card card-pad-lg stack">
+        <h2 class="section-title"><mat-icon>image</mat-icon>Imagen</h2>
+        <app-file-upload [multiple]="false" [maxSizeMb]="5" etiqueta="Imagen de portada (opcional, máx. 5 MB)" (archivos)="imagen.set($event.length ? $event[0] : null)" />
+      </section>
+
+      <div class="form-actions">
+        <a class="btn btn-ghost" [routerLink]="esEdicion() ? ['/empresa/eventos', id()] : ['/empresa/eventos']">Cancelar</a>
+        @if (esEdicion()) {
+          <button type="submit" class="btn btn-primary" [disabled]="guardando()">Guardar cambios</button>
+        } @else {
+          <button type="button" class="btn btn-secondary" (click)="guardar(false)" [disabled]="guardando()">Guardar borrador</button>
+          <button type="submit" class="btn btn-primary" [disabled]="guardando() || !verificada()"><mat-icon>publish</mat-icon>Publicar evento</button>
+        }
+      </div>
+    </form>
+  }
+</div>

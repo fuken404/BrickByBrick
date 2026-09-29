@@ -1,180 +1,127 @@
-import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { DecimalPipe } from '@angular/common';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { Observable, map, of, switchMap } from 'rxjs';
+import { AuthStore } from '../../../core/auth/auth.store';
+import { DatosEvento, EventApiService } from '../../../core/services/event-api.service';
+import { MaterialApiService } from '../../../core/services/material-api.service';
+import { CatalogStore } from '../../../core/stores/catalog.store';
+import { ToastService } from '../../../core/services/toast.service';
+import { Evento, Material, TipoEvento } from '../../../core/models';
+import { erroresPorCampo, mensajeError } from '../../../core/utils/http';
+import { ahoraDatetimeLocal, datetimeLocalAIso, isoADatetimeLocal } from '../../../core/utils/fechas';
+import { CampoErrorComponent } from '../../../shared/components/campo-error.component';
+import { FileUploadComponent } from '../../../shared/components/file-upload/file-upload.component';
+import { ETIQUETAS_TIPO_EVENTO } from '../../../shared/pipes/etiqueta.pipe';
 
-import { EventApiService } from '../../../core/services/event-api.service';
-import { Evento, TipoEvento } from '../../../core/models';
+const fechasValidas = (g: AbstractControl): ValidationErrors | null => {
+  const inicio = g.get('fechaInicio')?.value as string;
+  const fin = g.get('fechaFin')?.value as string;
+  return inicio && fin && new Date(fin) <= new Date(inicio) ? { fechas: true } : null;
+};
 
 @Component({
   selector: 'app-evento-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, MatIconModule],
+  imports: [RouterLink, DecimalPipe, ReactiveFormsModule, MatIconModule, CampoErrorComponent, FileUploadComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="page">
-      <nav class="breadcrumb">
-        <a routerLink="/empresa/eventos" class="bc-link">
-          <mat-icon>arrow_back</mat-icon> Eventos
-        </a>
-      </nav>
-      <h1 class="page-title">{{ editando() ? 'Editar evento' : 'Crear evento' }}</h1>
-
-      @if (loadingEvento()) {
-        <div class="loading-wrap"><div class="spinner"></div></div>
-      } @else {
-        <div class="form-card card">
-          <div class="form-grid">
-            <div class="form-group span-2">
-              <label class="form-label">Nombre del evento *</label>
-              <input type="text" class="form-control" [(ngModel)]="form.nombre"
-                     placeholder="Ej: Entrega de materiales — Localidad Rafael Uribe" />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Tipo de evento *</label>
-              <select class="form-control" [(ngModel)]="form.tipoEvento">
-                <option value="entrega_masiva">Entrega masiva</option>
-                <option value="taller">Taller</option>
-                <option value="feria">Feria</option>
-                <option value="otro">Otro</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Capacidad máxima</label>
-              <input type="number" class="form-control" [(ngModel)]="form.capacidadMaxima"
-                     min="1" placeholder="Sin límite" />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Fecha y hora de inicio *</label>
-              <input type="datetime-local" class="form-control" [(ngModel)]="form.fechaInicio" />
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Fecha y hora de fin *</label>
-              <input type="datetime-local" class="form-control" [(ngModel)]="form.fechaFin" />
-            </div>
-
-            <div class="form-group span-2">
-              <label class="form-label">Dirección</label>
-              <input type="text" class="form-control" [(ngModel)]="form.direccion"
-                     placeholder="Ej: Calle 13 #28-10, Bogotá" />
-            </div>
-
-            <div class="form-group span-2">
-              <label class="form-label">Descripción</label>
-              <textarea class="form-control" [(ngModel)]="form.descripcion" rows="4"
-                        placeholder="Describe el evento, qué se entregará, cómo participar..."></textarea>
-            </div>
-          </div>
-
-          @if (error()) {
-            <div class="alert alert-error">{{ error() }}</div>
-          }
-          @if (exito()) {
-            <div class="alert alert-success">Evento guardado. Redirigiendo…</div>
-          }
-
-          <div class="form-actions">
-            <a routerLink="/empresa/eventos" class="btn btn-ghost">Cancelar</a>
-            <button class="btn btn-ghost" (click)="guardar('borrador')" [disabled]="guardando()">
-              Guardar borrador
-            </button>
-            <button class="btn btn-primary" (click)="guardar('publicado')" [disabled]="guardando()">
-              {{ guardando() ? 'Publicando...' : 'Publicar' }}
-            </button>
-          </div>
-        </div>
-      }
-    </div>
-  `,
-  styleUrl: './evento-form.component.scss',
+  templateUrl: './evento-form.component.html',
 })
 export class EventoFormComponent implements OnInit {
-  private readonly route    = inject(ActivatedRoute);
-  private readonly router   = inject(Router);
-  private readonly eventSvc = inject(EventApiService);
+  readonly id = input<string>();
+  protected readonly auth = inject(AuthStore);
+  private readonly api = inject(EventApiService);
+  private readonly materialesApi = inject(MaterialApiService);
+  protected readonly catalogo = inject(CatalogStore);
+  private readonly toast = inject(ToastService);
+  private readonly router = inject(Router);
 
-  readonly editando      = signal(false);
-  readonly loadingEvento = signal(false);
-  readonly guardando     = signal(false);
-  readonly error         = signal('');
-  readonly exito         = signal(false);
+  protected readonly tipos = Object.entries(ETIQUETAS_TIPO_EVENTO);
+  protected readonly minimo = ahoraDatetimeLocal();
+  protected readonly evento = signal<Evento | null>(null);
+  protected readonly materiales = signal<Material[]>([]);
+  protected readonly seleccionados = signal<Set<string>>(new Set());
+  protected readonly imagen = signal<File | null>(null);
+  protected readonly cargando = signal(false);
+  protected readonly guardando = signal(false);
+  protected readonly errores = signal<Record<string, string>>({});
+  protected readonly esEdicion = computed(() => !!this.id());
+  protected readonly verificada = computed(() => !!this.auth.user()?.perfil?.verificada);
 
-  private eventoId: string | null = null;
+  protected readonly form = inject(FormBuilder).nonNullable.group({
+    nombre: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(200)]],
+    tipoEvento: ['entrega_masiva' as TipoEvento, Validators.required],
+    descripcion: ['', Validators.maxLength(3000)],
+    fechaInicio: ['', Validators.required],
+    fechaFin: ['', Validators.required],
+    direccion: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(300)]],
+    localidadId: [null as number | null, Validators.required],
+    capacidadMaxima: [null as number | null, Validators.min(1)],
+  }, { validators: fechasValidas });
 
-  form = {
-    nombre: '',
-    tipoEvento: 'entrega_masiva' as TipoEvento,
-    capacidadMaxima: null as number | null,
-    fechaInicio: '',
-    fechaFin: '',
-    direccion: '',
-    descripcion: '',
-  };
-
-  ngOnInit() {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
-      this.eventoId = id;
-      this.editando.set(true);
-      this.loadingEvento.set(true);
-
-      this.eventSvc.getById(id).subscribe({
-        next: r => {
-          const e = r.data;
-          this.form = {
-            nombre:          e.nombre,
-            tipoEvento:      e.tipoEvento,
-            capacidadMaxima: e.capacidadMaxima ?? null,
-            fechaInicio:     e.fechaInicio.slice(0, 16),
-            fechaFin:        e.fechaFin.slice(0, 16),
-            direccion:       e.direccion ?? '',
-            descripcion:     e.descripcion ?? '',
-          };
-          this.loadingEvento.set(false);
-        },
-        error: () => this.loadingEvento.set(false),
-      });
-    }
+  ngOnInit(): void {
+    this.catalogo.cargarLocalidades().subscribe({ error: () => undefined });
+    this.materialesApi.misMateriales({ limit: 100 }).subscribe({
+      next: (r) => this.materiales.set(r.data.items.filter((m) => ['activo', 'borrador', 'pausado'].includes(m.estadoPublicacion))),
+    });
+    const id = this.id();
+    if (!id) return;
+    this.cargando.set(true);
+    this.api.obtener(id).subscribe({
+      next: (r) => {
+        const e = r.data;
+        this.evento.set(e);
+        this.form.reset({
+          nombre: e.nombre, tipoEvento: e.tipoEvento, descripcion: e.descripcion ?? '',
+          fechaInicio: isoADatetimeLocal(e.fechaInicio), fechaFin: isoADatetimeLocal(e.fechaFin),
+          direccion: e.direccion ?? '', localidadId: e.localidadId, capacidadMaxima: e.capacidadMaxima,
+        });
+        this.seleccionados.set(new Set((e.materiales ?? []).map((m) => m.material.id)));
+        this.cargando.set(false);
+      },
+      error: (err) => { this.toast.error(mensajeError(err)); this.router.navigate(['/empresa/eventos']); },
+    });
   }
 
-  guardar(estado: 'publicado' | 'borrador') {
-    if (!this.form.nombre.trim())   { this.error.set('El nombre es requerido.');           return; }
-    if (!this.form.fechaInicio)     { this.error.set('La fecha de inicio es requerida.');  return; }
-    if (!this.form.fechaFin)        { this.error.set('La fecha de fin es requerida.');     return; }
+  alternar(id: string): void {
+    this.seleccionados.update((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
 
-    this.guardando.set(true);
-    this.error.set('');
-
-    const payload: Partial<Evento> = {
-      nombre:          this.form.nombre,
-      tipoEvento:      this.form.tipoEvento,
-      capacidadMaxima: this.form.capacidadMaxima ?? undefined,
-      fechaInicio:     this.form.fechaInicio,
-      fechaFin:        this.form.fechaFin,
-      direccion:       this.form.direccion || undefined,
-      descripcion:     this.form.descripcion || undefined,
-      estado,
+  private datos(): DatosEvento {
+    const v = this.form.getRawValue();
+    return {
+      nombre: v.nombre.trim(), tipoEvento: v.tipoEvento, descripcion: v.descripcion.trim() || null,
+      fechaInicio: datetimeLocalAIso(v.fechaInicio), fechaFin: datetimeLocalAIso(v.fechaFin),
+      direccion: v.direccion.trim(), localidadId: Number(v.localidadId),
+      capacidadMaxima: v.capacidadMaxima ? Number(v.capacidadMaxima) : null,
+      materialIds: [...this.seleccionados()],
     };
+  }
 
-    const obs = this.editando() && this.eventoId
-      ? this.eventSvc.update(this.eventoId, payload)
-      : this.eventSvc.create(payload);
-
-    obs.subscribe({
-      next: () => {
-        this.exito.set(true);
+  guardar(publicar: boolean): void {
+    this.form.markAllAsTouched();
+    if (this.form.invalid) return;
+    this.guardando.set(true);
+    this.errores.set({});
+    const id = this.id();
+    const peticion$: Observable<Evento> = id
+      ? this.api.actualizar(id, this.datos()).pipe(map((r) => r.data))
+      : this.api.crear({ ...this.datos(), estado: publicar ? 'publicado' : 'borrador' }).pipe(map((r) => r.data));
+    peticion$.pipe(
+      switchMap((e) => (this.imagen() ? this.api.subirImagen(e.id, this.imagen()!).pipe(map((r) => r.data)) : of(e))),
+    ).subscribe({
+      next: (e) => {
         this.guardando.set(false);
-        setTimeout(() => this.router.navigate(['/empresa/eventos']), 1500);
+        this.toast.exito(id ? 'Evento actualizado. Avisamos a los inscritos.' : publicar ? 'Evento publicado' : 'Borrador guardado');
+        this.router.navigate(['/empresa/eventos', e.id]);
       },
-      error: e => {
-        this.guardando.set(false);
-        this.error.set(e.error?.message ?? 'Error al guardar el evento.');
-      },
+      error: (err) => { this.guardando.set(false); this.errores.set(erroresPorCampo(err)); this.toast.error(mensajeError(err)); },
     });
   }
 }

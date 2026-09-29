@@ -1,0 +1,106 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Beneficio tributario</h1>
+      <p class="page-subtitle">Valor de tus donaciones, constancias de entrega y estimado del descuento (Art. 255 E.T.).</p>
+    </div>
+    <div class="actions">
+      <select class="form-select" [ngModel]="anio()" (ngModelChange)="cambiarAnio($event)" aria-label="Año gravable">
+        @for (a of anios; track a) { <option [ngValue]="a">Año {{ a }}</option> }
+      </select>
+      <button type="button" class="btn btn-primary" (click)="certificado()" [disabled]="descargando() === 'certificado' || !resumen()?.entregas">
+        <mat-icon>picture_as_pdf</mat-icon>Resumen anual PDF
+      </button>
+    </div>
+  </header>
+
+  <div class="alert warning">
+    <mat-icon>gavel</mat-icon>
+    <div class="small">
+      <div class="alert-title">Información orientativa</div>
+      El descuento del Art. 255 del Estatuto Tributario aplica a donaciones a entidades sin ánimo de lucro (ESAL) del Régimen Tributario Especial
+      y requiere la certificación de la entidad donataria (Art. 257 E.T.). Estos valores son un estimado para tu planeación; valídalos con tu contador.
+    </div>
+  </div>
+
+  @if (cargando() && !resumen()) {
+    <app-skeleton-loader type="kpi" [count]="4" />
+  } @else if (resumen(); as r) {
+    <div class="grid-kpi">
+      <app-kpi-card label="Valor donado" [value]="r.valorDonadoCop" formato="cop" icon="savings" color="#C0392B" [sub]="r.entregas + ' entregas · ' + r.beneficiarios + ' beneficiarios'" />
+      <app-kpi-card [label]="'Descuento estimado (' + r.porcentaje + ' %)'" [value]="r.descuentoEstimadoCop" formato="cop" icon="percent" color="#2E86AB" />
+      <app-kpi-card [label]="'Tope (' + r.topePorcentaje + ' % del impuesto)'" [value]="r.topeCop" formato="cop" icon="vertical_align_top" color="#E67E22" [sub]="r.impuestoEstimadoCop ? '' : 'Ingresa tu impuesto estimado'" />
+      <app-kpi-card label="Descuento aplicable" [value]="r.descuentoAplicableCop" formato="cop" icon="verified" color="#27AE60" />
+    </div>
+
+    <div class="split">
+      <section class="stack">
+        <div class="card card-pad-lg stack-sm">
+          <h2 class="section-title"><mat-icon>calculate</mat-icon>Calculadora</h2>
+          <label class="form-label" for="imp">Impuesto de renta estimado del año (COP)</label>
+          <div class="input-group" style="max-width:360px">
+            <input id="imp" type="number" min="0" step="1000" class="form-input" [(ngModel)]="impuesto" (ngModelChange)="impuestoCambiado()" placeholder="Ej: 250000000" />
+          </div>
+          <p class="small muted">
+            Descuento = {{ r.porcentaje }} % × valor donado = {{ r.descuentoEstimadoCop | copCurrency }}.
+            @if (r.topeCop !== null) { Limitado a {{ r.topePorcentaje }} % de tu impuesto ({{ r.topeCop | copCurrency }}). }
+          </p>
+        </div>
+
+        <div class="card card-pad-lg">
+          <h2 class="section-title mb-16"><mat-icon>bar_chart</mat-icon>Valor donado por mes</h2>
+          <div class="chart"><canvas baseChart type="bar" [data]="grafica()" [options]="opciones"></canvas></div>
+        </div>
+      </section>
+
+      <aside class="stack">
+        <div class="card card-pad-lg">
+          <h2 class="section-title mb-8"><mat-icon>checklist</mat-icon>Requisitos</h2>
+          @let q = r.requisitos;
+          <div class="req"><mat-icon [class]="q.empresaVerificada ? 'ok' : 'no'">{{ q.empresaVerificada ? 'check_circle' : 'pending' }}</mat-icon><span>Empresa verificada</span></div>
+          <div class="req"><mat-icon [class]="q.rutAprobado ? 'ok' : 'no'">{{ q.rutAprobado ? 'check_circle' : 'pending' }}</mat-icon><span>RUT aprobado</span></div>
+          <div class="req"><mat-icon [class]="q.camaraComercioAprobada ? 'ok' : 'no'">{{ q.camaraComercioAprobada ? 'check_circle' : 'pending' }}</mat-icon><span>Cámara de Comercio aprobada</span></div>
+          <div class="req"><mat-icon [class]="q.tieneEntregas ? 'ok' : 'no'">{{ q.tieneEntregas ? 'check_circle' : 'pending' }}</mat-icon><span>Entregas registradas en {{ r.anio }}</span></div>
+          <div class="req"><mat-icon [class]="q.materialesSinValor === 0 ? 'ok' : 'no'">{{ q.materialesSinValor === 0 ? 'check_circle' : 'warning' }}</mat-icon>
+            <span>{{ q.materialesSinValor === 0 ? 'Todos los materiales tienen valor' : q.materialesSinValor + ' material(es) sin valor unitario' }}</span></div>
+          @if (!requisitosOk()) { <a class="btn btn-sm btn-ghost mt-8" routerLink="/empresa/perfil">Revisar documentos</a> }
+        </div>
+        @if (r.porCategoria.length) {
+          <div class="card card-pad-lg">
+            <h2 class="section-title mb-8"><mat-icon>category</mat-icon>Por categoría</h2>
+            @for (c of r.porCategoria; track c.categoria) {
+              <div class="row-between small" style="padding:6px 0"><span>{{ c.categoria }}</span><strong>{{ c.valorDonadoCop | copCurrency }}</strong></div>
+            }
+          </div>
+        }
+      </aside>
+    </div>
+
+    <section class="section">
+      <div class="section-head"><h2 class="section-title">Constancias de donación {{ r.anio }}</h2></div>
+      @if (!constancias().length) {
+        <div class="card"><app-empty-state icon="receipt_long" title="Sin constancias este año" description="Se generan automáticamente al marcar una solicitud como entregada." [compacto]="true" /></div>
+      } @else {
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>N.º</th><th>Fecha</th><th>Material</th><th>Cantidad</th><th>Beneficiario</th><th>Valor</th><th>Confirmada</th><th></th></tr></thead>
+            <tbody>
+              @for (c of constancias(); track c.id) {
+                <tr>
+                  <td class="strong">{{ c.numeroConstancia }}</td>
+                  <td class="small">{{ c.fechaEntrega | date:'mediumDate' }}</td>
+                  <td>{{ c.material.nombre }}<div class="xsmall muted">{{ c.material.categoria }}</div></td>
+                  <td>{{ c.cantidad | number:'1.0-2' }} {{ c.material.unidadMedida }}</td>
+                  <td>{{ c.beneficiario }}</td>
+                  <td>{{ c.valorDonadoCop | copCurrency }}</td>
+                  <td>@if (c.fechaConfirmacion) { <mat-icon style="color:var(--accent)" aria-label="Confirmada">task_alt</mat-icon> } @else { <span class="xsmall muted">Pendiente</span> }</td>
+                  <td><button type="button" class="icon-btn" (click)="constancia(c)" [disabled]="descargando() === c.id" aria-label="Descargar constancia PDF" title="Descargar PDF"><mat-icon>download</mat-icon></button></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
+</div>

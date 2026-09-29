@@ -1,0 +1,115 @@
+@let m = me();
+<section class="card card-pad-lg stack">
+  <h2 class="section-title"><mat-icon>contact_mail</mat-icon>Cuenta y contacto</h2>
+  <dl class="dl">
+    <dt>Correo</dt>
+    <dd>
+      {{ m.email }}
+      @if (m.emailVerificado) { <span class="badge badge-aprobado">Verificado</span> }
+      @else {
+        <span class="badge badge-pendiente">Sin verificar</span>
+        <button type="button" class="btn-link" (click)="reenviarVerificacion()" [disabled]="guardando() === 'verificacion'">Reenviar enlace</button>
+      }
+    </dd>
+    <dt>Teléfono</dt>
+    <dd>
+      @if (guardando() === 'editando-telefono' || guardando() === 'telefono') {
+        <div class="row">
+          <input class="form-input" [formControl]="telefono" placeholder="3001234567" aria-label="Teléfono" style="max-width:200px" />
+          <button type="button" class="btn btn-sm btn-primary" (click)="guardarTelefono()" [disabled]="guardando() === 'telefono'">Guardar</button>
+          <button type="button" class="btn btn-sm btn-ghost" (click)="guardando.set(null)">Cancelar</button>
+        </div>
+        <app-campo-error [control]="telefono" />
+      } @else {
+        {{ m.telefono ?? 'Sin registrar' }} <button type="button" class="btn-link" (click)="editarTelefono()">Cambiar</button>
+      }
+    </dd>
+    <dt>Miembro desde</dt><dd>{{ m.createdAt | date:'longDate' }}</dd>
+    @if (m.ultimoLogin) { <dt>Último ingreso</dt><dd>{{ m.ultimoLogin | date:'medium' }}</dd> }
+  </dl>
+</section>
+
+<section class="card card-pad-lg stack">
+  <h2 class="section-title"><mat-icon>notifications_active</mat-icon>Notificaciones</h2>
+  <label class="switch-row">
+    <span><strong>En la plataforma</strong><br /><span class="small muted">Avisos en tiempo real en la campana.</span></span>
+    <input type="checkbox" role="switch" [checked]="m.preferenciasNotif.inApp" (change)="preferencia('inApp', $event)" />
+  </label>
+  <label class="switch-row">
+    <span><strong>Por correo electrónico</strong><br /><span class="small muted">Solicitudes, aprobaciones, eventos y avisos importantes.</span></span>
+    <input type="checkbox" role="switch" [checked]="m.preferenciasNotif.email" (change)="preferencia('email', $event)" />
+  </label>
+</section>
+
+<form class="card card-pad-lg stack" [formGroup]="password" (ngSubmit)="cambiarPassword()">
+  <h2 class="section-title"><mat-icon>lock</mat-icon>Cambiar contraseña</h2>
+  <div class="form-grid">
+    <div class="form-group span-2">
+      <label class="form-label" for="pw-actual">Contraseña actual</label>
+      <input id="pw-actual" type="password" class="form-input" formControlName="passwordActual" autocomplete="current-password" />
+      <app-campo-error [control]="password.controls.passwordActual" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="pw-nueva">Nueva contraseña</label>
+      <input id="pw-nueva" type="password" class="form-input" formControlName="passwordNueva" autocomplete="new-password" />
+      <app-campo-error [control]="password.controls.passwordNueva" />
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="pw-conf">Confirmar contraseña</label>
+      <input id="pw-conf" type="password" class="form-input" formControlName="confirmacion" autocomplete="new-password" />
+      @if (password.hasError('noCoinciden') && password.controls.confirmacion.touched) { <span class="form-error">Las contraseñas no coinciden</span> }
+    </div>
+  </div>
+  <div class="form-actions"><button type="submit" class="btn btn-primary" [disabled]="guardando() === 'password'">Actualizar contraseña</button></div>
+</form>
+
+<section class="card card-pad-lg stack">
+  <h2 class="section-title"><mat-icon>verified_user</mat-icon>Verificación en dos pasos</h2>
+  <p class="small muted">Al ingresar te enviaremos un código de 6 dígitos a tu correo.</p>
+  @if (m.rol === 'ADMINISTRADOR') {
+    <div class="alert info"><mat-icon>shield</mat-icon><span>Obligatoria para cuentas de administración. No se puede desactivar.</span></div>
+  } @else {
+    <div class="row-between">
+      <span>Estado: <strong>{{ m.mfaHabilitado ? 'Activada' : 'Desactivada' }}</strong></span>
+      @if (!mfaAbierto()) {
+        <button type="button" class="btn btn-sm" [class.btn-accent]="!m.mfaHabilitado" [class.btn-ghost]="m.mfaHabilitado" (click)="mfaAbierto.set(true)">
+          {{ m.mfaHabilitado ? 'Desactivar' : 'Activar' }}
+        </button>
+      }
+    </div>
+    @if (mfaAbierto()) {
+      <div class="row">
+        <input type="password" class="form-input" [formControl]="mfaPassword" placeholder="Confirma tu contraseña" aria-label="Contraseña" autocomplete="current-password" style="max-width:260px" />
+        <button type="button" class="btn btn-sm btn-primary" (click)="cambiarMfa()" [disabled]="guardando() === 'mfa'">Confirmar</button>
+        <button type="button" class="btn btn-sm btn-ghost" (click)="mfaAbierto.set(false)">Cancelar</button>
+      </div>
+    }
+  }
+</section>
+
+@if (m.rol !== 'ADMINISTRADOR') {
+  <section class="card card-pad-lg stack" style="border-color:rgba(231,76,60,.35)">
+    <h2 class="section-title" style="color:var(--danger, #E74C3C)"><mat-icon>delete_forever</mat-icon>Eliminar cuenta</h2>
+    <p class="small muted">Se anonimizan tus datos personales y se cierran tus sesiones. Tus solicitudes activas se cancelarán. Esta acción no se puede deshacer.</p>
+    @if (!eliminarAbierto()) {
+      <button type="button" class="btn btn-sm btn-danger-outline" style="align-self:flex-start" (click)="eliminarAbierto.set(true)">Quiero eliminar mi cuenta</button>
+    } @else {
+      <form class="form-grid" [formGroup]="eliminar" (ngSubmit)="eliminarCuenta()">
+        <div class="form-group">
+          <label class="form-label" for="del-pw">Contraseña</label>
+          <input id="del-pw" type="password" class="form-input" formControlName="password" autocomplete="current-password" />
+          <app-campo-error [control]="eliminar.controls.password" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="del-conf">Escribe ELIMINAR</label>
+          <input id="del-conf" class="form-input" formControlName="confirmacion" autocomplete="off" />
+          @if (eliminar.controls.confirmacion.touched && eliminar.controls.confirmacion.invalid) { <span class="form-error">Escribe ELIMINAR en mayúsculas</span> }
+        </div>
+        <div class="form-actions span-2">
+          <button type="button" class="btn btn-ghost" (click)="eliminarAbierto.set(false)">Cancelar</button>
+          <button type="submit" class="btn btn-danger" [disabled]="guardando() === 'eliminar'">Eliminar definitivamente</button>
+        </div>
+      </form>
+    }
+  </section>
+}

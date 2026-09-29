@@ -1,0 +1,106 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Métricas</h1>
+      <p class="page-subtitle">Indicadores de la plataforma definidos en el proyecto (IPE, TPA, TEA, TRP) e impacto social.</p>
+    </div>
+    <div class="actions">
+      <select class="form-select" [ngModel]="dias()" (ngModelChange)="cambiarDias($event)" aria-label="Periodo">
+        <option [ngValue]="7">Últimos 7 días</option>
+        <option [ngValue]="30">Últimos 30 días</option>
+        <option [ngValue]="90">Últimos 90 días</option>
+        <option [ngValue]="365">Último año</option>
+      </select>
+      <button type="button" class="btn btn-ghost" (click)="cargar()" aria-label="Actualizar"><mat-icon>refresh</mat-icon></button>
+    </div>
+  </header>
+
+  @if (cargando() && !m()) {
+    <app-skeleton-loader type="kpi" [count]="4" />
+  } @else if (m(); as x) {
+    <section class="section">
+      <h2 class="section-title">Indicadores del proyecto</h2>
+      <div class="grid-kpi">
+        <app-kpi-card label="IPE — Participación en eventos" [value]="x.ipe.ipe" formato="pct" icon="groups" color="#2E86AB"
+          [sub]="x.ipe.inscripciones + ' inscripciones / ' + x.ipe.cupos + ' cupos en ' + x.ipe.eventos + ' eventos · asistencia ' + (x.ipe.tasaAsistencia | number:'1.0-1') + ' %'" />
+        <app-kpi-card label="TPA — Días hasta la entrega" [value]="x.tpa.tpaDias" icon="timer" color="#E67E22"
+          [sub]="'Promedio publicación → entrega (' + x.tpa.entregas + ' entregas) · respuesta: ' + (x.tpa.respuestaDias | number:'1.0-1') + ' días'" />
+        <app-kpi-card [label]="'TEA — Efectividad de acceso (' + x.periodoTeaDias + ' días)'" [value]="x.tea.tea" formato="pct" icon="login" color="#27AE60"
+          [sub]="x.tea.validos + ' válidos de ' + x.tea.intentos + ' intentos · MFA ' + x.tea.mfaExitosos + ' ok / ' + x.tea.mfaFallidos + ' fallidos'" />
+        @if (trp(); as t) {
+          <app-kpi-card label="TRP — Tiempo de respuesta" [value]="t.trpPromedioMs + ' ms'" formato="texto" icon="speed" color="#8E44AD"
+            [sub]="'p95: ' + t.trpP95Ms + ' ms · ' + t.peticiones + ' peticiones desde ' + (t.desde | date:'short')" />
+        } @else {
+          <app-kpi-card label="TRP — Tiempo de respuesta" [value]="null" icon="speed" color="#8E44AD" sub="No disponible" />
+        }
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Impacto</h2>
+      <div class="grid-kpi">
+        <app-kpi-card label="Valor donado" [value]="x.impacto.valorDonadoCop" formato="cop" icon="savings" color="#C0392B" />
+        <app-kpi-card label="Descuento tributario estimado" [value]="x.impacto.descuentoEstimadoCop" formato="cop" icon="receipt_long" color="#2E86AB" sub="Orientativo (Art. 255 E.T.)" />
+        <app-kpi-card label="Beneficiarios atendidos" [value]="x.impacto.beneficiariosAtendidos" icon="people" color="#27AE60" />
+        <app-kpi-card label="Satisfacción" [value]="x.impacto.calificacionPromedio !== null ? (x.impacto.calificacionPromedio | number:'1.1-1') + ' / 5' : null" formato="texto" icon="star" color="#F1C40F"
+          [sub]="x.impacto.calificaciones + ' calificaciones · ' + x.impacto.constructorasActivasMes + ' constructoras activas este mes'" />
+      </div>
+    </section>
+
+    <div class="split">
+      <section class="card card-pad-lg">
+        <h2 class="section-title mb-16">Solicitudes y entregas por mes</h2>
+        <div style="position:relative;height:280px"><canvas baseChart type="bar" [data]="serie()" [options]="opcionesBarras"></canvas></div>
+      </section>
+      <aside class="card card-pad-lg">
+        <h2 class="section-title mb-16">Entregas por categoría</h2>
+        <div style="position:relative;height:280px"><canvas baseChart type="doughnut" [data]="categorias()" [options]="opcionesDona"></canvas></div>
+      </aside>
+    </div>
+
+    <section class="card card-pad-lg section">
+      <h2 class="section-title mb-16">Valor donado por mes</h2>
+      <div style="position:relative;height:240px"><canvas baseChart type="line" [data]="valor()" [options]="opcionesLinea"></canvas></div>
+    </section>
+
+    <div class="split">
+      <section class="section">
+        <h2 class="section-title">Constructoras con más entregas</h2>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Constructora</th><th>Entregas</th><th>Valor donado</th></tr></thead>
+            <tbody>
+              @for (c of x.topConstructoras; track c.id) {
+                <tr><td>{{ c.razonSocial }}</td><td>{{ c.entregas }}</td><td>{{ c.valorDonadoCop | copCurrency }}</td></tr>
+              } @empty { <tr><td colspan="3" class="muted center">Sin entregas registradas</td></tr> }
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <aside class="section">
+        <h2 class="section-title">Rendimiento por servicio</h2>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Servicio</th><th>Peticiones</th><th>Prom.</th><th>p95</th><th>&lt; 3 s</th><th>5xx</th></tr></thead>
+            <tbody>
+              @for (s of trp()?.porServicio ?? []; track s.servicio) {
+                <tr><td>{{ s.servicio }}</td><td>{{ s.peticiones }}</td><td>{{ s.promedioMs }} ms</td><td>{{ s.p95Ms }} ms</td><td>{{ s.bajo3sPct | number:'1.0-1' }} %</td><td>{{ s.errores5xx }}</td></tr>
+              } @empty { <tr><td colspan="6" class="muted center">Sin datos aún</td></tr> }
+            </tbody>
+          </table>
+        </div>
+      </aside>
+    </div>
+
+    <section class="card card-pad-lg section">
+      <h2 class="section-title mb-8">Exportar datos</h2>
+      <div class="row">
+        <button type="button" class="btn btn-ghost" (click)="exportar('solicitudes')"><mat-icon>download</mat-icon>Solicitudes</button>
+        <button type="button" class="btn btn-ghost" (click)="exportar('usuarios')"><mat-icon>download</mat-icon>Usuarios</button>
+        <button type="button" class="btn btn-ghost" (click)="exportar('eventos')"><mat-icon>download</mat-icon>Eventos</button>
+      </div>
+    </section>
+  } @else {
+    <div class="alert danger"><mat-icon>error</mat-icon><span>No fue posible cargar las métricas.</span></div>
+  }
+</div>

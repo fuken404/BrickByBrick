@@ -1,84 +1,23 @@
 @use '../../../../styles/variables' as *;
 @use '../../../../styles/mixins' as *;
 
-.event-card {
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform $transition-fast, box-shadow $transition-fast;
-  &:hover { transform: translateY(-2px); box-shadow: $shadow-elevated; }
-  &:focus-visible { @include focus-ring; }
-}
-
-.event-header {
-  height: 140px;
-  background: linear-gradient(135deg, rgba(192,57,43,0.13), rgba(46,134,171,0.13));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-
-  .event-img {
-    width: 100%; height: 100%; object-fit: cover;
-    position: absolute; inset: 0;
-  }
-
-  .event-placeholder-icon { font-size: 48px; color: $primary; }
-
-  .status-badge { position: absolute; top: 12px; left: 12px; }
-}
-
-.event-body { padding: 20px; }
-
-.event-date { font-size: 13px; color: $primary; font-weight: 600; margin-bottom: 4px; }
-
-.event-title {
-  font-size: 17px;
-  font-weight: 600;
-  margin-bottom: 6px;
-  line-height: 1.3;
-  @include truncate(2);
-}
-
-.event-company { font-size: 13px; color: $text-secondary; margin-bottom: 12px; }
-
-.meta-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: $text-secondary;
-  margin-bottom: 12px;
-  @include truncate;
-  mat-icon { font-size: 14px; width: 14px; height: 14px; flex-shrink: 0; }
-}
-
-.capacity { margin-bottom: 12px; }
-
-.capacity-label {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: $text-secondary;
-  margin-bottom: 4px;
-}
-
-.capacity-bar {
-  height: 6px;
-  background: $bg-base;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.capacity-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width $transition-fast;
-}
-
-.event-btn { width: 100%; }
-
-.event-btn.inscribed {
-  background: rgba(39, 174, 96, 0.1);
-  color: $accent;
-  border: 1.5px solid $accent;
-}
+.event-card { overflow: hidden; cursor: pointer; display: flex; flex-direction: column; height: 100%; @include hover-lift; }
+.event-header { position: relative; height: 130px; background: linear-gradient(135deg, rgba($secondary, .16), rgba($secondary, .32));
+  display: flex; align-items: center; justify-content: center; }
+.event-img { width: 100%; height: 100%; object-fit: cover; }
+.event-date-block { background: #fff; border-radius: 10px; padding: 8px 16px; text-align: center; box-shadow: $shadow-card;
+  .dia { display: block; font-family: $font-display; font-size: 28px; font-weight: 700; color: $secondary; line-height: 1; }
+  .mes { font-size: 12px; font-weight: 700; text-transform: uppercase; color: $text-secondary; } }
+.tipo-badge { position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,.92); color: $secondary; }
+.status-badge { position: absolute; top: 10px; right: 10px; mat-icon { font-size: 14px; width: 14px; height: 14px; } }
+.event-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.event-date { font-size: 12px; font-weight: 700; color: $secondary; text-transform: capitalize; }
+.event-title { font-size: 16px; font-family: $font-body; font-weight: 700; line-height: 1.3; }
+.event-company { font-size: 13px; color: $text-secondary; }
+.meta-row { display: flex; align-items: center; gap: 6px; font-size: 13px; color: $text-secondary; min-width: 0;
+  mat-icon { font-size: 16px; width: 16px; height: 16px; flex-shrink: 0; } }
+.capacity { margin-top: 4px; }
+.capacity-label { @include flex-between; font-size: 12px; color: $text-secondary; margin-bottom: 4px; }
+.capacity-bar { height: 6px; border-radius: 3px; background: $bg-base; overflow: hidden; }
+.capacity-fill { height: 100%; background: $accent; border-radius: 3px; &.alto { background: $warning; } }
+.event-btn { margin-top: auto; width: 100%; }

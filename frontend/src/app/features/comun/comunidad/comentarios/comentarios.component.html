@@ -1,0 +1,78 @@
+<section class="comentarios" aria-label="Comentarios">
+  <form class="nuevo" (ngSubmit)="comentar()">
+    <app-avatar [name]="auth.nombre() || 'Tú'" [src]="auth.user()?.avatarUrl" [size]="32" />
+    <div class="input-wrap">
+      <textarea class="comment-textarea" rows="1" name="nuevo" [(ngModel)]="nuevo" placeholder="Escribe un comentario…"
+                aria-label="Escribe un comentario" maxlength="2000" (keydown.enter)="$event.preventDefault(); comentar()"></textarea>
+      <button type="submit" class="send-btn" [disabled]="!nuevo.trim() || enviando()" aria-label="Enviar comentario"><mat-icon>send</mat-icon></button>
+    </div>
+  </form>
+
+  @if (cargando()) {
+    <p class="muted small">Cargando comentarios…</p>
+  } @else if (!comentarios().length) {
+    <p class="muted small">Aún no hay comentarios. ¡Sé el primero!</p>
+  }
+
+  <ul class="lista">
+    @for (c of comentarios(); track c.id) {
+      <li>
+        <ng-container *ngTemplateOutlet="item; context: { $implicit: c }" />
+        @if (c.respuestas.length || respondiendoA()?.id === c.id) {
+          <ul class="respuestas">
+            @for (r of c.respuestas; track r.id) { <li><ng-container *ngTemplateOutlet="item; context: { $implicit: r }" /></li> }
+          </ul>
+        }
+        @if (respondiendoA() && (respondiendoA()!.id === c.id || respondiendoA()!.parentId === c.id)) {
+          <form class="nuevo respuesta-form" (ngSubmit)="responder()">
+            <div class="input-wrap">
+              <textarea class="comment-textarea" rows="1" name="respuesta" [(ngModel)]="respuesta" maxlength="2000"
+                        [placeholder]="'Responder a ' + respondiendoA()!.autor.nombre + '…'" aria-label="Escribe tu respuesta"
+                        (keydown.enter)="$event.preventDefault(); responder()" (keydown.escape)="respondiendoA.set(null)"></textarea>
+              <button type="submit" class="send-btn" [disabled]="!respuesta.trim() || enviando()" aria-label="Enviar respuesta"><mat-icon>send</mat-icon></button>
+            </div>
+          </form>
+        }
+      </li>
+    }
+  </ul>
+
+  @if (hayMas()) { <button type="button" class="btn-link" (click)="cargar(true)">Ver más comentarios</button> }
+</section>
+
+<ng-template #item let-c>
+  <div class="comentario">
+    <a [routerLink]="[auth.prefijo(), 'usuarios', c.autor.id]" [attr.aria-label]="'Perfil de ' + c.autor.nombre">
+      <app-avatar [name]="c.autor.nombre" [src]="c.autor.avatarUrl" [size]="30" />
+    </a>
+    <div class="cuerpo">
+      <div class="burbuja">
+        <a class="autor" [routerLink]="[auth.prefijo(), 'usuarios', c.autor.id]">{{ c.autor.nombre }}</a>
+        @if (c.autor.verificada) { <mat-icon class="verif" aria-label="Verificada">verified</mat-icon> }
+        @if (editando() === c.id) {
+          <div class="stack-sm mt-4">
+            <textarea class="form-textarea" rows="2" [(ngModel)]="textoEdicion" name="edicion" aria-label="Editar comentario"></textarea>
+            <div class="row"><button type="button" class="btn btn-sm btn-primary" (click)="guardarEdicion(c)">Guardar</button>
+              <button type="button" class="btn btn-sm btn-ghost" (click)="editando.set(null)">Cancelar</button></div>
+          </div>
+        } @else if (c.oculto) {
+          <p class="texto muted"><em>Comentario ocultado por moderación</em></p>
+        } @else {
+          <p class="texto pre-line">{{ c.contenido }}</p>
+        }
+      </div>
+      <div class="acciones">
+        <span>{{ c.createdAt | fechaRelativa }}{{ c.editado ? ' · editado' : '' }}</span>
+        @if (!c.oculto) {
+          <button type="button" [class.activo]="c.likedByMe" (click)="alternarLike(c)" [attr.aria-pressed]="c.likedByMe">
+            Me gusta{{ c.likes ? ' · ' + c.likes : '' }}
+          </button>
+          <button type="button" (click)="respondiendoA.set(c); respuesta = ''">Responder</button>
+        }
+        @if (auth.user()?.id === c.autor.id && !c.oculto) { <button type="button" (click)="empezarEdicion(c)">Editar</button> }
+        @if (puedeEliminar(c)) { <button type="button" (click)="eliminar(c)">Eliminar</button> }
+        @if (auth.user()?.id !== c.autor.id && !c.oculto) { <button type="button" (click)="reportar(c)">Reportar</button> }
+      </div>
+    </div>
+  </div>
+</ng-template>

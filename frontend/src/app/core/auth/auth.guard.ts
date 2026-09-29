@@ -3,46 +3,26 @@ import { CanActivateFn, Router } from '@angular/router';
 import { AuthStore } from './auth.store';
 import { RolUsuario } from '../models';
 
-/** Redirige a /login si no hay token */
-export const authGuard: CanActivateFn = () => {
-  const auth   = inject(AuthStore);
-  const router = inject(Router);
-
+/** Exige sesión; si no hay, envía al login conservando la ruta pedida. */
+export const authGuard: CanActivateFn = (_route, state) => {
+  const auth = inject(AuthStore);
   if (auth.isAuthenticated()) return true;
-
-  router.navigate(['/login']);
-  return false;
+  return inject(Router).createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
 };
 
-/** Redirige al dashboard si ya está autenticado (para login/register) */
+/** Para login/registro: si ya hay sesión, va al inicio de su rol. */
 export const noAuthGuard: CanActivateFn = () => {
-  const auth   = inject(AuthStore);
-  const router = inject(Router);
-
+  const auth = inject(AuthStore);
   if (!auth.isAuthenticated()) return true;
-
-  router.navigate([auth.dashboardRoute()]);
-  return false;
+  return inject(Router).parseUrl(auth.rutaInicio());
 };
 
-/**
- * Verifica que el usuario tenga uno de los roles permitidos.
- * Uso: canActivate: [authGuard, roleGuard(['BENEFICIARIO'])]
- */
+/** Restringe la ruta a ciertos roles. */
 export function roleGuard(roles: RolUsuario[]): CanActivateFn {
   return () => {
-    const auth   = inject(AuthStore);
-    const router = inject(Router);
-
+    const auth = inject(AuthStore);
     const rol = auth.rol();
     if (rol && roles.includes(rol)) return true;
-
-    // Redirigir al dashboard del rol actual o al login
-    if (auth.isAuthenticated()) {
-      router.navigate([auth.dashboardRoute()]);
-    } else {
-      router.navigate(['/login']);
-    }
-    return false;
+    return inject(Router).parseUrl(auth.isAuthenticated() ? auth.rutaInicio() : '/login');
   };
 }

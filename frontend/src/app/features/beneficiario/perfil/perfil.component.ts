@@ -1,246 +1,135 @@
-import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-
 import { AuthStore } from '../../../core/auth/auth.store';
 import { UserApiService } from '../../../core/services/user-api.service';
-import { Beneficiario } from '../../../core/models';
+import { CatalogStore } from '../../../core/stores/catalog.store';
+import { ToastService } from '../../../core/services/toast.service';
+import { Genero, Me } from '../../../core/models';
+import { erroresPorCampo, mensajeError } from '../../../core/utils/http';
+import { fechaSoloDia } from '../../../core/utils/fechas';
+import { mayorDeEdad } from '../../../shared/validators/validadores';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
+import { CampoErrorComponent } from '../../../shared/components/campo-error.component';
+import { SeguridadCuentaComponent } from '../../comun/cuenta/seguridad-cuenta.component';
+
+type Pestana = 'datos' | 'portafolio' | 'seguridad';
 
 @Component({
   selector: 'app-perfil',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, AvatarComponent],
+  imports: [RouterLink, ReactiveFormsModule, MatIconModule, AvatarComponent, CampoErrorComponent, SeguridadCuentaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="page">
-      <h1 class="page-title">Mi perfil</h1>
-
-      @if (loading()) {
-        <div class="loading-wrap">
-          <div class="spinner"></div>
-        </div>
-      } @else {
-        <div class="perfil-layout">
-          <!-- Card lateral -->
-          <div class="sidebar-card card">
-            <div class="avatar-wrap">
-              <app-avatar [name]="perfil()?.nombreCompleto ?? email()" [size]="80" />
-            </div>
-            <div class="nombre">{{ perfil()?.nombreCompleto }}</div>
-            <div class="email">{{ email() }}</div>
-            @if (perfil()?.esAlimentadorWeb) {
-              <div class="alimentador-badge">
-                <mat-icon>verified</mat-icon> Alimentador Web
-              </div>
-            }
-            <div class="info-chips">
-              @if (perfil()?.localidad) {
-                <div class="chip">
-                  <mat-icon>location_on</mat-icon> {{ perfil()!.localidad!.nombre }}
-                </div>
-              }
-              @if (perfil()?.estrato) {
-                <div class="chip">
-                  <mat-icon>home</mat-icon> Estrato {{ perfil()!.estrato }}
-                </div>
-              }
-              @if (perfil()?.genero) {
-                <div class="chip">
-                  <mat-icon>person</mat-icon> {{ perfil()!.genero }}
-                </div>
-              }
-            </div>
-          </div>
-
-          <!-- Formulario -->
-          <div class="form-card card">
-            @if (!editando()) {
-              <div class="view-mode">
-                <div class="section-header-row">
-                  <h2 class="section-title">Información personal</h2>
-                  <button class="btn btn-ghost btn-sm" (click)="startEdit()">
-                    <mat-icon>edit</mat-icon> Editar
-                  </button>
-                </div>
-
-                <div class="fields-grid">
-                  <div class="field">
-                    <div class="field-label">Nombre completo</div>
-                    <div class="field-value">{{ perfil()?.nombreCompleto }}</div>
-                  </div>
-                  <div class="field">
-                    <div class="field-label">Cédula</div>
-                    <div class="field-value">{{ perfil()?.cedula }}</div>
-                  </div>
-                  <div class="field">
-                    <div class="field-label">Fecha de nacimiento</div>
-                    <div class="field-value">{{ (perfil()?.fechaNacimiento | date:'dd/MM/yyyy') ?? '—' }}</div>
-                  </div>
-                  <div class="field">
-                    <div class="field-label">Género</div>
-                    <div class="field-value">{{ perfil()?.genero ?? '—' }}</div>
-                  </div>
-                  <div class="field">
-                    <div class="field-label">Estrato</div>
-                    <div class="field-value">{{ perfil()?.estrato ?? '—' }}</div>
-                  </div>
-                  <div class="field">
-                    <div class="field-label">Localidad</div>
-                    <div class="field-value">{{ perfil()?.localidad?.nombre ?? '—' }}</div>
-                  </div>
-                </div>
-              </div>
-            } @else {
-              <div class="edit-mode">
-                <div class="section-header-row">
-                  <h2 class="section-title">Editar perfil</h2>
-                </div>
-
-                <div class="form-grid">
-                  <div class="form-group">
-                    <label class="form-label">Nombre completo *</label>
-                    <input type="text" class="form-control" [(ngModel)]="form.nombreCompleto" />
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Cédula *</label>
-                    <input type="text" class="form-control" [(ngModel)]="form.cedula" />
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Fecha de nacimiento</label>
-                    <input type="date" class="form-control" [(ngModel)]="form.fechaNacimiento" />
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Género</label>
-                    <select class="form-control" [(ngModel)]="form.genero">
-                      <option value="">Prefiero no decir</option>
-                      <option value="Masculino">Masculino</option>
-                      <option value="Femenino">Femenino</option>
-                      <option value="No binario">No binario</option>
-                      <option value="Otro">Otro</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Estrato</label>
-                    <select class="form-control" [(ngModel)]="form.estrato">
-                      <option [value]="null">—</option>
-                      @for (e of [1,2,3,4,5,6]; track e) {
-                        <option [value]="e">Estrato {{ e }}</option>
-                      }
-                    </select>
-                  </div>
-                </div>
-
-                @if (guardadoExito()) {
-                  <div class="alert alert-success">Perfil actualizado exitosamente.</div>
-                }
-                @if (guardadoError()) {
-                  <div class="alert alert-error">{{ guardadoError() }}</div>
-                }
-
-                <div class="edit-actions">
-                  <button class="btn btn-ghost" (click)="cancelEdit()">Cancelar</button>
-                  <button class="btn btn-primary" (click)="guardar()" [disabled]="guardando()">
-                    {{ guardando() ? 'Guardando...' : 'Guardar cambios' }}
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-
-        <!-- Seguridad (cambio de contraseña — próximamente) -->
-        <div class="security-card card">
-          <div class="section-header-row">
-            <div>
-              <h2 class="section-title">Seguridad</h2>
-              <p class="section-desc">Gestiona tu contraseña y acceso a la plataforma.</p>
-            </div>
-          </div>
-          <div class="security-item">
-            <div class="security-icon"><mat-icon>lock</mat-icon></div>
-            <div>
-              <div class="security-label">Contraseña</div>
-              <div class="security-desc">Última actualización hace más de 90 días</div>
-            </div>
-            <button class="btn btn-ghost btn-sm" disabled>Cambiar (próximamente)</button>
-          </div>
-        </div>
-      }
-    </div>
-  `,
-  styleUrl: './perfil.component.scss',
+  templateUrl: './perfil.component.html',
 })
 export class PerfilComponent implements OnInit {
-  private readonly auth    = inject(AuthStore);
-  private readonly userSvc = inject(UserApiService);
+  protected readonly auth = inject(AuthStore);
+  private readonly users = inject(UserApiService);
+  protected readonly catalogo = inject(CatalogStore);
+  private readonly toast = inject(ToastService);
+  private readonly fb = inject(FormBuilder).nonNullable;
 
-  readonly perfil       = signal<Beneficiario | null>(null);
-  readonly loading      = signal(true);
-  readonly editando     = signal(false);
-  readonly guardando    = signal(false);
-  readonly guardadoExito= signal(false);
-  readonly guardadoError= signal('');
+  protected readonly me = signal<Me | null>(null);
+  protected readonly pestana = signal<Pestana>('datos');
+  protected readonly guardando = signal(false);
+  protected readonly subiendoAvatar = signal(false);
+  protected readonly errores = signal<Record<string, string>>({});
 
-  form = { nombreCompleto: '', cedula: '', fechaNacimiento: '', genero: '', estrato: null as number | null };
+  protected readonly datos = this.fb.group({
+    nombreCompleto: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(150)]],
+    fechaNacimiento: ['', [Validators.required, mayorDeEdad]],
+    genero: ['' as Genero | ''],
+    estrato: [null as number | null],
+    localidadId: [null as number | null, Validators.required],
+  });
 
-  email() { return this.auth.userEmail(); }
+  protected readonly portafolio = this.fb.group({
+    nombreEmprendimiento: ['', [Validators.minLength(2), Validators.maxLength(150)]],
+    bioPublica: ['', Validators.maxLength(1000)],
+    portafolioPublico: [false],
+  });
 
-  ngOnInit() {
-    const p = this.auth.perfil() as Beneficiario | null;
-    if (!p?.id) { this.loading.set(false); return; }
+  ngOnInit(): void {
+    this.catalogo.cargarLocalidades().subscribe({ error: () => undefined });
+    this.users.me().subscribe({ next: (r) => this.establecer(r.data) });
+  }
 
-    this.userSvc.getBeneficiario(p.id).subscribe({
-      next: r => { this.perfil.set(r.data); this.loading.set(false); },
-      error: () => this.loading.set(false),
+  private establecer(me: Me): void {
+    this.me.set(me);
+    const b = me.beneficiario;
+    if (!b) return;
+    this.datos.reset({
+      nombreCompleto: b.nombreCompleto, fechaNacimiento: fechaSoloDia(b.fechaNacimiento), genero: b.genero ?? '',
+      estrato: b.estrato, localidadId: b.localidad?.id ?? null,
+    });
+    this.portafolio.reset({
+      nombreEmprendimiento: b.nombreEmprendimiento ?? '', bioPublica: b.bioPublica ?? '', portafolioPublico: b.portafolioPublico,
     });
   }
 
-  startEdit() {
-    const p = this.perfil();
-    if (!p) return;
-    this.form = {
-      nombreCompleto: p.nombreCompleto,
-      cedula: p.cedula,
-      fechaNacimiento: p.fechaNacimiento ?? '',
-      genero: p.genero ?? '',
-      estrato: p.estrato ?? null,
-    };
-    this.editando.set(true);
-  }
-
-  cancelEdit() {
-    this.editando.set(false);
-    this.guardadoError.set('');
-    this.guardadoExito.set(false);
-  }
-
-  guardar() {
-    const p = this.perfil();
-    if (!p?.id) return;
+  guardarDatos(): void {
+    this.datos.markAllAsTouched();
+    const b = this.me()?.beneficiario;
+    if (this.datos.invalid || !b) return;
+    const v = this.datos.getRawValue();
     this.guardando.set(true);
-    this.guardadoError.set('');
-
-    const payload: Partial<Beneficiario> = {
-      nombreCompleto: this.form.nombreCompleto,
-      cedula: this.form.cedula,
-      fechaNacimiento: this.form.fechaNacimiento || undefined,
-      genero: this.form.genero || undefined,
-      estrato: this.form.estrato ?? undefined,
-    };
-
-    this.userSvc.updateBeneficiario(p.id, payload).subscribe({
-      next: r => {
-        this.perfil.set(r.data);
+    this.errores.set({});
+    this.users.actualizarBeneficiario(b.id, {
+      nombreCompleto: v.nombreCompleto.trim(), fechaNacimiento: v.fechaNacimiento, genero: v.genero || null,
+      estrato: v.estrato ? Number(v.estrato) : null, localidadId: v.localidadId ? Number(v.localidadId) : null,
+    }).subscribe({
+      next: (r) => {
         this.guardando.set(false);
-        this.guardadoExito.set(true);
-        setTimeout(() => { this.editando.set(false); this.guardadoExito.set(false); }, 1500);
+        this.me.update((m) => (m ? { ...m, beneficiario: { ...m.beneficiario!, ...r.data } } : m));
+        this.auth.actualizarPerfil({ nombreCompleto: r.data.nombreCompleto, localidadId: r.data.localidad?.id ?? null });
+        this.datos.markAsPristine();
+        this.toast.exito('Datos actualizados');
       },
-      error: e => {
-        this.guardando.set(false);
-        this.guardadoError.set(e.error?.message ?? 'Error al guardar los cambios.');
-      },
+      error: (e) => { this.guardando.set(false); this.errores.set(erroresPorCampo(e)); this.toast.error(mensajeError(e)); },
     });
+  }
+
+  guardarPortafolio(): void {
+    this.portafolio.markAllAsTouched();
+    const b = this.me()?.beneficiario;
+    if (this.portafolio.invalid || !b) return;
+    const v = this.portafolio.getRawValue();
+    this.guardando.set(true);
+    this.users.actualizarPortafolio(b.id, {
+      nombreEmprendimiento: v.nombreEmprendimiento.trim() || null, bioPublica: v.bioPublica.trim() || null, portafolioPublico: v.portafolioPublico,
+    }).subscribe({
+      next: (r) => {
+        this.guardando.set(false);
+        this.me.update((m) => (m ? { ...m, beneficiario: { ...m.beneficiario!, ...r.data } } : m));
+        this.auth.actualizarPerfil({ nombreEmprendimiento: r.data.nombreEmprendimiento });
+        this.portafolio.markAsPristine();
+        this.toast.exito('Portafolio actualizado');
+      },
+      error: (e) => { this.guardando.set(false); this.toast.error(mensajeError(e)); },
+    });
+  }
+
+  subirAvatar(e: Event): void {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { this.toast.error('La imagen supera 5 MB'); return; }
+    this.subiendoAvatar.set(true);
+    this.users.subirAvatar(file).subscribe({
+      next: (r) => {
+        this.subiendoAvatar.set(false);
+        this.me.update((m) => (m ? { ...m, avatarUrl: r.data.avatarUrl } : m));
+        this.auth.actualizarUsuario({ avatarUrl: r.data.avatarUrl });
+        this.toast.exito('Foto actualizada');
+      },
+      error: (err) => { this.subiendoAvatar.set(false); this.toast.error(mensajeError(err)); },
+    });
+  }
+
+  /** Conserva el perfil (beneficiario/constructora) al actualizar los datos de la cuenta. */
+  cuentaCambiada(cambios: Me): void {
+    this.me.update((m) => (m ? { ...m, ...cambios, beneficiario: m.beneficiario, constructora: m.constructora } : cambios));
   }
 }

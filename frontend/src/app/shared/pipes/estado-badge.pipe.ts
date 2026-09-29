@@ -1,49 +1,70 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-export interface BadgeConfig {
-  label: string;
-  cssClass: string;
-  color: string;
-  bgColor: string;
-}
+export interface BadgeConfig { label: string; cssClass: string }
 
-const BADGE_MAP: Record<string, BadgeConfig> = {
-  // Material
-  activo:       { label: 'Disponible',    cssClass: 'badge-disponible',    color: '#27AE60', bgColor: '#d5f5e3' },
-  pausado:      { label: 'Pausado',       cssClass: 'badge-pendiente',     color: '#E67E22', bgColor: '#fdebd0' },
-  borrador:     { label: 'Borrador',      cssClass: 'badge-entregado',     color: '#6B6B6B', bgColor: '#efefef' },
-  agotado:      { label: 'Agotado',       cssClass: 'badge-rechazado',     color: '#E74C3C', bgColor: '#fde8e7' },
-  vencido:      { label: 'Vencido',       cssClass: 'badge-rechazado',     color: '#E74C3C', bgColor: '#fde8e7' },
-  // Solicitudes
-  pendiente:    { label: 'Pendiente',     cssClass: 'badge-pendiente',     color: '#E67E22', bgColor: '#fdebd0' },
-  aprobada:     { label: 'Aprobada',      cssClass: 'badge-aprobado',      color: '#27AE60', bgColor: '#d5f5e3' },
-  rechazada:    { label: 'Rechazada',     cssClass: 'badge-rechazado',     color: '#E74C3C', bgColor: '#fde8e7' },
-  entregada:    { label: 'Entregada',     cssClass: 'badge-entregado',     color: '#6B6B6B', bgColor: '#efefef' },
-  cancelada:    { label: 'Cancelada',     cssClass: 'badge-rechazado',     color: '#E74C3C', bgColor: '#fde8e7' },
-  // Eventos
-  publicado:    { label: 'Publicado',     cssClass: 'badge-aprobado',      color: '#27AE60', bgColor: '#d5f5e3' },
-  en_curso:     { label: 'En curso',      cssClass: 'badge-secundario',    color: '#2E86AB', bgColor: 'rgba(46,134,171,0.12)' },
-  finalizado:   { label: 'Finalizado',    cssClass: 'badge-entregado',     color: '#6B6B6B', bgColor: '#efefef' },
-  // Constructoras
-  verificada:   { label: 'Verificada',    cssClass: 'badge-verificado',    color: '#27AE60', bgColor: '#d5f5e3' },
-  no_verificada:{ label: 'Sin verificar', cssClass: 'badge-pendiente-verificacion', color: '#E67E22', bgColor: '#fdebd0' },
-  // Documentos
-  aprobado:     { label: 'Aprobado',      cssClass: 'badge-aprobado',      color: '#27AE60', bgColor: '#d5f5e3' },
-  // Material estado
-  nuevo:        { label: 'Nuevo',         cssClass: 'badge-aprobado',      color: '#27AE60', bgColor: '#d5f5e3' },
-  buen_estado:  { label: 'Buen estado',   cssClass: 'badge-secundario',    color: '#2E86AB', bgColor: 'rgba(46,134,171,0.12)' },
-  usado:        { label: 'Usado',         cssClass: 'badge-entregado',     color: '#6B6B6B', bgColor: '#efefef' },
+type Contexto = 'material' | 'solicitud' | 'evento' | 'inscripcion' | 'usuario' | 'documento' | 'reporte' | 'publicacion' | 'estadoMaterial';
+
+const MAPAS: Record<Contexto, Record<string, BadgeConfig>> = {
+  material: {
+    borrador: { label: 'Borrador', cssClass: 'badge-entregado' },
+    activo: { label: 'Disponible', cssClass: 'badge-disponible' },
+    pausado: { label: 'Pausado', cssClass: 'badge-warning' },
+    agotado: { label: 'Agotado', cssClass: 'badge-rechazado' },
+    vencido: { label: 'Vencido', cssClass: 'badge-rechazado' },
+  },
+  estadoMaterial: {
+    nuevo: { label: 'Nuevo', cssClass: 'badge-aprobado' },
+    buen_estado: { label: 'Buen estado', cssClass: 'badge-secundario' },
+    usado: { label: 'Usado', cssClass: 'badge-entregado' },
+  },
+  solicitud: {
+    pendiente: { label: 'Pendiente', cssClass: 'badge-pendiente' },
+    aprobada: { label: 'Aprobada', cssClass: 'badge-aprobado' },
+    rechazada: { label: 'Rechazada', cssClass: 'badge-rechazado' },
+    entregada: { label: 'Entregada', cssClass: 'badge-secundario' },
+    cancelada: { label: 'Cancelada', cssClass: 'badge-entregado' },
+  },
+  evento: {
+    borrador: { label: 'Borrador', cssClass: 'badge-entregado' },
+    publicado: { label: 'Publicado', cssClass: 'badge-aprobado' },
+    en_curso: { label: 'En curso', cssClass: 'badge-secundario' },
+    finalizado: { label: 'Finalizado', cssClass: 'badge-entregado' },
+    cancelado: { label: 'Cancelado', cssClass: 'badge-rechazado' },
+  },
+  inscripcion: {
+    inscrito: { label: 'Inscrito', cssClass: 'badge-aprobado' },
+    cancelada: { label: 'Cancelada', cssClass: 'badge-entregado' },
+    asistio: { label: 'Asistió', cssClass: 'badge-secundario' },
+    no_asistio: { label: 'No asistió', cssClass: 'badge-rechazado' },
+  },
+  usuario: {
+    activo: { label: 'Activo', cssClass: 'badge-aprobado' },
+    inactivo: { label: 'Eliminado', cssClass: 'badge-entregado' },
+    suspendido: { label: 'Suspendido', cssClass: 'badge-rechazado' },
+  },
+  documento: {
+    pendiente: { label: 'En revisión', cssClass: 'badge-pendiente' },
+    aprobado: { label: 'Aprobado', cssClass: 'badge-aprobado' },
+    rechazado: { label: 'Rechazado', cssClass: 'badge-rechazado' },
+    vencido: { label: 'Vencido', cssClass: 'badge-rechazado' },
+  },
+  reporte: {
+    pendiente: { label: 'Pendiente', cssClass: 'badge-pendiente' },
+    resuelto: { label: 'Contenido retirado', cssClass: 'badge-rechazado' },
+    ignorado: { label: 'Descartado', cssClass: 'badge-entregado' },
+  },
+  publicacion: {
+    publicada: { label: 'Visible', cssClass: 'badge-aprobado' },
+    suspendida: { label: 'Oculta', cssClass: 'badge-rechazado' },
+    borrador: { label: 'Borrador', cssClass: 'badge-entregado' },
+  },
 };
 
+/** Etiqueta y color de un estado según su contexto: `valor | estadoBadge:'solicitud'` */
 @Pipe({ name: 'estadoBadge', standalone: true })
 export class EstadoBadgePipe implements PipeTransform {
-  transform(value: string | null | undefined): BadgeConfig {
-    if (!value) return { label: value ?? '', cssClass: 'badge-entregado', color: '#6B6B6B', bgColor: '#efefef' };
-    return BADGE_MAP[value.toLowerCase()] ?? {
-      label: value,
-      cssClass: 'badge-entregado',
-      color: '#6B6B6B',
-      bgColor: '#efefef',
-    };
+  transform(valor: string | null | undefined, contexto: Contexto): BadgeConfig {
+    if (!valor) return { label: '—', cssClass: 'badge-entregado' };
+    return MAPAS[contexto][valor] ?? { label: valor, cssClass: 'badge-entregado' };
   }
 }

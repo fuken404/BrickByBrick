@@ -1,181 +1,75 @@
-import { Component, signal, inject, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { RouterLink, ActivatedRoute, Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthApiService } from '../../../core/services/auth-api.service';
+import { ToastService } from '../../../core/services/toast.service';
+import { mensajeError } from '../../../core/utils/http';
+import { CampoErrorComponent } from '../../../shared/components/campo-error.component';
+import { coinciden, nivelPassword, passwordFuerte } from '../../../shared/validators/validadores';
 
 @Component({
   selector: 'app-reset-password',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, MatIconModule],
+  imports: [ReactiveFormsModule, RouterLink, MatIconModule, CampoErrorComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="reset-page">
-      <div class="reset-card card">
-        <div class="reset-brand">
-          <div class="brand-icon"><mat-icon>layers</mat-icon></div>
-          <span>BrickByBrick</span>
-        </div>
-
-        <!-- Forgot mode (no token in route) -->
-        @if (!token) {
-          <h2>Recuperar contraseña</h2>
-          <p class="reset-subtitle">Ingresa tu correo y te enviaremos un enlace de recuperación.</p>
-          <div class="form-group" style="margin-bottom:20px">
-            <label class="form-label">Correo electrónico</label>
-            <input class="form-input" type="email" placeholder="correo@ejemplo.com" [(ngModel)]="email" name="email" />
+    <div class="simple-page">
+      <div class="simple-card card">
+        <div class="status-icon neutro"><mat-icon>password</mat-icon></div>
+        <h2 class="center mb-8">Crea una nueva contraseña</h2>
+        <p class="muted center mb-24">Al cambiarla se cerrarán las sesiones abiertas en otros dispositivos.</p>
+        <form class="stack" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="pass">Nueva contraseña</label>
+            <input id="pass" class="form-input" type="password" formControlName="password" autocomplete="new-password" />
+            <div [class]="'password-meter n' + nivel()" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+            <app-campo-error [control]="form.controls.password" />
           </div>
-          @if (sentEmail()) {
-            <div class="form-success-banner">
-              <mat-icon>check_circle</mat-icon> Revisa tu correo. Si está registrado, recibirás el enlace en minutos.
-            </div>
-          }
-          @if (errorMsg()) {
-            <div class="form-error-banner"><mat-icon>warning</mat-icon> {{ errorMsg() }}</div>
-          }
-          <button class="btn btn-primary btn-block" [disabled]="loading()" (click)="sendReset()">
-            @if (loading()) { <mat-icon class="spin">sync</mat-icon> }
-            Enviar enlace
-          </button>
-        }
-
-        <!-- Reset mode (token in route) -->
-        @if (token) {
-          <h2>Nueva contraseña</h2>
-          <p class="reset-subtitle">Elige una contraseña segura para tu cuenta.</p>
-          <div class="form-fields">
-            <div class="form-group">
-              <label class="form-label">Nueva contraseña</label>
-              <div class="pass-wrapper">
-                <input class="form-input" [type]="showPass() ? 'text' : 'password'"
-                       placeholder="Mínimo 8 caracteres" [(ngModel)]="newPassword" name="pass" />
-                <button type="button" class="pass-toggle" (click)="showPass.update(v => !v)">
-                  <mat-icon>{{ showPass() ? 'visibility_off' : 'visibility' }}</mat-icon>
-                </button>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Confirmar contraseña</label>
-              <input class="form-input" type="password" placeholder="Repite la contraseña"
-                     [(ngModel)]="confirmPassword" name="confirm"
-                     [class.error]="passError()" />
-            </div>
+          <div class="form-group">
+            <label class="form-label" for="confirmar">Confirmar contraseña</label>
+            <input id="confirmar" class="form-input" type="password" formControlName="confirmar" autocomplete="new-password" />
+            @if (form.hasError('noCoinciden') && form.controls.confirmar.touched) {
+              <span class="form-error"><mat-icon>error_outline</mat-icon>Las contraseñas no coinciden</span>
+            }
           </div>
-          @if (success()) {
-            <div class="form-success-banner" style="margin-top:16px">
-              <mat-icon>check_circle</mat-icon> ¡Contraseña actualizada! Redirigiendo al login...
+          @if (error()) {
+            <div class="alert danger" role="alert"><mat-icon>warning</mat-icon>
+              <span>{{ error() }} <a routerLink="/recuperar-password">Solicitar un nuevo enlace</a></span>
             </div>
           }
-          @if (errorMsg()) {
-            <div class="form-error-banner" style="margin-top:16px"><mat-icon>warning</mat-icon> {{ errorMsg() }}</div>
-          }
-          <button class="btn btn-primary btn-block" style="margin-top:20px"
-                  [disabled]="loading() || passError()" (click)="resetPass()">
-            @if (loading()) { <mat-icon class="spin">sync</mat-icon> }
-            Actualizar contraseña
+          <button type="submit" class="btn btn-primary btn-block" [disabled]="cargando()">
+            @if (cargando()) { <mat-icon class="spin">sync</mat-icon> } Guardar contraseña
           </button>
-        }
-
-        <a routerLink="/login" class="back-link">
-          <mat-icon>chevron_left</mat-icon> Volver al login
-        </a>
+        </form>
+        <div class="center"><a routerLink="/login" class="back-link"><mat-icon>chevron_left</mat-icon> Volver al inicio de sesión</a></div>
       </div>
     </div>
   `,
-  styles: [`
-    .reset-page {
-      min-height: 100vh; background: var(--bg-base);
-      display: flex; align-items: center; justify-content: center; padding: 20px;
-    }
-    .reset-card { max-width: 420px; width: 100%; padding: 40px; }
-    .reset-brand {
-      display: flex; align-items: center; gap: 10px; margin-bottom: 32px;
-      .brand-icon {
-        width: 32px; height: 32px; background: var(--primary); border-radius: 8px;
-        display: flex; align-items: center; justify-content: center;
-        mat-icon { color: #fff; font-size: 16px; }
-      }
-      span { font-family: var(--font-display); font-weight: 700; font-size: 18px; }
-    }
-    h2 { margin-bottom: 8px; }
-    .reset-subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; }
-    .form-fields { display: flex; flex-direction: column; gap: 18px; margin-bottom: 20px; }
-    .pass-wrapper { position: relative; }
-    .pass-toggle {
-      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-      background: none; border: none; cursor: pointer; padding: 4px;
-      mat-icon { color: var(--text-secondary); font-size: 18px; }
-    }
-    .btn-block { width: 100%; }
-    .form-error-banner {
-      display: flex; align-items: center; gap: 8px;
-      background: var(--danger-light); border: 1px solid rgba(231,76,60,.3);
-      border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--danger); margin-bottom: 16px;
-      mat-icon { font-size: 16px; }
-    }
-    .form-success-banner {
-      display: flex; align-items: center; gap: 8px;
-      background: rgba(39,174,96,.08); border: 1px solid rgba(39,174,96,.3);
-      border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--accent); margin-bottom: 16px;
-      mat-icon { font-size: 16px; }
-    }
-    .back-link {
-      display: inline-flex; align-items: center; gap: 4px; margin-top: 24px;
-      font-size: 13px; color: var(--text-secondary); text-decoration: none;
-      mat-icon { font-size: 16px; }
-    }
-    .spin { animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  `],
 })
 export class ResetPasswordComponent {
-  private readonly authApi = inject(AuthApiService);
-  private readonly route = inject(ActivatedRoute);
+  readonly token = input.required<string>();
+  private readonly api = inject(AuthApiService);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
+  protected readonly form = inject(FormBuilder).nonNullable.group({
+    password: ['', [Validators.required, passwordFuerte]],
+    confirmar: ['', Validators.required],
+  }, { validators: coinciden('password', 'confirmar') });
+  private readonly pass = toSignal(this.form.controls.password.valueChanges, { initialValue: '' });
+  protected readonly nivel = computed(() => nivelPassword(this.pass()));
+  protected readonly cargando = signal(false);
+  protected readonly error = signal('');
 
-  protected readonly token = this.route.snapshot.paramMap.get('token');
-  protected readonly loading = signal(false);
-  protected readonly errorMsg = signal('');
-  protected readonly success = signal(false);
-  protected readonly sentEmail = signal(false);
-  protected readonly showPass = signal(false);
-
-  email = '';
-  newPassword = '';
-  confirmPassword = '';
-
-  passError(): boolean {
-    return !!this.confirmPassword && this.newPassword !== this.confirmPassword;
-  }
-
-  sendReset(): void {
-    if (!this.email) return;
-    this.loading.set(true);
-    this.errorMsg.set('');
-    this.authApi.forgotPassword(this.email).subscribe({
-      next: () => { this.loading.set(false); this.sentEmail.set(true); },
-      error: err => {
-        this.loading.set(false);
-        this.errorMsg.set(err?.error?.message ?? 'Error al enviar el correo. Intenta nuevamente.');
-      },
-    });
-  }
-
-  resetPass(): void {
-    if (!this.token || this.passError()) return;
-    this.loading.set(true);
-    this.errorMsg.set('');
-    this.authApi.resetPassword(this.token, this.newPassword).subscribe({
-      next: () => {
-        this.loading.set(false);
-        this.success.set(true);
-        setTimeout(() => this.router.navigate(['/login']), 2500);
-      },
-      error: err => {
-        this.loading.set(false);
-        this.errorMsg.set(err?.error?.message ?? 'Error al actualizar la contraseña.');
-      },
+  guardar(): void {
+    this.form.markAllAsTouched();
+    if (this.form.invalid) return;
+    this.cargando.set(true);
+    this.error.set('');
+    this.api.resetPassword(this.token(), this.form.controls.password.value).subscribe({
+      next: (r) => { this.toast.exito(r.message); this.router.navigate(['/login']); },
+      error: (e) => { this.cargando.set(false); this.error.set(mensajeError(e)); },
     });
   }
 }

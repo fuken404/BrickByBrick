@@ -1,0 +1,122 @@
+<div class="page" style="max-width:1000px">
+  <header class="page-header">
+    <div><h1 class="page-title">Configuración</h1><p class="page-subtitle">Parámetros del sistema, catálogo de categorías y estado de los servicios.</p></div>
+  </header>
+
+  <form class="card card-pad-lg stack" [formGroup]="form" (ngSubmit)="guardar()">
+    <h2 class="section-title"><mat-icon>tune</mat-icon>Parámetros</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label" for="c1">Solicitudes activas por beneficiario</label>
+        <input id="c1" type="number" class="form-input" formControlName="maxSolicitudesActivasBeneficiario" />
+        <app-campo-error [control]="form.controls.maxSolicitudesActivasBeneficiario" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="c2">Fotos máximas por material/publicación</label>
+        <input id="c2" type="number" class="form-input" formControlName="maxFotosMaterial" />
+        <app-campo-error [control]="form.controls.maxFotosMaterial" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="c3">Días de aviso antes del vencimiento</label>
+        <input id="c3" type="number" class="form-input" formControlName="diasRecordatorioVencimiento" />
+        <app-campo-error [control]="form.controls.diasRecordatorioVencimiento" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="c4">Reportes para ocultar automáticamente</label>
+        <input id="c4" type="number" class="form-input" formControlName="umbralReportesOcultar" />
+        <app-campo-error [control]="form.controls.umbralReportesOcultar" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="c5">% descuento tributario (Art. 255)</label>
+        <input id="c5" type="number" class="form-input" formControlName="porcentajeDescuentoTributario" />
+        <app-campo-error [control]="form.controls.porcentajeDescuentoTributario" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="c6">% tope sobre el impuesto (Art. 258)</label>
+        <input id="c6" type="number" class="form-input" formControlName="topeDescuentoSobreImpuesto" />
+        <app-campo-error [control]="form.controls.topeDescuentoSobreImpuesto" />
+      </div>
+      <div class="form-group span-2">
+        <label class="form-label" for="c7">Correo de soporte</label>
+        <input id="c7" type="email" class="form-input" formControlName="emailSoporte" />
+        <app-campo-error [control]="form.controls.emailSoporte" />
+      </div>
+    </div>
+    <label class="switch-row">
+      <span><strong>Modo mantenimiento</strong><br /><span class="small muted">Solo los administradores pueden crear o modificar contenido; el resto de usuarios queda en modo consulta. Se aplica en máximo un minuto.</span></span>
+      <input type="checkbox" role="switch" formControlName="modoMantenimiento" />
+    </label>
+    <div class="form-actions"><button type="submit" class="btn btn-primary" [disabled]="guardando() || form.pristine">Guardar parámetros</button></div>
+  </form>
+
+  <section class="card card-pad-lg stack mt-24">
+    <div class="row-between">
+      <h2 class="section-title"><mat-icon>category</mat-icon>Categorías de material</h2>
+      <button type="button" class="btn btn-sm btn-secondary" (click)="nueva()"><mat-icon>add</mat-icon>Nueva categoría</button>
+    </div>
+    @if (editando(); as e) {
+      <div class="card card-pad" style="background:var(--bg-base)">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="cat-n">Nombre</label>
+            <input id="cat-n" class="form-input" [ngModel]="e.nombre" (ngModelChange)="campo('nombre', $event)" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cat-i">Ícono (Material Icons)</label>
+            <div class="row"><mat-icon [style.color]="e.colorHex">{{ e.icono }}</mat-icon>
+              <input id="cat-i" class="form-input" [ngModel]="e.icono" (ngModelChange)="campo('icono', $event)" placeholder="grid_view" /></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cat-c">Color</label>
+            <input id="cat-c" type="color" [ngModel]="e.colorHex" (ngModelChange)="campo('colorHex', $event)" style="width:64px;height:38px;border:none;background:none" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-sm btn-ghost" (click)="editando.set(null)">Cancelar</button>
+          <button type="button" class="btn btn-sm btn-primary" (click)="guardarCategoria()">Guardar</button>
+        </div>
+      </div>
+    }
+    <ul class="list-card">
+      @for (c of catalogo.categorias(); track c.id) {
+        <li class="list-item">
+          <mat-icon [style.color]="c.colorHex">{{ c.icono }}</mat-icon>
+          <span class="grow">{{ c.nombre }}</span>
+          @if (c._count) { <span class="small muted">{{ c._count.materiales }} materiales</span> }
+          <button type="button" class="icon-btn" (click)="editar(c)" aria-label="Editar categoría"><mat-icon>edit</mat-icon></button>
+          <button type="button" class="icon-btn danger" (click)="eliminarCategoria(c)" aria-label="Eliminar categoría"><mat-icon>delete</mat-icon></button>
+        </li>
+      }
+    </ul>
+  </section>
+
+  <section class="card card-pad-lg stack mt-24">
+    <div class="row-between">
+      <h2 class="section-title"><mat-icon>monitor_heart</mat-icon>Estado de los servicios</h2>
+      <button type="button" class="btn btn-sm btn-ghost" (click)="revisarSalud()" [disabled]="revisandoSalud()"><mat-icon [class.spin]="revisandoSalud()">refresh</mat-icon>Verificar</button>
+    </div>
+    @if (salud(); as s) {
+      <div class="alert" [class.success]="s.status === 'ok'" [class.warning]="s.status !== 'ok'">
+        <mat-icon>{{ s.status === 'ok' ? 'check_circle' : 'warning' }}</mat-icon>
+        <span>{{ s.status === 'ok' ? 'Todos los servicios responden correctamente.' : 'Uno o más servicios presentan problemas.' }}</span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Servicio</th><th>Estado</th><th>Base de datos</th><th>Latencia</th></tr></thead>
+          <tbody>
+            @for (x of s.servicios; track x.servicio) {
+              <tr>
+                <td>{{ x.servicio }}</td>
+                <td><span class="dot" [style.background]="x.status === 'ok' ? 'var(--accent)' : '#E74C3C'"></span> {{ x.status }}</td>
+                <td>{{ x.db ?? '—' }}</td>
+                <td>{{ x.latenciaMs }} ms</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else if (!revisandoSalud()) {
+      <div class="alert danger"><mat-icon>error</mat-icon><span>No fue posible consultar el estado del gateway.</span></div>
+    }
+  </section>
+</div>

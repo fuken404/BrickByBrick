@@ -1,93 +1,131 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { ApiResponse, PaginatedResponse, Material, SolicitudMaterial, FiltrosMaterial } from '../models';
+import {
+  ApiResponse, CategoriaMaterial, EstadoPubMaterial, EstadoSolicitud, FiltrosMaterial, FotoMaterial, Material, Pagina,
+  PaginaSolicitudes, SolicitudMaterial,
+} from '../models';
+import { toParams } from '../utils/http';
+
+export interface DatosMaterial {
+  categoriaId: number;
+  nombre: string;
+  descripcion?: string | null;
+  estadoMaterial: string;
+  cantidad: number;
+  unidadMedida: string;
+  valorUnitarioCop?: number | null;
+  condicionesRetiro?: string | null;
+  fechaLimite?: string | null;
+  maxSolicitudes?: number | null;
+}
+
+export interface FiltrosSolicitud { estado?: EstadoSolicitud; materialId?: string; page?: number; limit?: number }
 
 @Injectable({ providedIn: 'root' })
 export class MaterialApiService {
   private readonly http = inject(HttpClient);
-  private readonly base = `${environment.services.materials}/materiales`;
+  private readonly materiales = `${environment.apiUrl}/materiales`;
+  private readonly solicitudes = `${environment.apiUrl}/solicitudes`;
 
-  getAll(filtros: FiltrosMaterial = {}): Observable<ApiResponse<PaginatedResponse<Material>>> {
-    let params = new HttpParams();
-    Object.entries(filtros).forEach(([k, v]) => { if (v !== undefined && v !== null) params = params.set(k, String(v)); });
-    return this.http.get<ApiResponse<PaginatedResponse<Material>>>(this.base, { params });
+  // --- Categorías ---
+  categorias(): Observable<ApiResponse<CategoriaMaterial[]>> {
+    return this.http.get<ApiResponse<CategoriaMaterial[]>>(`${environment.apiUrl}/categorias`);
   }
 
-  getMisMateriales(filtros: { estadoPublicacion?: string; page?: number; limit?: number } = {}): Observable<ApiResponse<PaginatedResponse<Material>>> {
-    let params = new HttpParams();
-    Object.entries(filtros).forEach(([k, v]) => { if (v !== undefined && v !== null) params = params.set(k, String(v)); });
-    return this.http.get<ApiResponse<PaginatedResponse<Material>>>(`${this.base}/mis-materiales`, { params });
+  crearCategoria(data: Pick<CategoriaMaterial, 'nombre' | 'colorHex' | 'icono'>): Observable<ApiResponse<CategoriaMaterial>> {
+    return this.http.post<ApiResponse<CategoriaMaterial>>(`${environment.apiUrl}/categorias`, data);
   }
 
-  getById(id: string): Observable<ApiResponse<Material>> {
-    return this.http.get<ApiResponse<Material>>(`${this.base}/${id}`);
+  actualizarCategoria(id: number, data: Pick<CategoriaMaterial, 'nombre' | 'colorHex' | 'icono'>): Observable<ApiResponse<CategoriaMaterial>> {
+    return this.http.put<ApiResponse<CategoriaMaterial>>(`${environment.apiUrl}/categorias/${id}`, data);
   }
 
-  create(data: Partial<Material>): Observable<ApiResponse<Material>> {
-    return this.http.post<ApiResponse<Material>>(this.base, data);
+  eliminarCategoria(id: number): Observable<ApiResponse<null>> {
+    return this.http.delete<ApiResponse<null>>(`${environment.apiUrl}/categorias/${id}`);
   }
 
-  update(id: string, data: Partial<Material>): Observable<ApiResponse<Material>> {
-    return this.http.put<ApiResponse<Material>>(`${this.base}/${id}`, data);
+  // --- Materiales ---
+  catalogo(filtros: FiltrosMaterial = {}): Observable<ApiResponse<Pagina<Material>>> {
+    return this.http.get<ApiResponse<Pagina<Material>>>(this.materiales, { params: toParams(filtros) });
   }
 
-  delete(id: string): Observable<ApiResponse<null>> {
-    return this.http.delete<ApiResponse<null>>(`${this.base}/${id}`);
+  misMateriales(filtros: FiltrosMaterial = {}): Observable<ApiResponse<Pagina<Material>>> {
+    return this.http.get<ApiResponse<Pagina<Material>>>(`${this.materiales}/mis-materiales`, { params: toParams(filtros) });
   }
 
-  cambiarEstado(id: string, estado: string): Observable<ApiResponse<Partial<Material>>> {
-    return this.http.patch<ApiResponse<Partial<Material>>>(`${this.base}/${id}/estado`, { estado });
+  adminMateriales(filtros: FiltrosMaterial = {}): Observable<ApiResponse<Pagina<Material>>> {
+    return this.http.get<ApiResponse<Pagina<Material>>>(`${this.materiales}/admin`, { params: toParams(filtros) });
   }
 
-  uploadFotos(id: string, files: File[]): Observable<ApiResponse<unknown>> {
+  obtener(id: string): Observable<ApiResponse<Material>> {
+    return this.http.get<ApiResponse<Material>>(`${this.materiales}/${id}`);
+  }
+
+  crear(data: DatosMaterial & { estadoPublicacion: 'borrador' | 'activo' }): Observable<ApiResponse<Material>> {
+    return this.http.post<ApiResponse<Material>>(this.materiales, data);
+  }
+
+  actualizar(id: string, data: Partial<DatosMaterial>): Observable<ApiResponse<Material>> {
+    return this.http.put<ApiResponse<Material>>(`${this.materiales}/${id}`, data);
+  }
+
+  cambiarEstado(id: string, estado: Extract<EstadoPubMaterial, 'activo' | 'pausado' | 'borrador'>): Observable<ApiResponse<Material>> {
+    return this.http.patch<ApiResponse<Material>>(`${this.materiales}/${id}/estado`, { estado });
+  }
+
+  eliminar(id: string): Observable<ApiResponse<null>> {
+    return this.http.delete<ApiResponse<null>>(`${this.materiales}/${id}`);
+  }
+
+  subirFotos(id: string, files: File[]): Observable<ApiResponse<FotoMaterial[]>> {
     const form = new FormData();
-    files.forEach(f => form.append('fotos', f));
-    return this.http.post<ApiResponse<unknown>>(`${this.base}/${id}/fotos`, form);
+    files.forEach((f) => form.append('fotos', f));
+    return this.http.post<ApiResponse<FotoMaterial[]>>(`${this.materiales}/${id}/fotos`, form);
   }
 
-  getSolicitudes(materialId: string): Observable<ApiResponse<SolicitudMaterial[]>> {
-    return this.http.get<ApiResponse<SolicitudMaterial[]>>(`${this.base}/${materialId}/solicitudes`);
+  eliminarFoto(id: string, fotoId: string): Observable<ApiResponse<FotoMaterial[]>> {
+    return this.http.delete<ApiResponse<FotoMaterial[]>>(`${this.materiales}/${id}/fotos/${fotoId}`);
   }
 
-  getSolicitudesRecibidas(params: { estado?: string; page?: number; limit?: number } = {}): Observable<ApiResponse<PaginatedResponse<SolicitudMaterial>>> {
-    let p = new HttpParams();
-    Object.entries(params).forEach(([k, v]) => { if (v !== undefined) p = p.set(k, String(v)); });
-    return this.http.get<ApiResponse<PaginatedResponse<SolicitudMaterial>>>(
-      `${environment.services.materials}/solicitudes/recibidas`, { params: p }
-    );
+  // --- Solicitudes ---
+  solicitar(materialId: string, data: { cantidadSolicitada: number; propositoUso: string; descripcionProyecto?: string }): Observable<ApiResponse<SolicitudMaterial>> {
+    return this.http.post<ApiResponse<SolicitudMaterial>>(`${this.materiales}/${materialId}/solicitudes`, data);
   }
 
-  getMisSolicitudes(params: { estado?: string; page?: number; limit?: number } = {}): Observable<ApiResponse<PaginatedResponse<SolicitudMaterial>>> {
-    let p = new HttpParams();
-    Object.entries(params).forEach(([k, v]) => { if (v !== undefined) p = p.set(k, String(v)); });
-    return this.http.get<ApiResponse<PaginatedResponse<SolicitudMaterial>>>(
-      `${environment.services.materials}/solicitudes/mis-solicitudes`, { params: p }
-    );
+  misSolicitudes(filtros: FiltrosSolicitud = {}): Observable<ApiResponse<PaginaSolicitudes>> {
+    return this.http.get<ApiResponse<PaginaSolicitudes>>(`${this.solicitudes}/mis-solicitudes`, { params: toParams(filtros) });
   }
 
-  crearSolicitud(materialId: string, data: Partial<SolicitudMaterial>): Observable<ApiResponse<SolicitudMaterial>> {
-    return this.http.post<ApiResponse<SolicitudMaterial>>(`${this.base}/${materialId}/solicitudes`, data);
+  solicitudesRecibidas(filtros: FiltrosSolicitud = {}): Observable<ApiResponse<PaginaSolicitudes>> {
+    return this.http.get<ApiResponse<PaginaSolicitudes>>(`${this.solicitudes}/recibidas`, { params: toParams(filtros) });
   }
 
-  cambiarEstadoSolicitud(solicitudId: string, estado: string, instruccionesRetiro?: string): Observable<ApiResponse<SolicitudMaterial>> {
-    return this.http.patch<ApiResponse<SolicitudMaterial>>(
-      `${environment.services.materials}/solicitudes/${solicitudId}/estado`,
-      { estado, instruccionesRetiro }
-    );
+  todasLasSolicitudes(filtros: FiltrosSolicitud = {}): Observable<ApiResponse<PaginaSolicitudes>> {
+    return this.http.get<ApiResponse<PaginaSolicitudes>>(this.solicitudes, { params: toParams(filtros) });
   }
 
-  calificarSolicitud(solicitudId: string, calificacion: number, comentario?: string): Observable<ApiResponse<SolicitudMaterial>> {
-    return this.http.post<ApiResponse<SolicitudMaterial>>(
-      `${environment.services.materials}/solicitudes/${solicitudId}/calificacion`,
-      { calificacion, comentarioCalificacion: comentario }
-    );
+  solicitud(id: string): Observable<ApiResponse<SolicitudMaterial>> {
+    return this.http.get<ApiResponse<SolicitudMaterial>>(`${this.solicitudes}/${id}`);
   }
 
-  getAllSolicitudes(params: { estado?: string; page?: number; limit?: number } = {}): Observable<ApiResponse<any>> {
-    let p = new HttpParams();
-    Object.entries(params).forEach(([k, v]) => { if (v !== undefined) p = p.set(k, String(v)); });
-    return this.http.get<ApiResponse<any>>(`${environment.services.materials}/solicitudes`, { params: p });
+  cambiarEstadoSolicitud(
+    id: string,
+    data: { estado: 'aprobada' | 'rechazada' | 'entregada' | 'cancelada'; instruccionesRetiro?: string; motivo?: string },
+  ): Observable<ApiResponse<SolicitudMaterial>> {
+    return this.http.patch<ApiResponse<SolicitudMaterial>>(`${this.solicitudes}/${id}/estado`, data);
+  }
+
+  cancelarSolicitud(id: string, motivo?: string): Observable<ApiResponse<SolicitudMaterial>> {
+    return this.http.post<ApiResponse<SolicitudMaterial>>(`${this.solicitudes}/${id}/cancelar`, motivo ? { motivo } : {});
+  }
+
+  confirmarRecepcion(id: string, data: { calificacion?: number; comentarioCalificacion?: string } = {}): Observable<ApiResponse<SolicitudMaterial>> {
+    return this.http.post<ApiResponse<SolicitudMaterial>>(`${this.solicitudes}/${id}/confirmar-recepcion`, data);
+  }
+
+  calificar(id: string, calificacion: number, comentarioCalificacion?: string): Observable<ApiResponse<SolicitudMaterial>> {
+    return this.http.post<ApiResponse<SolicitudMaterial>>(`${this.solicitudes}/${id}/calificacion`, { calificacion, comentarioCalificacion });
   }
 }

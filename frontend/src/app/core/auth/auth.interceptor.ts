@@ -1,72 +1,53 @@
-import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { catchError, switchMap, throwError } from 'rxjs';
 import { Router } from '@angular/router';
+import { catchError, switchMap, throwError } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { AuthStore } from './auth.store';
-import { AuthApiService } from '../services/auth-api.service';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { ToastService } from '../services/toast.service';
 
-/** Adjunta el Bearer token a todas las requests */
+/** Endpoints de autenticación que no deben disparar el refresco automático. */
+const SIN_REFRESCO = ['/auth/login', '/auth/refresh-token', '/auth/mfa/', '/auth/logout', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
+
+const esApi = (req: HttpRequest<unknown>) => req.url.startsWith(environment.apiUrl) || req.url === '/health';
+const conToken = (req: HttpRequest<unknown>, token: string | null) =>
+  token ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req;
+
+/** Adjunta el token y, ante un 401, renueva la sesión y reintenta una vez. */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const auth  = inject(AuthStore);
-  const token = auth.accessToken();
+  if (!esApi(req)) return next(req);
+  const auth = inject(AuthStore);
+  const router = inject(Router);
 
-  const authReq = token
-    ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
-    : req;
-
-  return next(authReq);
-};
-
-/** Captura errores 401, 403 y 500 */
-export const errorInterceptor: HttpInterceptorFn = (req, next) => {
-  const auth    = inject(AuthStore);
-  const authApi = inject(AuthApiService);
-  const router  = inject(Router);
-  const snack   = inject(MatSnackBar);
-
-  return next(req).pipe(
-    catchError((err: HttpErrorResponse) => {
-      if (err.status === 401 && !req.url.includes('/auth/')) {
-        // Intentar refresh
-        return authApi.refreshToken().pipe(
-          switchMap((res) => {
-            auth.updateAccessToken(res.data.accessToken);
-            const retried = req.clone({
-              setHeaders: { Authorization: `Bearer ${res.data.accessToken}` },
-            });
-            return next(retried);
-          }),
-          catchError(() => {
-            auth.clearAuth();
-            router.navigate(['/login']);
-            return throwError(() => err);
-          })
-        );
+  return next(conToken(req, auth.accessToken())).pipe(
+    catchError((err: unknown) => {
+      const es401 = err instanceof HttpErrorResponse && err.status === 401;
+      if (!es401 || SIN_REFRESCO.some((p) => req.url.includes(p)) || !auth.accessToken()) {
+        return throwError(() => err);
       }
-
-      if (err.status === 403) {
-        router.navigate([auth.dashboardRoute()]);
-      }
-
-      if (err.status >= 500) {
-        snack.open('Error del servidor. Intenta de nuevo.', 'Cerrar', {
-          duration: 4000,
-          panelClass: 'error',
-        });
-      }
-
-      return throwError(() => err);
-    })
+      return auth.refrescar().pipe(
+        switchMap((token) => next(conToken(req, token))),
+        catchError((refreshErr: unknown) => {
+          auth.limpiar();
+          router.navigate(['/login'], { queryParams: { returnUrl: router.url, sesion: 'expirada' } });
+          return throwError(() => refreshErr);
+        }),
+      );
+    }),
   );
 };
 
-/** Spinner global — puedes conectar esto a un servicio LoadingService */
-export const loadingInterceptor: HttpInterceptorFn = (req, next) => {
-  // Excluir llamadas de polling o background
-  const skipLoading = req.headers.get('X-Skip-Loading') === 'true';
-  if (skipLoading) return next(req);
-
-  // Aquí se inyectaría LoadingService si se implementa
-  return next(req);
+/** Avisa de errores de red y del servidor; los 4xx los maneja cada vista. */
+export const errorInterceptor: HttpInterceptorFn = (req, next) => {
+  const toast = inject(ToastService);
+  return next(req).pipe(
+    catchError((err: unknown) => {
+      if (err instanceof HttpErrorResponse && esApi(req)) {
+        if (err.status === 0) toast.error('Sin conexión con el servidor. Revisa tu red.');
+        else if (err.status === 429) toast.error('Demasiadas solicitudes. Espera un momento e intenta de nuevo.');
+        else if (err.status >= 500 && err.status !== 503) toast.error('Error del servidor. Intenta de nuevo en unos segundos.');
+      }
+      return throwError(() => err);
+    }),
+  );
 };

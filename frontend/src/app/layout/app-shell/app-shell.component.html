@@ -1,0 +1,165 @@
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+<div class="shell" [class.sidebar-collapsed]="colapsado()">
+  <!-- Sidebar -->
+  <aside class="sidebar" [class.dark]="oscuro()" [class.collapsed]="colapsado()" [class.drawer-open]="drawerAbierto()"
+         aria-label="Navegación principal">
+    <a class="sidebar-logo" [routerLink]="[prefijo(), 'dashboard']">
+      <div class="logo-icon"><mat-icon>layers</mat-icon></div>
+      <div class="logo-text">
+        <span class="brand">BrickByBrick</span>
+        <span class="role-label">{{ etiquetaRol() }}</span>
+      </div>
+    </a>
+
+    <nav class="sidebar-nav">
+      @for (item of items(); track item.ruta) {
+        <a class="nav-item" [routerLink]="[prefijo(), item.ruta]" routerLinkActive="active"
+           [matTooltip]="colapsado() ? item.label : ''" matTooltipPosition="right">
+          <mat-icon>{{ item.icon }}</mat-icon>
+          <span class="nav-label">{{ item.label }}</span>
+          @if (contador(item) > 0) {
+            <span class="nav-badge" [attr.aria-label]="contador(item) + ' sin leer'">{{ contador(item) > 99 ? '99+' : contador(item) }}</span>
+          }
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar-user">
+      <a class="user-info" [routerLink]="[prefijo(), 'usuarios', auth.user()?.id]" matTooltip="Ver mi perfil público">
+        <app-avatar [name]="auth.nombre() || 'Usuario'" [src]="auth.user()?.avatarUrl ?? auth.user()?.perfil?.logoUrl" [size]="32" />
+        <div class="user-details">
+          <span class="user-name">{{ auth.nombre() }}</span>
+          <span class="user-email">{{ auth.user()?.email }}</span>
+        </div>
+      </a>
+      <button type="button" class="logout-btn" (click)="cerrarSesion()" matTooltip="Cerrar sesión" aria-label="Cerrar sesión">
+        <mat-icon>logout</mat-icon>
+      </button>
+    </div>
+  </aside>
+  @if (drawerAbierto()) { <div class="drawer-backdrop" (click)="drawerAbierto.set(false)"></div> }
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <button type="button" class="menu-toggle desktop-only" (click)="colapsado.update(v => !v)"
+              [attr.aria-label]="colapsado() ? 'Expandir menú' : 'Contraer menú'">
+        <mat-icon>{{ colapsado() ? 'menu_open' : 'menu' }}</mat-icon>
+      </button>
+      <button type="button" class="menu-toggle mobile-only" (click)="drawerAbierto.set(true)" aria-label="Abrir menú">
+        <mat-icon>menu</mat-icon>
+      </button>
+
+      <form class="search-wrapper" role="search" (ngSubmit)="buscar()">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input class="form-input search-input" name="q" [(ngModel)]="busqueda" [placeholder]="buscador().placeholder"
+               [attr.aria-label]="buscador().placeholder" />
+      </form>
+
+      <div class="topbar-actions">
+        @if (rol() !== 'ADMINISTRADOR') {
+          <a class="icon-btn badge-host" [routerLink]="[prefijo(), 'mensajes']" matTooltip="Mensajes" aria-label="Mensajes">
+            <mat-icon>chat_bubble_outline</mat-icon>
+            @if (contadores.mensajesNoLeidos() > 0) { <span class="dot-count">{{ contadores.mensajesNoLeidos() }}</span> }
+          </a>
+        }
+
+        <div class="dropdown-host" (clickOutside)="panelNotif.set(false)">
+          <button type="button" class="icon-btn badge-host" (click)="alternarNotificaciones()"
+                  [attr.aria-expanded]="panelNotif()" aria-label="Notificaciones">
+            <mat-icon>notifications_none</mat-icon>
+            @if (contadores.noLeidas() > 0) { <span class="dot-count">{{ contadores.noLeidas() > 99 ? '99+' : contadores.noLeidas() }}</span> }
+          </button>
+          @if (panelNotif()) {
+            <div class="dropdown notif-panel" role="dialog" aria-label="Notificaciones recientes">
+              <div class="dropdown-head">
+                <strong>Notificaciones</strong>
+                @if (contadores.noLeidas() > 0) { <button type="button" class="btn-link" (click)="marcarTodas()">Marcar todas como leídas</button> }
+              </div>
+              @if (cargandoNotif()) {
+                <div class="dropdown-empty"><mat-icon class="spin">sync</mat-icon></div>
+              } @else if (!ultimas().length) {
+                <div class="dropdown-empty"><mat-icon>notifications_off</mat-icon><span>No tienes notificaciones</span></div>
+              } @else {
+                <ul class="notif-list">
+                  @for (n of ultimas(); track n.id) {
+                    <li>
+                      <button type="button" class="notif-item" [class.unread]="!n.leida" (click)="abrirNotificacion(n)">
+                        <span class="notif-dot" [class.visible]="!n.leida"></span>
+                        <span class="notif-text">
+                          <span class="notif-title">{{ n.titulo }}</span>
+                          <span class="notif-msg clamp-2">{{ n.mensaje }}</span>
+                          <span class="notif-time">{{ n.createdAt | fechaRelativa }}</span>
+                        </span>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+              <a class="dropdown-foot" [routerLink]="[prefijo(), 'notificaciones']">Ver todas</a>
+            </div>
+          }
+        </div>
+
+        <div class="dropdown-host" (clickOutside)="menuUsuario.set(false)">
+          <button type="button" class="avatar-btn" (click)="menuUsuario.update(v => !v); panelNotif.set(false)"
+                  [attr.aria-expanded]="menuUsuario()" aria-label="Menú de usuario">
+            <app-avatar [name]="auth.nombre() || 'Usuario'" [src]="auth.user()?.avatarUrl ?? auth.user()?.perfil?.logoUrl" [size]="34" />
+          </button>
+          @if (menuUsuario()) {
+            <div class="dropdown user-menu" role="menu">
+              <div class="user-menu-head">
+                <span class="strong truncate">{{ auth.nombre() }}</span>
+                <span class="xsmall muted truncate">{{ auth.user()?.email }}</span>
+              </div>
+              <a role="menuitem" class="menu-item" [routerLink]="[prefijo(), 'perfil']"><mat-icon>settings</mat-icon>Mi cuenta</a>
+              <a role="menuitem" class="menu-item" [routerLink]="[prefijo(), 'usuarios', auth.user()?.id]"><mat-icon>badge</mat-icon>Perfil público</a>
+              <button role="menuitem" type="button" class="menu-item danger" (click)="cerrarSesion()"><mat-icon>logout</mat-icon>Cerrar sesión</button>
+            </div>
+          }
+        </div>
+      </div>
+    </header>
+
+    <main class="content" id="contenido" tabindex="-1">
+      <div class="content-inner">
+        @if (auth.user() && !auth.user()!.emailVerificado && rol() !== 'ADMINISTRADOR') {
+          <div class="alert warning banner">
+            <mat-icon>mark_email_unread</mat-icon>
+            <div class="grow">
+              <div class="alert-title">Confirma tu correo electrónico</div>
+              Te enviamos un enlace a {{ auth.user()!.email }}. Confirmarlo nos ayuda a proteger tu cuenta.
+            </div>
+            <button type="button" class="btn btn-sm btn-secondary" (click)="reenviarVerificacion()" [disabled]="reenviando()">
+              {{ reenviando() ? 'Enviando…' : 'Reenviar correo' }}
+            </button>
+          </div>
+        }
+        @if (empresaPendiente()) {
+          <div class="alert info banner">
+            <mat-icon>hourglass_top</mat-icon>
+            <div class="grow">
+              <div class="alert-title">Tu empresa está en proceso de verificación</div>
+              Mientras tanto puedes preparar borradores de materiales y eventos. Te avisaremos cuando puedas publicarlos.
+            </div>
+            <a class="btn btn-sm btn-secondary" [routerLink]="[prefijo(), 'perfil']">Ver documentos</a>
+          </div>
+        }
+        <router-outlet />
+      </div>
+    </main>
+  </div>
+</div>
+
+<nav class="mobile-nav" aria-label="Navegación rápida">
+  @for (item of itemsMovil(); track item.ruta) {
+    <a class="mobile-nav-item" [routerLink]="[prefijo(), item.ruta]" routerLinkActive="active">
+      <mat-icon>{{ item.icon }}</mat-icon>
+      <span>{{ item.label }}</span>
+    </a>
+  }
+  <button type="button" class="mobile-nav-item" (click)="drawerAbierto.set(true)">
+    <mat-icon>more_horiz</mat-icon><span>Más</span>
+  </button>
+</nav>

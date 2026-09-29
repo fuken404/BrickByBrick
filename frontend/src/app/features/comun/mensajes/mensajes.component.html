@@ -1,0 +1,69 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Mensajes</h1>
+      <p class="page-subtitle">Conversaciones privadas con otros miembros de la plataforma.</p>
+    </div>
+  </header>
+
+  <div class="mensajes-layout card" [class.con-conversacion]="abierta()">
+    <aside class="bandeja" aria-label="Conversaciones">
+      @if (cargandoLista()) {
+        <p class="muted small card-pad">Cargando…</p>
+      } @else if (!conversaciones().length) {
+        <app-empty-state icon="chat" title="Sin conversaciones" description="Escríbele a alguien desde su perfil con el botón “Enviar mensaje”." [compacto]="true" />
+      } @else {
+        <ul>
+          @for (c of conversaciones(); track c.id) {
+            <li>
+              <a class="conv" [routerLink]="[auth.prefijo(), 'mensajes', c.id]" [class.activa]="c.id === abierta()" [class.no-leida]="c.noLeidos > 0">
+                <app-avatar [name]="c.otroUsuario.nombre" [src]="c.otroUsuario.avatarUrl" [size]="42" />
+                <div class="conv-info">
+                  <div class="row-between"><span class="conv-nombre truncate">{{ c.otroUsuario.nombre }}</span>
+                    <span class="xsmall muted">{{ c.ultimoMensajeEn | fechaRelativa }}</span></div>
+                  <div class="row-between">
+                    <span class="conv-preview truncate">{{ c.ultimoMensaje?.autorId === auth.user()?.id ? 'Tú: ' : '' }}{{ c.ultimoMensaje?.contenido }}</span>
+                    @if (c.noLeidos) { <span class="conv-badge">{{ c.noLeidos }}</span> }
+                  </div>
+                </div>
+              </a>
+            </li>
+          }
+        </ul>
+      }
+    </aside>
+
+    <section class="conversacion" aria-label="Conversación">
+      @if (!abierta()) {
+        <div class="vacio"><mat-icon>forum</mat-icon><p>Selecciona una conversación</p></div>
+      } @else if (errorConversacion()) {
+        <div class="vacio"><mat-icon>error_outline</mat-icon><p>No pudimos abrir esta conversación.</p></div>
+      } @else {
+        <header class="conv-header">
+          <a class="icon-btn solo-movil" [routerLink]="[auth.prefijo(), 'mensajes']" aria-label="Volver a la bandeja"><mat-icon>arrow_back</mat-icon></a>
+          @if (otro(); as o) {
+            <a class="row link-plano" [routerLink]="[auth.prefijo(), 'usuarios', o.id]">
+              <app-avatar [name]="o.nombre" [src]="o.avatarUrl" [size]="36" />
+              <span class="strong">{{ o.nombre }}</span>
+              @if (o.verificada) { <mat-icon class="verif">verified</mat-icon> }
+            </a>
+          }
+        </header>
+        <div class="lista" #lista aria-live="polite">
+          @if (hayAnteriores()) { <div class="center"><button type="button" class="btn-link" (click)="cargarMensajes(abierta()!, true)">Mensajes anteriores</button></div> }
+          @for (m of mensajes(); track m.id) {
+            <div class="burbuja" [class.mia]="esMio(m)">
+              <p class="pre-line">{{ m.contenido }}</p>
+              <span class="hora">{{ m.createdAt | date:'short' }}@if (esMio(m) && m.leidoEn) { · Visto }</span>
+            </div>
+          } @empty { <p class="center muted small">Escribe el primer mensaje.</p> }
+        </div>
+        <form class="chat-input" (ngSubmit)="enviar()">
+          <textarea rows="1" name="texto" [(ngModel)]="texto" placeholder="Escribe un mensaje…" aria-label="Mensaje" maxlength="3000"
+                    (keydown.enter)="$event.preventDefault(); enviar()"></textarea>
+          <button type="submit" class="btn btn-primary" [disabled]="!texto.trim() || enviando()" aria-label="Enviar"><mat-icon>send</mat-icon></button>
+        </form>
+      }
+    </section>
+  </div>
+</div>

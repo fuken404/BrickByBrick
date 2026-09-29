@@ -1,76 +1,115 @@
-import { Injectable, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { computed } from '@angular/core';
-import { tap, switchMap, catchError, EMPTY } from 'rxjs';
-import { AuthState, AuthResponse, RolUsuario } from '../models';
+import { Observable, catchError, finalize, firstValueFrom, map, of, shareReplay, tap, throwError } from 'rxjs';
+import { AuthApiService } from '../services/auth-api.service';
+import { RolUsuario, Sesion, UsuarioSesion } from '../models';
 
-const AUTH_STORAGE_KEY = 'bbb_auth';
+type EstadoSesion = 'inicializando' | 'autenticado' | 'anonimo';
 
-function loadFromStorage(): Partial<AuthState> {
-  try {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as Partial<AuthState>;
-  } catch {
-    return {};
-  }
+interface AuthState {
+  user: UsuarioSesion | null;
+  accessToken: string | null;
+  estado: EstadoSesion;
 }
 
-const initialState: AuthState = {
-  user:        loadFromStorage().user        ?? null,
-  accessToken: loadFromStorage().accessToken ?? null,
-  isLoading:   false,
+const PREFIJOS: Record<RolUsuario, string> = {
+  BENEFICIARIO: '/beneficiario',
+  CONSTRUCTORA: '/empresa',
+  ADMINISTRADOR: '/admin',
 };
 
+/**
+ * Sesión del usuario. El access token vive solo en memoria; al recargar la
+ * página se recupera con el refresh token (cookie httpOnly) en init().
+ */
 export const AuthStore = signalStore(
   { providedIn: 'root' },
-  withState<AuthState>(initialState),
+  withState<AuthState>({ user: null, accessToken: null, estado: 'inicializando' }),
 
   withComputed((store) => ({
-    isAuthenticated: computed(() => !!store.accessToken()),
-    rol:             computed(() => store.user()?.rol ?? null),
-    isAdmin:         computed(() => store.user()?.rol === 'ADMINISTRADOR'),
-    isEmpresa:       computed(() => store.user()?.rol === 'CONSTRUCTORA'),
-    isBeneficiario:  computed(() => store.user()?.rol === 'BENEFICIARIO'),
-    userEmail:       computed(() => store.user()?.email ?? ''),
-    perfil:          computed(() => store.user()?.perfil ?? null),
+    isAuthenticated: computed(() => !!store.accessToken() && !!store.user()),
+    rol: computed(() => store.user()?.rol ?? null),
+    isAdmin: computed(() => store.user()?.rol === 'ADMINISTRADOR'),
+    isEmpresa: computed(() => store.user()?.rol === 'CONSTRUCTORA'),
+    isBeneficiario: computed(() => store.user()?.rol === 'BENEFICIARIO'),
+    prefijo: computed(() => (store.user() ? PREFIJOS[store.user()!.rol] : '')),
+    nombre: computed(() => {
+      const u = store.user();
+      if (!u) return '';
+      if (u.perfil?.tipo === 'constructora') return u.perfil.razonSocial ?? '';
+      if (u.perfil?.tipo === 'beneficiario') return u.perfil.nombreCompleto ?? '';
+      return u.rol === 'ADMINISTRADOR' ? 'Administración' : u.email;
+    }),
   })),
 
-  withMethods((store) => ({
-    setAuth(response: AuthResponse) {
-      patchState(store, {
-        user:        response.user,
-        accessToken: response.accessToken,
-        isLoading:   false,
-      });
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
-        user:        response.user,
-        accessToken: response.accessToken,
-      }));
-    },
+  withMethods((store, api = inject(AuthApiService)) => {
+    let refresco$: Observable<string> | null = null;
 
-    updateAccessToken(token: string) {
-      patchState(store, { accessToken: token });
-      const stored = loadFromStorage();
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ ...stored, accessToken: token }));
-    },
+    const setSesion = (sesion: Sesion) =>
+      patchState(store, { user: sesion.user, accessToken: sesion.accessToken, estado: 'autenticado' });
 
-    clearAuth() {
-      patchState(store, { user: null, accessToken: null, isLoading: false });
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-    },
+    const limpiar = () => patchState(store, { user: null, accessToken: null, estado: 'anonimo' });
 
-    setLoading(isLoading: boolean) {
-      patchState(store, { isLoading });
-    },
+    return {
+      setSesion,
+      limpiar,
 
-    dashboardRoute(): string {
-      const rol = store.user()?.rol;
-      if (rol === 'ADMINISTRADOR') return '/admin/dashboard';
-      if (rol === 'CONSTRUCTORA')  return '/empresa/dashboard';
-      return '/beneficiario/dashboard';
-    },
-  }))
+      actualizarUsuario(cambios: Partial<UsuarioSesion>) {
+        const actual = store.user();
+        if (actual) patchState(store, { user: { ...actual, ...cambios } });
+      },
+
+      actualizarPerfil(cambios: Partial<NonNullable<UsuarioSesion['perfil']>>) {
+        const actual = store.user();
+        if (actual?.perfil) patchState(store, { user: { ...actual, perfil: { ...actual.perfil, ...cambios } } });
+      },
+
+      rutaInicio(): string {
+        const u = store.user();
+        return u ? `${PREFIJOS[u.rol]}/dashboard` : '/login';
+      },
+
+      /**
+       * Renueva el access token una sola vez aunque varias peticiones
+       * reciban 401 al mismo tiempo (single-flight).
+       */
+      refrescar(): Observable<string> {
+        if (!refresco$) {
+          refresco$ = api.refresh().pipe(
+            map((r) => r.data),
+            tap((sesion) => setSesion(sesion)),
+            map((sesion) => sesion.accessToken),
+            catchError((err: unknown) => {
+              limpiar();
+              return throwError(() => err);
+            }),
+            finalize(() => { refresco$ = null; }),
+            shareReplay(1),
+          );
+        }
+        return refresco$;
+      },
+
+      /** Se ejecuta antes del primer render (provideAppInitializer). */
+      async init(): Promise<void> {
+        await firstValueFrom(
+          api.refresh().pipe(
+            tap((r) => setSesion(r.data)),
+            map(() => undefined),
+            catchError(() => {
+              limpiar();
+              return of(undefined);
+            }),
+          ),
+        );
+      },
+
+      cerrarSesion(): Observable<unknown> {
+        return api.logout().pipe(
+          catchError(() => of(null)),
+          finalize(() => limpiar()),
+        );
+      },
+    };
+  }),
 );

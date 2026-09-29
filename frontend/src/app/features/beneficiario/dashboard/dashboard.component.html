@@ -1,0 +1,96 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">{{ saludo() }}</h1>
+      <p class="page-subtitle">Encuentra materiales donados por constructoras de Bogotá para tu proyecto.</p>
+    </div>
+    <div class="actions">
+      <a class="btn btn-primary" routerLink="/beneficiario/materiales"><mat-icon>search</mat-icon>Buscar materiales</a>
+    </div>
+  </header>
+
+  @if (!auth.user()?.emailVerificado) {
+    <div class="alert warning"><mat-icon>mark_email_unread</mat-icon>
+      <span>Verifica tu correo electrónico para recibir las notificaciones de tus solicitudes. <a class="btn-link" routerLink="/beneficiario/perfil">Ir a mi perfil</a></span>
+    </div>
+  }
+
+  @if (cargando()) {
+    <app-skeleton-loader type="kpi" [count]="4" />
+  } @else {
+    <div class="grid-kpi">
+      <app-kpi-card label="Solicitudes activas" [value]="activas()" icon="assignment" color="#E67E22" [sub]="(resumen()?.pendiente ?? 0) + ' pendientes · ' + (resumen()?.aprobada ?? 0) + ' aprobadas'" />
+      <app-kpi-card label="Materiales recibidos" [value]="resumen()?.entregada ?? 0" icon="inventory" color="#27AE60" />
+      <app-kpi-card label="Próximos eventos" [value]="misEventos().length" icon="event_available" color="#2E86AB" sub="Eventos en los que estás inscrito" />
+      <app-kpi-card label="Materiales disponibles" [value]="disponibles()" icon="inventory_2" color="#C0392B" sub="En el catálogo ahora" />
+    </div>
+
+    @if (porConfirmar() > 0) {
+      <div class="alert info"><mat-icon>task_alt</mat-icon>
+        <span>Tienes {{ porConfirmar() }} entrega(s) por confirmar. Confirmar la recepción ayuda a la constructora con su constancia de donación.
+          <a class="btn-link" routerLink="/beneficiario/mis-solicitudes">Confirmar ahora</a></span>
+      </div>
+    }
+
+    <div class="split">
+      <section class="section">
+        <div class="section-head">
+          <h2 class="section-title">Mis solicitudes recientes</h2>
+          <a class="btn-link" routerLink="/beneficiario/mis-solicitudes">Ver todas</a>
+        </div>
+        @if (!solicitudes().length) {
+          <div class="card"><app-empty-state icon="assignment" title="Aún no tienes solicitudes" description="Explora el catálogo y solicita los materiales que necesitas." [compacto]="true" /></div>
+        } @else {
+          <ul class="list-card">
+            @for (s of solicitudes(); track s.id) {
+              <li class="list-item clickable" tabindex="0" [routerLink]="['/beneficiario/mis-solicitudes']" [queryParams]="{ id: s.id }">
+                <mat-icon [style.color]="s.material?.categoria?.colorHex">{{ s.material?.categoria?.icono ?? 'inventory_2' }}</mat-icon>
+                <div class="grow">
+                  <div class="strong truncate">{{ s.material?.nombre }}</div>
+                  <div class="xsmall muted">{{ s.cantidadSolicitada | number:'1.0-2' }} {{ s.material?.unidadMedida }} · {{ s.fechaSolicitud | fechaRelativa }}</div>
+                </div>
+                @let b = s.estado | estadoBadge:'solicitud';
+                <span class="badge" [class]="b.cssClass">{{ b.label }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <aside class="section">
+        <div class="section-head">
+          <h2 class="section-title">Mis próximos eventos</h2>
+          <a class="btn-link" routerLink="/beneficiario/eventos">Ver eventos</a>
+        </div>
+        @for (e of misEventos(); track e.id) {
+          <app-event-card [evento]="e" (abrir)="abrirEvento($event)" />
+        } @empty {
+          <div class="card"><app-empty-state icon="event" title="Sin inscripciones" description="Inscríbete a entregas masivas y talleres cerca de ti." [compacto]="true" /></div>
+        }
+      </aside>
+    </div>
+
+    <section class="section">
+      <div class="section-head">
+        <h2 class="section-title">Recién publicados</h2>
+        <a class="btn-link" routerLink="/beneficiario/materiales">Ver catálogo</a>
+      </div>
+      @if (recientes().length) {
+        <div class="grid-cards">
+          @for (m of recientes(); track m.id) { <app-material-card [material]="m" (abrir)="abrirMaterial($event)" /> }
+        </div>
+      } @else {
+        <div class="card"><app-empty-state icon="inventory_2" title="No hay materiales disponibles en este momento" [compacto]="true" /></div>
+      }
+    </section>
+
+    @if (proximos().length) {
+      <section class="section">
+        <div class="section-head"><h2 class="section-title">Eventos cerca de ti</h2></div>
+        <div class="grid-cards">
+          @for (e of proximos(); track e.id) { <app-event-card [evento]="e" (abrir)="abrirEvento($event)" (inscribirse)="abrirEvento($event)" /> }
+        </div>
+      </section>
+    }
+  }
+</div>

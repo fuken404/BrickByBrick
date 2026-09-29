@@ -1,0 +1,103 @@
+<div class="page">
+  <a class="btn-link" routerLink="/beneficiario/materiales"><mat-icon>arrow_back</mat-icon>Catálogo</a>
+
+  @if (cargando()) {
+    <div class="card card-pad-lg center muted"><mat-icon class="spin">sync</mat-icon></div>
+  } @else if (!material()) {
+    <div class="card"><app-empty-state icon="inventory_2" title="Material no disponible" description="Es posible que haya sido retirado por la constructora." actionLabel="Volver al catálogo" (accion)="router.navigate(['/beneficiario/materiales'])" /></div>
+  } @else {
+    @let m = material()!;
+    <div class="split">
+      <section class="stack">
+        <div class="card card-pad">
+          <div class="galeria" [style.background]="'linear-gradient(145deg,' + color() + '18 0%,' + color() + '38 100%)'">
+            @if (m.fotos.length) {
+              <img [src]="m.fotos[foto()].url | uploadUrl" [alt]="m.nombre" />
+            } @else {
+              <mat-icon [style.color]="color()">{{ m.categoria.icono }}</mat-icon>
+            }
+          </div>
+          @if (m.fotos.length > 1) {
+            <div class="miniaturas">
+              @for (f of m.fotos; track f.id; let i = $index) {
+                <button type="button" [class.activa]="i === foto()" (click)="foto.set(i)" [attr.aria-label]="'Foto ' + (i + 1)"><img [src]="f.url | uploadUrl" alt="" /></button>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="card card-pad-lg stack-sm">
+          <div class="row">
+            <span class="badge" [style.background]="color() + '20'" [style.color]="color()"><mat-icon style="font-size:14px;width:14px;height:14px">{{ m.categoria.icono }}</mat-icon>{{ m.categoria.nombre }}</span>
+            @let em = m.estadoMaterial | estadoBadge:'estadoMaterial';
+            <span class="badge" [class]="em.cssClass">{{ em.label }}</span>
+            @let ep = m.estadoPublicacion | estadoBadge:'material';
+            <span class="badge" [class]="ep.cssClass">{{ ep.label }}</span>
+          </div>
+          <h1 class="page-title">{{ m.nombre }}</h1>
+          <dl class="dl">
+            <dt>Disponible</dt><dd class="strong">{{ m.cantidad | number:'1.0-2' }} {{ m.unidadMedida }}</dd>
+            @if (m.valorUnitarioCop) { <dt>Valor de referencia</dt><dd>{{ m.valorUnitarioCop | copCurrency }} / {{ m.unidadMedida }}</dd> }
+            <dt>Disponible hasta</dt><dd>{{ vence() }}</dd>
+            <dt>Publicado</dt><dd>{{ (m.publicadoEn ?? m.createdAt) | fechaRelativa }}</dd>
+            <dt>Solicitudes recibidas</dt><dd>{{ m._count.solicitudes }}</dd>
+          </dl>
+          @if (m.descripcion) { <h3 class="mt-8">Descripción</h3><p class="pre-line">{{ m.descripcion }}</p> }
+          @if (m.condicionesRetiro) {
+            <div class="alert info"><mat-icon>local_shipping</mat-icon><span><strong>Condiciones de retiro:</strong> {{ m.condicionesRetiro }}</span></div>
+          }
+          <div class="row-between mt-8">
+            <a class="row" [routerLink]="['/beneficiario/usuarios', m.constructora.usuarioId]">
+              <mat-icon>business</mat-icon>
+              <span class="strong">{{ m.constructora.razonSocial }}</span>
+              @if (m.constructora.verificada) { <mat-icon style="color:var(--accent)" aria-label="Verificada">verified</mat-icon> }
+              <span class="small muted">{{ m.constructora.localidad?.nombre }}</span>
+            </a>
+            <button type="button" class="btn btn-sm btn-ghost" (click)="reportar()"><mat-icon>flag</mat-icon>Reportar</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="stack">
+        @if (m.miSolicitudActiva; as s) {
+          <div class="card card-pad-lg stack-sm">
+            <h2 class="section-title"><mat-icon>assignment_turned_in</mat-icon>Ya solicitaste este material</h2>
+            @let bs = s.estado | estadoBadge:'solicitud';
+            <p>Estado: <span class="badge" [class]="bs.cssClass">{{ bs.label }}</span></p>
+            <p class="small muted">Pediste {{ s.cantidadSolicitada | number:'1.0-2' }} {{ m.unidadMedida }} {{ s.fechaSolicitud | fechaRelativa }}.</p>
+            @if (s.instruccionesRetiro) { <div class="alert success"><mat-icon>info</mat-icon><span>{{ s.instruccionesRetiro }}</span></div> }
+            <a class="btn btn-secondary btn-block" routerLink="/beneficiario/mis-solicitudes" [queryParams]="{ id: s.id }">Ver mi solicitud</a>
+          </div>
+        } @else if (!disponible()) {
+          <div class="card card-pad-lg"><div class="alert warning"><mat-icon>block</mat-icon><span>Este material ya no recibe solicitudes.</span></div></div>
+        } @else {
+          <form class="card card-pad-lg stack-sm" [formGroup]="form" (ngSubmit)="solicitar()">
+            <h2 class="section-title"><mat-icon>send</mat-icon>Solicitar material</h2>
+            <div class="form-group">
+              <label class="form-label" for="s-cant">Cantidad ({{ m.unidadMedida }}) *</label>
+              <div class="input-group">
+                <input id="s-cant" type="number" class="form-input" formControlName="cantidadSolicitada" min="0.01" [max]="m.cantidad" step="any" />
+                <span class="input-suffix">de {{ m.cantidad | number:'1.0-2' }}</span>
+              </div>
+              <app-campo-error [control]="form.controls.cantidadSolicitada" [servidor]="erroresServidor()['cantidadSolicitada']" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="s-uso">¿Para qué lo usarás? *</label>
+              <input id="s-uso" class="form-input" formControlName="propositoUso" placeholder="Ej: mejoramiento de mi vivienda" maxlength="200" />
+              <app-campo-error [control]="form.controls.propositoUso" [servidor]="erroresServidor()['propositoUso']" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="s-desc">Cuéntale más a la constructora</label>
+              <textarea id="s-desc" class="form-textarea" rows="4" formControlName="descripcionProyecto" placeholder="Describe tu proyecto, cómo retirarás el material, etc."></textarea>
+              <app-campo-error [control]="form.controls.descripcionProyecto" />
+            </div>
+            <p class="xsmall muted">Al enviar, la constructora verá tu nombre, localidad y datos de contacto para coordinar la entrega.</p>
+            <button type="submit" class="btn btn-primary btn-block" [disabled]="enviando()">
+              @if (enviando()) { <mat-icon class="spin">sync</mat-icon> } Enviar solicitud
+            </button>
+          </form>
+        }
+      </aside>
+    </div>
+  }
+</div>

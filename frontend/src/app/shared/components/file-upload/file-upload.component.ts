@@ -1,109 +1,91 @@
-import { Component, Input, Output, EventEmitter, signal, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, OnDestroy, input, output, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-export interface UploadedFile {
-  file: File;
-  preview: string | null;
-  id: string;
-}
+interface ArchivoLocal { file: File; preview: string | null; id: string }
 
 @Component({
   selector: 'app-file-upload',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="upload-wrapper">
-      <!-- Drop zone -->
-      <div class="drop-zone" [class.dragging]="dragging()" [class.has-files]="files().length > 0"
-           (dragover)="onDragOver($event)" (dragleave)="dragging.set(false)"
-           (drop)="onDrop($event)" (click)="fileInput.click()">
-        <mat-icon class="drop-icon">cloud_upload</mat-icon>
-        <p class="drop-label">Arrastra archivos aquí o <span>haz clic para seleccionar</span></p>
-        <p class="drop-hint">
-          {{ accept || 'Cualquier archivo' }} · Máx. {{ maxSizeMb }} MB {{ multiple ? ' · Múltiples archivos' : '' }}
-        </p>
-        <input #fileInput type="file" [accept]="accept" [multiple]="multiple"
-               (change)="onInputChange($event)" hidden />
-      </div>
-
-      <!-- Preview list -->
-      @if (files().length > 0) {
-        <div class="file-list">
-          @for (f of files(); track f.id) {
-            <div class="file-item">
-              @if (f.preview) {
-                <img [src]="f.preview" alt="preview" class="file-preview" />
-              } @else {
-                <div class="file-icon">
-                  <mat-icon>insert_drive_file</mat-icon>
-                </div>
-              }
-              <div class="file-info">
-                <span class="file-name">{{ f.file.name }}</span>
-                <span class="file-size">{{ formatSize(f.file.size) }}</span>
-              </div>
-              <button class="remove-btn" (click)="remove(f.id)" aria-label="Eliminar">
-                <mat-icon>close</mat-icon>
-              </button>
-            </div>
-          }
-        </div>
-      }
-    </div>
-  `,
+  templateUrl: './file-upload.component.html',
   styleUrl: './file-upload.component.scss',
 })
-export class FileUploadComponent {
-  @Input() accept = 'image/*';
-  @Input() maxSizeMb = 5;
-  @Input() multiple = true;
-  @Output() filesChanged = new EventEmitter<File[]>();
+export class FileUploadComponent implements OnDestroy {
+  readonly accept = input('image/jpeg,image/png,image/webp');
+  readonly maxSizeMb = input(10);
+  readonly multiple = input(true);
+  readonly maxFiles = input(5);
+  readonly etiqueta = input('Arrastra archivos aquí o haz clic para seleccionar');
+  readonly archivos = output<File[]>();
 
-  protected readonly files = signal<UploadedFile[]>([]);
+  protected readonly files = signal<ArchivoLocal[]>([]);
   protected readonly dragging = signal(false);
+  protected readonly error = signal('');
 
-  onDragOver(event: DragEvent): void {
-    event.preventDefault();
+  onDragOver(e: DragEvent): void {
+    e.preventDefault();
     this.dragging.set(true);
   }
 
-  onDrop(event: DragEvent): void {
-    event.preventDefault();
+  onDrop(e: DragEvent): void {
+    e.preventDefault();
     this.dragging.set(false);
-    const items = event.dataTransfer?.files;
-    if (items) this.addFiles(Array.from(items));
+    if (e.dataTransfer?.files) this.agregar(Array.from(e.dataTransfer.files));
   }
 
-  onInputChange(event: Event): void {
-    const items = (event.target as HTMLInputElement).files;
-    if (items) this.addFiles(Array.from(items));
-    (event.target as HTMLInputElement).value = '';
+  onChange(e: Event): void {
+    const input = e.target as HTMLInputElement;
+    if (input.files) this.agregar(Array.from(input.files));
+    input.value = '';
   }
 
-  private addFiles(newFiles: File[]): void {
-    const maxBytes = this.maxSizeMb * 1024 * 1024;
-    const valid = newFiles.filter(f => f.size <= maxBytes);
-    const toAdd: UploadedFile[] = valid.map(f => ({
-      file: f,
-      preview: f.type.startsWith('image/') ? URL.createObjectURL(f) : null,
-      id: crypto.randomUUID(),
-    }));
-    this.files.update(list => this.multiple ? [...list, ...toAdd] : toAdd);
-    this.filesChanged.emit(this.files().map(f => f.file));
+  quitar(id: string): void {
+    const f = this.files().find((x) => x.id === id);
+    if (f?.preview) URL.revokeObjectURL(f.preview);
+    this.files.update((l) => l.filter((x) => x.id !== id));
+    this.emitir();
   }
 
-  remove(id: string): void {
-    const target = this.files().find(f => f.id === id);
-    if (target?.preview) URL.revokeObjectURL(target.preview);
-    this.files.update(list => list.filter(f => f.id !== id));
-    this.filesChanged.emit(this.files().map(f => f.file));
+  /** Limpia la selección (p. ej. tras subir). */
+  reset(): void {
+    this.files().forEach((f) => f.preview && URL.revokeObjectURL(f.preview));
+    this.files.set([]);
+    this.error.set('');
   }
 
-  formatSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  ngOnDestroy(): void {
+    this.reset();
+  }
+
+  private agregar(nuevos: File[]): void {
+    this.error.set('');
+    const tipos = this.accept().split(',').map((t) => t.trim());
+    const max = this.maxSizeMb() * 1024 * 1024;
+    const validos: ArchivoLocal[] = [];
+    for (const f of nuevos) {
+      const tipoOk = tipos.some((t) => (t.endsWith('/*') ? f.type.startsWith(t.slice(0, -1)) : f.type === t || f.name.toLowerCase().endsWith(t)));
+      if (!tipoOk) { this.error.set(`"${f.name}" no es un tipo de archivo permitido`); continue; }
+      if (f.size > max) { this.error.set(`"${f.name}" supera ${this.maxSizeMb()} MB`); continue; }
+      validos.push({ file: f, preview: f.type.startsWith('image/') ? URL.createObjectURL(f) : null, id: crypto.randomUUID() });
+    }
+    if (this.multiple()) {
+      const disponibles = this.maxFiles() - this.files().length;
+      if (validos.length > disponibles) this.error.set(`Máximo ${this.maxFiles()} archivos`);
+      this.files.update((l) => [...l, ...validos.slice(0, Math.max(0, disponibles))]);
+    } else if (validos.length) {
+      this.reset();
+      this.files.set([validos[0]]);
+    }
+    this.emitir();
+  }
+
+  private emitir(): void {
+    this.archivos.emit(this.files().map((f) => f.file));
+  }
+
+  protected formato(bytes: number): string {
+    if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   }
 }

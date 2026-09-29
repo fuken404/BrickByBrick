@@ -1,0 +1,17 @@
+@use '../../../../styles/variables' as *;
+@use '../../../../styles/mixins' as *;
+
+.perfil-hero { overflow: hidden; }
+.portada { height: 120px; background: linear-gradient(135deg, $primary, $primary-dark); &.empresa { background: linear-gradient(135deg, $secondary, $secondary-dark); } }
+.hero-contenido { display: flex; gap: 20px; padding: 0 24px 20px; align-items: flex-end; flex-wrap: wrap; margin-top: -48px; }
+.avatar-hero { border: 4px solid #fff; border-radius: 50%; }
+.hero-datos { flex: 1; min-width: 240px; padding-top: 52px; h1 { font-size: 26px; } .badge mat-icon { font-size: 14px; width: 14px; height: 14px; } }
+.ico { font-size: 15px; width: 15px; height: 15px; vertical-align: text-bottom; }
+.contadores { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-size: 14px; color: $text-secondary;
+  button { background: none; border: none; cursor: pointer; font: inherit; color: inherit; padding: 0; &:hover { color: $primary; } }
+  strong { color: $text-primary; } }
+.hero-acciones { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.bio { padding: 16px 24px 20px; border-top: 1px solid $border; h3 { font-family: $font-body; font-size: 16px; display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  mat-icon { color: $accent; } } p { font-size: 15px; } }
+.contenido-estrecho { max-width: 760px; width: 100%; }
+.link-plano { color: inherit; text-decoration: none; &:hover { text-decoration: underline; } }

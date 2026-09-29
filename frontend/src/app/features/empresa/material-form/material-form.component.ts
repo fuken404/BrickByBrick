@@ -1,250 +1,152 @@
-import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal, viewChild } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-
-import { MaterialApiService } from '../../../core/services/material-api.service';
-import { Material, EstadoMaterial } from '../../../core/models';
+import { Observable, of, switchMap, map } from 'rxjs';
+import { AuthStore } from '../../../core/auth/auth.store';
+import { DatosMaterial, MaterialApiService } from '../../../core/services/material-api.service';
+import { CatalogStore } from '../../../core/stores/catalog.store';
+import { ToastService } from '../../../core/services/toast.service';
+import { EstadoMaterial, FotoMaterial, Material } from '../../../core/models';
+import { erroresPorCampo, mensajeError } from '../../../core/utils/http';
+import { fechaSoloDia, hoyIso } from '../../../core/utils/fechas';
+import { CampoErrorComponent } from '../../../shared/components/campo-error.component';
 import { FileUploadComponent } from '../../../shared/components/file-upload/file-upload.component';
+import { UploadUrlPipe } from '../../../shared/pipes/upload-url.pipe';
+import { CopCurrencyPipe } from '../../../shared/pipes/cop-currency.pipe';
+
+const UNIDADES = ['unidades', 'm²', 'm³', 'm', 'kg', 'toneladas', 'sacos', 'galones', 'litros', 'rollos', 'láminas', 'bultos'];
+const MAX_FOTOS = 5;
 
 @Component({
   selector: 'app-material-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, MatIconModule, FileUploadComponent],
+  imports: [RouterLink, ReactiveFormsModule, MatIconModule, CampoErrorComponent, FileUploadComponent, UploadUrlPipe, CopCurrencyPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="page">
-      <nav class="breadcrumb">
-        <a routerLink="/empresa/materiales" class="bc-link">
-          <mat-icon>arrow_back</mat-icon> Materiales
-        </a>
-      </nav>
-
-      <h1 class="page-title">{{ editando() ? 'Editar material' : 'Publicar material' }}</h1>
-
-      @if (loadingMaterial()) {
-        <div class="loading-wrap"><div class="spinner"></div></div>
-      } @else {
-        <div class="form-layout">
-          <div class="form-card card">
-            <h2 class="form-section-title">Información del material</h2>
-
-            <div class="form-grid">
-              <div class="form-group span-2">
-                <label class="form-label">Nombre del material *</label>
-                <input type="text" class="form-control" [(ngModel)]="form.nombre"
-                       placeholder="Ej: Ladrillos de arcilla roja 12x25x6cm" />
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Categoría *</label>
-                <select class="form-control" [(ngModel)]="form.categoriaId">
-                  <option [value]="0">Selecciona categoría</option>
-                  @for (c of categorias; track c.id) {
-                    <option [value]="c.id">{{ c.nombre }}</option>
-                  }
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Estado del material *</label>
-                <select class="form-control" [(ngModel)]="form.estadoMaterial">
-                  <option value="nuevo">Nuevo</option>
-                  <option value="buen_estado">Buen estado</option>
-                  <option value="usado">Usado</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Cantidad *</label>
-                <input type="number" class="form-control" [(ngModel)]="form.cantidad" min="1" placeholder="0" />
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Unidad de medida *</label>
-                <select class="form-control" [(ngModel)]="form.unidadMedida">
-                  <option value="unidades">Unidades</option>
-                  <option value="m²">m²</option>
-                  <option value="m³">m³</option>
-                  <option value="kg">kg</option>
-                  <option value="ton">Toneladas</option>
-                  <option value="sacos">Sacos</option>
-                  <option value="litros">Litros</option>
-                  <option value="ml">ml</option>
-                  <option value="m">Metros lineales</option>
-                  <option value="rollos">Rollos</option>
-                  <option value="bolsas">Bolsas</option>
-                  <option value="cajas">Cajas</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Máx. solicitudes</label>
-                <input type="number" class="form-control" [(ngModel)]="form.maxSolicitudes" min="1"
-                       placeholder="Sin límite" />
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">Fecha límite</label>
-                <input type="date" class="form-control" [(ngModel)]="form.fechaLimite" />
-              </div>
-
-              <div class="form-group span-2">
-                <label class="form-label">Descripción</label>
-                <textarea class="form-control" [(ngModel)]="form.descripcion" rows="3"
-                          placeholder="Describe el material, dimensiones, marca, etc."></textarea>
-              </div>
-
-              <div class="form-group span-2">
-                <label class="form-label">Condiciones de retiro</label>
-                <textarea class="form-control" [(ngModel)]="form.condicionesRetiro" rows="2"
-                          placeholder="Cómo deben retirar el material, herramientas necesarias, etc."></textarea>
-              </div>
-            </div>
-          </div>
-
-          <!-- Fotos -->
-          <div class="form-card card">
-            <h2 class="form-section-title">Fotos del material</h2>
-            <p class="form-hint-text">Agrega hasta 5 fotos para que los beneficiarios puedan ver el estado real del material.</p>
-            <app-file-upload
-              [accept]="'image/*'"
-              [multiple]="true"
-             
-              (filesChanged)="fotos = $event"
-            />
-          </div>
-
-          <!-- Errores / éxito -->
-          @if (error()) {
-            <div class="alert alert-error">{{ error() }}</div>
-          }
-          @if (exito()) {
-            <div class="alert alert-success">Material guardado exitosamente. Redirigiendo…</div>
-          }
-
-          <!-- Acciones -->
-          <div class="form-actions">
-            <a routerLink="/empresa/materiales" class="btn btn-ghost">Cancelar</a>
-            <button class="btn btn-ghost" (click)="guardar('borrador')" [disabled]="guardando()">
-              Guardar borrador
-            </button>
-            <button class="btn btn-primary" (click)="guardar('activo')" [disabled]="guardando()">
-              {{ guardando() ? 'Publicando...' : 'Publicar' }}
-            </button>
-          </div>
-        </div>
-      }
-    </div>
-  `,
-  styleUrl: './material-form.component.scss',
+  templateUrl: './material-form.component.html',
+  styles: [`
+    .fotos { display: flex; gap: 10px; flex-wrap: wrap; }
+    .foto { position: relative; width: 96px; height: 96px; border-radius: 10px; overflow: hidden; }
+    .foto img { width: 100%; height: 100%; object-fit: cover; }
+    .foto button { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,.6); color: #fff; border: none; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .foto button mat-icon { font-size: 16px; width: 16px; height: 16px; }
+  `],
 })
 export class MaterialFormComponent implements OnInit {
-  private readonly route  = inject(ActivatedRoute);
+  /** Presente en /materiales/:id/editar. */
+  readonly id = input<string>();
+  protected readonly auth = inject(AuthStore);
+  private readonly api = inject(MaterialApiService);
+  protected readonly catalogo = inject(CatalogStore);
+  private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
-  private readonly matSvc = inject(MaterialApiService);
+  private readonly upload = viewChild(FileUploadComponent);
 
-  readonly editando      = signal(false);
-  readonly loadingMaterial = signal(false);
-  readonly guardando     = signal(false);
-  readonly error         = signal('');
-  readonly exito         = signal(false);
+  protected readonly unidades = UNIDADES;
+  protected readonly hoy = hoyIso();
+  protected readonly material = signal<Material | null>(null);
+  protected readonly fotosExistentes = signal<FotoMaterial[]>([]);
+  protected readonly nuevasFotos = signal<File[]>([]);
+  protected readonly cargando = signal(false);
+  protected readonly guardando = signal(false);
+  protected readonly errores = signal<Record<string, string>>({});
+  protected readonly verificada = computed(() => !!this.auth.user()?.perfil?.verificada);
+  protected readonly cupoFotos = computed(() => MAX_FOTOS - this.fotosExistentes().length);
+  protected readonly esEdicion = computed(() => !!this.id());
 
-  fotos: File[] = [];
-  private materialId: string | null = null;
+  protected readonly form = inject(FormBuilder).nonNullable.group({
+    categoriaId: [null as number | null, Validators.required],
+    nombre: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(200)]],
+    descripcion: ['', Validators.maxLength(2000)],
+    estadoMaterial: ['buen_estado' as EstadoMaterial, Validators.required],
+    cantidad: [null as number | null, [Validators.required, Validators.min(0.01)]],
+    unidadMedida: ['unidades', [Validators.required, Validators.maxLength(30)]],
+    valorUnitarioCop: [null as number | null, Validators.min(0)],
+    condicionesRetiro: ['', Validators.maxLength(1000)],
+    fechaLimite: [''],
+    maxSolicitudes: [null as number | null, Validators.min(1)],
+  });
 
-  form = {
-    nombre: '',
-    categoriaId: 0,
-    estadoMaterial: 'nuevo' as EstadoMaterial,
-    cantidad: 1,
-    unidadMedida: 'unidades',
-    maxSolicitudes: null as number | null,
-    fechaLimite: '',
-    descripcion: '',
-    condicionesRetiro: '',
-  };
-
-  readonly categorias = [
-    { id: 1,  nombre: 'Ladrillo' },
-    { id: 2,  nombre: 'Cemento' },
-    { id: 3,  nombre: 'Arena/Grava' },
-    { id: 4,  nombre: 'Madera' },
-    { id: 5,  nombre: 'Hierro/Acero' },
-    { id: 6,  nombre: 'Cerámica' },
-    { id: 7,  nombre: 'Pintura' },
-    { id: 8,  nombre: 'Ventanas/Puertas' },
-    { id: 9,  nombre: 'Plomería' },
-    { id: 10, nombre: 'Eléctrico' },
-  ];
-
-  ngOnInit() {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
-      this.materialId = id;
-      this.editando.set(true);
-      this.loadingMaterial.set(true);
-
-      this.matSvc.getById(id).subscribe({
-        next: r => {
-          const m = r.data;
-          this.form = {
-            nombre:           m.nombre,
-            categoriaId:      m.categoria?.id ?? 0,
-            estadoMaterial:   m.estadoMaterial,
-            cantidad:         m.cantidad,
-            unidadMedida:     m.unidadMedida,
-            maxSolicitudes:   m.maxSolicitudes ?? null,
-            fechaLimite:      m.fechaLimite ? m.fechaLimite.slice(0, 10) : '',
-            descripcion:      m.descripcion ?? '',
-            condicionesRetiro: m.condicionesRetiro ?? '',
-          };
-          this.loadingMaterial.set(false);
-        },
-        error: () => this.loadingMaterial.set(false),
-      });
-    }
+  ngOnInit(): void {
+    this.catalogo.cargarCategorias().subscribe({ error: () => undefined });
+    const id = this.id();
+    if (!id) return;
+    this.cargando.set(true);
+    this.api.obtener(id).subscribe({
+      next: (r) => {
+        const m = r.data;
+        this.material.set(m);
+        this.fotosExistentes.set(m.fotos);
+        this.form.reset({
+          categoriaId: m.categoriaId, nombre: m.nombre, descripcion: m.descripcion ?? '', estadoMaterial: m.estadoMaterial,
+          cantidad: m.cantidad, unidadMedida: m.unidadMedida, valorUnitarioCop: m.valorUnitarioCop,
+          condicionesRetiro: m.condicionesRetiro ?? '', fechaLimite: fechaSoloDia(m.fechaLimite), maxSolicitudes: m.maxSolicitudes,
+        });
+        this.cargando.set(false);
+      },
+      error: (e) => { this.toast.error(mensajeError(e)); this.router.navigate(['/empresa/materiales']); },
+    });
   }
 
-  guardar(estadoPublicacion: 'activo' | 'borrador') {
-    if (!this.form.nombre.trim()) { this.error.set('El nombre es requerido.'); return; }
-    if (!this.form.categoriaId)   { this.error.set('La categoría es requerida.'); return; }
-    if (this.form.cantidad < 1)   { this.error.set('La cantidad debe ser mayor a 0.'); return; }
+  total(): number {
+    const { cantidad, valorUnitarioCop } = this.form.getRawValue();
+    return cantidad && valorUnitarioCop ? Number(cantidad) * Number(valorUnitarioCop) : 0;
+  }
 
-    this.guardando.set(true);
-    this.error.set('');
-
-    const payload = {
-      nombre:           this.form.nombre,
-      categoriaId:      this.form.categoriaId,
-      estadoMaterial:   this.form.estadoMaterial,
-      cantidad:         this.form.cantidad,
-      unidadMedida:     this.form.unidadMedida,
-      maxSolicitudes:   this.form.maxSolicitudes ?? undefined,
-      fechaLimite:      this.form.fechaLimite || undefined,
-      descripcion:      this.form.descripcion || undefined,
-      condicionesRetiro: this.form.condicionesRetiro || undefined,
-      estadoPublicacion,
+  private datos(): DatosMaterial {
+    const v = this.form.getRawValue();
+    return {
+      categoriaId: Number(v.categoriaId), nombre: v.nombre.trim(), descripcion: v.descripcion.trim() || null,
+      estadoMaterial: v.estadoMaterial, cantidad: Number(v.cantidad), unidadMedida: v.unidadMedida.trim(),
+      valorUnitarioCop: v.valorUnitarioCop === null || (v.valorUnitarioCop as unknown) === '' ? null : Number(v.valorUnitarioCop),
+      condicionesRetiro: v.condicionesRetiro.trim() || null, fechaLimite: v.fechaLimite || null,
+      maxSolicitudes: v.maxSolicitudes ? Number(v.maxSolicitudes) : null,
     };
+  }
 
-    const obs = this.editando() && this.materialId
-      ? this.matSvc.update(this.materialId, payload)
-      : this.matSvc.create(payload);
+  guardar(publicar: boolean): void {
+    this.form.markAllAsTouched();
+    if (this.form.invalid) return;
+    const datos = this.datos();
+    if (publicar && datos.valorUnitarioCop === null) {
+      this.errores.set({ valorUnitarioCop: 'Indica el valor unitario para publicar (se usa en tus constancias de donación)' });
+      return;
+    }
+    this.guardando.set(true);
+    this.errores.set({});
+    const id = this.id();
+    let peticion$: Observable<Material>;
+    if (id) {
+      peticion$ = this.api.actualizar(id, datos).pipe(
+        switchMap((r) => (publicar && r.data.estadoPublicacion !== 'activo'
+          ? this.api.cambiarEstado(id, 'activo').pipe(map((x) => x.data)) : of(r.data))),
+      );
+    } else {
+      peticion$ = this.api.crear({ ...datos, estadoPublicacion: publicar ? 'activo' : 'borrador' }).pipe(map((r) => r.data));
+    }
+    peticion$.pipe(
+      switchMap((m) => (this.nuevasFotos().length ? this.api.subirFotos(m.id, this.nuevasFotos()).pipe(map(() => m)) : of(m))),
+    ).subscribe({
+      next: (m) => {
+        this.guardando.set(false);
+        this.upload()?.reset();
+        this.toast.exito(id ? 'Material actualizado' : publicar ? 'Material publicado en el catálogo' : 'Borrador guardado');
+        this.router.navigate(['/empresa/materiales'], { queryParams: { nuevo: m.id } });
+      },
+      error: (e) => {
+        this.guardando.set(false);
+        this.errores.set(erroresPorCampo(e));
+        this.toast.error(mensajeError(e));
+      },
+    });
+  }
 
-    obs.subscribe({
-      next: r => {
-        if (this.fotos.length > 0) {
-          this.matSvc.uploadFotos(r.data.id, this.fotos).subscribe();
-        }
-        this.exito.set(true);
-        this.guardando.set(false);
-        setTimeout(() => this.router.navigate(['/empresa/materiales']), 1500);
-      },
-      error: e => {
-        this.guardando.set(false);
-        this.error.set(e.error?.message ?? 'Error al guardar el material.');
-      },
+  eliminarFoto(f: FotoMaterial): void {
+    const id = this.id();
+    if (!id) return;
+    this.api.eliminarFoto(id, f.id).subscribe({
+      next: (r) => this.fotosExistentes.set(r.data),
+      error: (e) => this.toast.error(mensajeError(e)),
     });
   }
 }

@@ -1,0 +1,98 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Grupos</h1>
+      <p class="page-subtitle">Únete a grupos de interés, comparte experiencias y conversa en tiempo real.</p>
+    </div>
+    <div class="actions">
+      <button type="button" class="btn btn-primary" (click)="creando.set(true)"><mat-icon>group_add</mat-icon>Crear grupo</button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="tabs" style="border:none">
+      <button type="button" class="tab" [class.active]="vista() === 'explorar'" (click)="cambiarVista('explorar')">Explorar</button>
+      <button type="button" class="tab" [class.active]="vista() === 'mios'" (click)="cambiarVista('mios')">Mis grupos</button>
+    </div>
+    <form class="search" (ngSubmit)="cargar()">
+      <mat-icon>search</mat-icon>
+      <input class="form-input" name="q" [(ngModel)]="texto" placeholder="Buscar por nombre o tema…" aria-label="Buscar grupos" />
+    </form>
+  </div>
+
+  @if (creando()) {
+    <form class="card card-pad-lg stack" [formGroup]="form" (ngSubmit)="crear()">
+      <h2 class="section-title"><mat-icon>group_add</mat-icon>Nuevo grupo</h2>
+      <div class="form-grid">
+        <div class="form-group span-2">
+          <label class="form-label" for="g-nombre">Nombre *</label>
+          <input id="g-nombre" class="form-input" formControlName="nombre" placeholder="Ej: Reutilizadores de Kennedy" />
+          <app-campo-error [control]="form.controls.nombre" />
+        </div>
+        <div class="form-group span-2">
+          <label class="form-label" for="g-desc">Descripción</label>
+          <textarea id="g-desc" class="form-textarea" rows="3" formControlName="descripcion" placeholder="¿De qué trata el grupo?"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="g-temas">Temas</label>
+          <input id="g-temas" class="form-input" formControlName="temas" placeholder="madera, huertas, ladrillo" />
+          <span class="form-hint">Separados por coma (máx. 10)</span>
+        </div>
+        <div class="form-group">
+          <span class="form-label">Privacidad</span>
+          <div class="row">
+            <label class="check"><input type="radio" formControlName="privacidad" value="publico" /><span>Público — cualquiera puede unirse</span></label>
+            <label class="check"><input type="radio" formControlName="privacidad" value="privado" /><span>Privado — requiere aprobación</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" (click)="creando.set(false)">Cancelar</button>
+        <button type="submit" class="btn btn-primary" [disabled]="guardando()">Crear grupo</button>
+      </div>
+    </form>
+  }
+
+  @if (cargando()) {
+    <app-skeleton-loader type="card" [count]="6" />
+  } @else if (!grupos().length) {
+    <div class="card">
+      <app-empty-state icon="groups" [title]="vista() === 'mios' ? 'Aún no perteneces a ningún grupo' : 'No encontramos grupos'"
+                       description="Crea un grupo para reunir a personas con intereses similares." actionLabel="Crear grupo" (accion)="creando.set(true)" />
+    </div>
+  } @else {
+    <div class="grid-cards">
+      @for (g of grupos(); track g.id) {
+        <a class="grupo-card card" [routerLink]="[auth.prefijo(), 'grupos', g.id]">
+          <div class="grupo-header">
+            @if (g.imagenUrl) { <img [src]="g.imagenUrl | uploadUrl" [alt]="g.nombre" /> } @else { <mat-icon>groups</mat-icon> }
+            <span class="badge privacidad" [class.badge-entregado]="g.privacidad === 'privado'" [class.badge-secundario]="g.privacidad === 'publico'">
+              <mat-icon>{{ g.privacidad === 'privado' ? 'lock' : 'public' }}</mat-icon>{{ g.privacidad === 'privado' ? 'Privado' : 'Público' }}
+            </span>
+          </div>
+          <div class="grupo-body">
+            <h3 class="clamp-2">{{ g.nombre }}</h3>
+            @if (g.descripcion) { <p class="muted small clamp-2">{{ g.descripcion }}</p> }
+            @if (g.temas.length) {
+              <div class="chips">@for (t of g.temas.slice(0, 3); track t) { <span class="tema">#{{ t }}</span> }</div>
+            }
+            <div class="row-between mt-8">
+              <span class="small muted"><mat-icon class="ico">people</mat-icon>{{ g.miembros }} miembros</span>
+              @switch (g.miMembresia?.estado) {
+                @case ('activo') { <span class="badge badge-aprobado">Miembro</span> }
+                @case ('pendiente') { <span class="badge badge-pendiente">Solicitud enviada</span> }
+                @case ('invitado') { <button type="button" class="btn btn-sm btn-accent" (click)="unirse(g, $event)" [disabled]="procesando() === g.id">Aceptar invitación</button> }
+                @default {
+                  <button type="button" class="btn btn-sm btn-primary" (click)="unirse(g, $event)" [disabled]="procesando() === g.id">
+                    {{ g.privacidad === 'privado' ? 'Solicitar' : 'Unirse' }}
+                  </button>
+                }
+              }
+            </div>
+          </div>
+        </a>
+      }
+    </div>
+    @if (hayMas()) { <div class="load-more"><button type="button" class="btn btn-ghost" (click)="cargar(true)">Cargar más</button></div> }
+  }
+</div>

@@ -1,0 +1,141 @@
+<div class="page">
+  <a class="btn-link" [routerLink]="[auth.prefijo(), 'grupos']"><mat-icon>arrow_back</mat-icon>Grupos</a>
+
+  @if (cargando()) {
+    <div class="card card-pad-lg center muted"><mat-icon class="spin">sync</mat-icon></div>
+  } @else if (!grupo()) {
+    <div class="card"><app-empty-state icon="search_off" title="Grupo no encontrado" description="Puede que haya sido eliminado." /></div>
+  } @else {
+    @let g = grupo()!;
+    <section class="grupo-hero card">
+      <div class="hero-img">
+        @if (g.imagenUrl) { <img [src]="g.imagenUrl | uploadUrl" [alt]="g.nombre" /> } @else { <mat-icon>groups</mat-icon> }
+      </div>
+      <div class="hero-info">
+        <div class="row">
+          <h1>{{ g.nombre }}</h1>
+          <span class="badge" [class.badge-entregado]="g.privacidad === 'privado'" [class.badge-secundario]="g.privacidad === 'publico'">
+            {{ g.privacidad === 'privado' ? 'Privado' : 'Público' }}
+          </span>
+        </div>
+        <p class="muted small">{{ g.miembros }} miembros · creado por
+          <a [routerLink]="[auth.prefijo(), 'usuarios', g.creador.id]">{{ g.creador.nombre }}</a> · {{ g.createdAt | date:'mediumDate' }}</p>
+        @if (g.temas.length) { <div class="chips mt-8">@for (t of g.temas; track t) { <span class="badge badge-secundario">#{{ t }}</span> }</div> }
+      </div>
+      <div class="hero-actions">
+        @switch (g.miMembresia?.estado) {
+          @case ('activo') { @if (!esCreador()) { <button type="button" class="btn btn-sm btn-danger-outline" (click)="salir()">Salir del grupo</button> } }
+          @case ('pendiente') { <span class="badge badge-pendiente">Solicitud pendiente</span> }
+          @case ('invitado') { <button type="button" class="btn btn-sm btn-accent" (click)="unirse()">Aceptar invitación</button> }
+          @default { @if (!auth.isAdmin()) { <button type="button" class="btn btn-sm btn-primary" (click)="unirse()">{{ g.privacidad === 'privado' ? 'Solicitar unirme' : 'Unirme' }}</button> } }
+        }
+        @if (esMiembro()) { <button type="button" class="btn btn-sm btn-secondary" (click)="abrirInvitaciones()"><mat-icon>person_add</mat-icon>Invitar</button> }
+        @if (esAdminGrupo()) { <button type="button" class="btn btn-sm btn-ghost" (click)="empezarEdicion()"><mat-icon>edit</mat-icon>Editar</button> }
+        @if (esCreador() || auth.isAdmin()) { <button type="button" class="icon-btn danger" (click)="eliminar()" aria-label="Eliminar grupo"><mat-icon>delete</mat-icon></button> }
+      </div>
+    </section>
+
+    @if (editando()) {
+      <form class="card card-pad stack" (ngSubmit)="guardarEdicion()">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label" for="e-nombre">Nombre</label><input id="e-nombre" class="form-input" name="nombre" [(ngModel)]="edicion.nombre" /></div>
+          <div class="form-group"><label class="form-label" for="e-temas">Temas</label><input id="e-temas" class="form-input" name="temas" [(ngModel)]="edicion.temas" /></div>
+          <div class="form-group span-2"><label class="form-label" for="e-desc">Descripción</label><textarea id="e-desc" class="form-textarea" rows="3" name="desc" [(ngModel)]="edicion.descripcion"></textarea></div>
+          <div class="form-group"><label class="form-label" for="e-priv">Privacidad</label>
+            <select id="e-priv" class="form-select" name="priv" [(ngModel)]="edicion.privacidad"><option value="publico">Público</option><option value="privado">Privado</option></select></div>
+          <div class="form-group"><span class="form-label">Imagen del grupo</span><app-file-upload [multiple]="false" (archivos)="subirImagen($event)" /></div>
+        </div>
+        <div class="form-actions"><button type="button" class="btn btn-ghost" (click)="editando.set(false)">Cancelar</button><button type="submit" class="btn btn-primary">Guardar</button></div>
+      </form>
+    }
+
+    @if (invitando()) {
+      <div class="card card-pad stack">
+        <div class="row-between"><h3>Invitar a personas que sigues</h3><button type="button" class="icon-btn" (click)="invitando.set(false)" aria-label="Cerrar"><mat-icon>close</mat-icon></button></div>
+        @if (!candidatos().length) {
+          <p class="muted small">Sigue a otros usuarios desde su perfil para poder invitarlos.</p>
+        } @else {
+          <ul class="list-card">
+            @for (u of candidatos(); track u.id) {
+              <li class="list-item"><app-avatar [name]="u.nombre" [src]="u.avatarUrl" [size]="34" /><span class="grow strong">{{ u.nombre }}</span>
+                <button type="button" class="btn btn-sm btn-secondary" (click)="invitar(u)">Invitar</button></li>
+            }
+          </ul>
+        }
+      </div>
+    }
+
+    <div class="tabs" role="tablist">
+      @if (puedeChatear()) { <button type="button" role="tab" class="tab" [class.active]="pestana() === 'chat'" (click)="cambiarPestana('chat')"><mat-icon>chat</mat-icon>Chat</button> }
+      <button type="button" role="tab" class="tab" [class.active]="pestana() === 'miembros'" (click)="cambiarPestana('miembros')"><mat-icon>people</mat-icon>Miembros</button>
+      @if (esAdminGrupo() && pendientes().length) {
+        <button type="button" role="tab" class="tab" [class.active]="pestana() === 'solicitudes'" (click)="cambiarPestana('solicitudes')">Solicitudes <span class="count">{{ pendientes().length }}</span></button>
+      }
+      <button type="button" role="tab" class="tab" [class.active]="pestana() === 'acerca'" (click)="cambiarPestana('acerca')"><mat-icon>info</mat-icon>Acerca</button>
+    </div>
+
+    @switch (pestana()) {
+      @case ('chat') {
+        <section class="chat card" aria-label="Chat del grupo">
+          <div class="mensajes" #lista aria-live="polite">
+            @if (hayAnteriores()) { <div class="center"><button type="button" class="btn-link" (click)="cargarMensajes(true)">Cargar mensajes anteriores</button></div> }
+            @if (!mensajes().length) { <p class="center muted small">Aún no hay mensajes. ¡Rompe el hielo!</p> }
+            @for (m of mensajes(); track m.id) {
+              <div class="mensaje" [class.mio]="esMio(m)">
+                @if (!esMio(m)) { <app-avatar [name]="m.autor.nombre" [src]="m.autor.avatarUrl" [size]="28" /> }
+                <div class="burbuja">
+                  @if (!esMio(m)) { <a class="autor" [routerLink]="[auth.prefijo(), 'usuarios', m.autor.id]">{{ m.autor.nombre }}</a> }
+                  <p class="pre-line">{{ m.contenido }}</p>
+                  <span class="hora">{{ m.createdAt | date:'short' }}</span>
+                </div>
+              </div>
+            }
+          </div>
+          @if (esMiembro()) {
+            <form class="chat-input" (ngSubmit)="enviar()">
+              <textarea rows="1" name="texto" [(ngModel)]="texto" placeholder="Escribe un mensaje…" aria-label="Mensaje" maxlength="3000"
+                        (keydown.enter)="$event.preventDefault(); enviar()"></textarea>
+              <button type="submit" class="btn btn-primary" [disabled]="!texto.trim() || enviando()" aria-label="Enviar"><mat-icon>send</mat-icon></button>
+            </form>
+          } @else {
+            <p class="center muted small card-pad">Estás viendo el chat como administrador de la plataforma.</p>
+          }
+        </section>
+      }
+      @case ('miembros') {
+        <ul class="list-card">
+          @for (m of miembros(); track m.id) {
+            <li class="list-item">
+              <a [routerLink]="[auth.prefijo(), 'usuarios', m.id]"><app-avatar [name]="m.nombre" [src]="m.avatarUrl" [size]="38" /></a>
+              <div class="grow"><a class="strong link-plano" [routerLink]="[auth.prefijo(), 'usuarios', m.id]">{{ m.nombre }}</a>
+                <div class="xsmall muted">{{ m.rolGrupo === 'admin' ? 'Administrador del grupo' : 'Miembro' }} · desde {{ m.fechaUnion | date:'mediumDate' }}</div></div>
+              @if (esAdminGrupo() && m.id !== auth.user()?.id && m.id !== g.creador.id) {
+                <button type="button" class="btn btn-sm btn-ghost" (click)="gestionar(m, m.rolGrupo === 'admin' ? 'quitar_admin' : 'hacer_admin')">
+                  {{ m.rolGrupo === 'admin' ? 'Quitar admin' : 'Hacer admin' }}</button>
+                <button type="button" class="icon-btn danger" (click)="gestionar(m, 'expulsar')" [attr.aria-label]="'Expulsar a ' + m.nombre"><mat-icon>person_remove</mat-icon></button>
+              }
+            </li>
+          } @empty { <li class="list-item muted">Sin miembros para mostrar.</li> }
+        </ul>
+      }
+      @case ('solicitudes') {
+        <ul class="list-card">
+          @for (m of pendientes(); track m.id) {
+            <li class="list-item">
+              <app-avatar [name]="m.nombre" [src]="m.avatarUrl" [size]="38" />
+              <a class="grow strong link-plano" [routerLink]="[auth.prefijo(), 'usuarios', m.id]">{{ m.nombre }}</a>
+              <button type="button" class="btn btn-sm btn-accent" (click)="gestionar(m, 'aprobar')">Aprobar</button>
+              <button type="button" class="btn btn-sm btn-ghost" (click)="gestionar(m, 'rechazar')">Rechazar</button>
+            </li>
+          }
+        </ul>
+      }
+      @default {
+        <div class="card card-pad-lg">
+          <p class="pre-line">{{ g.descripcion || 'Este grupo aún no tiene descripción.' }}</p>
+          @if (!esMiembro() && g.privacidad === 'privado') { <div class="alert info mt-16"><mat-icon>lock</mat-icon><span>El chat de este grupo solo es visible para sus miembros.</span></div> }
+        </div>
+      }
+    }
+  }
+</div>

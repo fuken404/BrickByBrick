@@ -1,0 +1,77 @@
+<div class="auth-layout">
+  <app-auth-panel [variante]="rol() === 'empresa' ? 'empresa' : 'beneficiario'" />
+
+  <div class="auth-right">
+    <div class="auth-form-container">
+      @if (!desafio()) {
+        <h2>Bienvenido de nuevo</h2>
+        <p class="auth-subtitle">Ingresa a tu cuenta para continuar</p>
+
+        <div class="role-tabs" role="tablist" aria-label="Tipo de cuenta">
+          @for (r of roles; track r.id) {
+            <button type="button" role="tab" [attr.aria-selected]="rol() === r.id" [class.active]="rol() === r.id"
+                    [style.background]="rol() === r.id ? r.color : 'transparent'" (click)="rol.set(r.id)">{{ r.label }}</button>
+          }
+        </div>
+
+        @if (aviso()) { <div class="alert info mb-16"><mat-icon>info</mat-icon><span>{{ aviso() }}</span></div> }
+
+        <form class="auth-form" [formGroup]="form" (ngSubmit)="ingresar()" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="email">Correo electrónico</label>
+            <input id="email" class="form-input" type="email" formControlName="email" autocomplete="email" placeholder="correo@ejemplo.com" />
+            <app-campo-error [control]="form.controls.email" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="password">Contraseña</label>
+            <div class="input-group">
+              <input id="password" class="form-input" [type]="mostrarPass() ? 'text' : 'password'" formControlName="password"
+                     autocomplete="current-password" placeholder="Tu contraseña" />
+              <button type="button" class="pass-toggle input-suffix" (click)="mostrarPass.update(v => !v)"
+                      [attr.aria-label]="mostrarPass() ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                <mat-icon>{{ mostrarPass() ? 'visibility_off' : 'visibility' }}</mat-icon>
+              </button>
+            </div>
+            <app-campo-error [control]="form.controls.password" />
+          </div>
+
+          @if (error()) { <div class="alert danger" role="alert"><mat-icon>warning</mat-icon><span>{{ error() }}</span></div> }
+
+          <div class="forgot-link"><a routerLink="/recuperar-password">¿Olvidaste tu contraseña?</a></div>
+
+          <button type="submit" class="btn btn-lg btn-block" [style.background]="rolActual().color" style="color:#fff" [disabled]="cargando()">
+            @if (cargando()) { <mat-icon class="spin">sync</mat-icon> }
+            Ingresar como {{ rolActual().label }}
+          </button>
+        </form>
+
+        <div class="divider">o</div>
+        <p class="auth-switch">¿No tienes cuenta? <a routerLink="/registro">Regístrate aquí</a></p>
+      } @else {
+        <h2>Verificación en dos pasos</h2>
+        <p class="auth-subtitle">Enviamos un código de 6 dígitos a <strong>{{ desafio()!.email }}</strong>. Vence en 10 minutos.</p>
+
+        <form class="auth-form" (ngSubmit)="verificar()" novalidate>
+          <div class="form-group">
+            <label class="form-label" for="codigo">Código de verificación</label>
+            <input id="codigo" class="form-input otp-input" [formControl]="codigo" inputmode="numeric" autocomplete="one-time-code"
+                   maxlength="6" placeholder="••••••" autofocus />
+            <app-campo-error [control]="codigo" />
+          </div>
+          @if (error()) { <div class="alert danger" role="alert"><mat-icon>warning</mat-icon><span>{{ error() }}</span></div> }
+          <button type="submit" class="btn btn-primary btn-lg btn-block" [disabled]="cargando()">
+            @if (cargando()) { <mat-icon class="spin">sync</mat-icon> } Verificar e ingresar
+          </button>
+          <div class="row-between small">
+            <button type="button" class="btn-link" (click)="volver()"><mat-icon>chevron_left</mat-icon>Usar otra cuenta</button>
+            <button type="button" class="btn-link" (click)="reenviar()" [disabled]="espera() > 0">
+              {{ espera() > 0 ? 'Reenviar en ' + espera() + ' s' : 'Reenviar código' }}
+            </button>
+          </div>
+        </form>
+      }
+
+      <a routerLink="/" class="back-link"><mat-icon>chevron_left</mat-icon> Volver al inicio</a>
+    </div>
+  </div>
+</div>

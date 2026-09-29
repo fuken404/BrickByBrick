@@ -1,0 +1,95 @@
+<div class="page perfil-publico">
+  @if (cargando()) {
+    <div class="card card-pad-lg center muted"><mat-icon class="spin">sync</mat-icon></div>
+  } @else if (!perfil()) {
+    <div class="card"><app-empty-state icon="person_off" title="Perfil no disponible" description="El usuario no existe o eliminó su cuenta." /></div>
+  } @else {
+    @let p = perfil()!;
+    <section class="perfil-hero card">
+      <div class="portada" [class.empresa]="p.rol === 'CONSTRUCTORA'"></div>
+      <div class="hero-contenido">
+        <app-avatar [name]="p.nombre" [src]="p.avatarUrl" [size]="96" class="avatar-hero" />
+        <div class="hero-datos">
+          <div class="row">
+            <h1>{{ p.nombre }}</h1>
+            @if (p.verificada) { <span class="badge badge-verificado"><mat-icon>verified</mat-icon>Empresa verificada</span> }
+            @if (p.esAlimentadorWeb) { <span class="badge badge-warning">Creador destacado</span> }
+            @if (p.suspendido) { <span class="badge badge-rechazado">Cuenta suspendida</span> }
+          </div>
+          <p class="muted small">{{ p.rol | etiqueta:'rol' }} · en BrickByBrick desde {{ p.miembroDesde | date:'MMMM yyyy' }}
+            @if (p.portafolio?.localidad || p.empresa?.localidad) { · <mat-icon class="ico">location_on</mat-icon>{{ p.portafolio?.localidad?.nombre ?? p.empresa?.localidad?.nombre }} }
+          </p>
+          <div class="contadores">
+            <button type="button" (click)="cambiar('publicaciones')"><strong>{{ p.publicaciones }}</strong> publicaciones</button>
+            <button type="button" (click)="cambiar('seguidores')"><strong>{{ p.seguidores }}</strong> seguidores</button>
+            <button type="button" (click)="cambiar('siguiendo')"><strong>{{ p.siguiendo }}</strong> siguiendo</button>
+            @if (p.empresa) { <span><strong>{{ p.empresa.entregas }}</strong> donaciones entregadas</span> }
+          </div>
+        </div>
+        <div class="hero-acciones">
+          @if (p.esPropio) {
+            <a class="btn btn-secondary btn-sm" [routerLink]="[auth.prefijo(), 'perfil']"><mat-icon>edit</mat-icon>Editar perfil</a>
+          } @else if (!p.suspendido) {
+            <button type="button" class="btn btn-sm" [class.btn-primary]="!p.siguiendoPorMi" [class.btn-secondary]="p.siguiendoPorMi"
+                    (click)="alternarSeguir()" [disabled]="procesando()">
+              <mat-icon>{{ p.siguiendoPorMi ? 'how_to_reg' : 'person_add' }}</mat-icon>{{ p.siguiendoPorMi ? 'Siguiendo' : 'Seguir' }}
+            </button>
+            <button type="button" class="btn btn-sm btn-ghost" (click)="escribir()"><mat-icon>chat</mat-icon>Enviar mensaje</button>
+            <button type="button" class="icon-btn" (click)="reportar()" aria-label="Reportar usuario"><mat-icon>flag</mat-icon></button>
+          }
+        </div>
+      </div>
+
+      @if (p.portafolio && (p.portafolio.nombreEmprendimiento || p.portafolio.bio)) {
+        <div class="bio">
+          @if (p.portafolio.nombreEmprendimiento) { <h3><mat-icon>storefront</mat-icon>{{ p.portafolio.nombreEmprendimiento }}</h3> }
+          @if (p.portafolio.bio) { <p class="pre-line">{{ p.portafolio.bio }}</p> }
+          @if (p.esPropio && !p.portafolio.publico) { <p class="xsmall muted mt-8"><mat-icon class="ico">lock</mat-icon>Tu portafolio es privado; actívalo desde tu perfil para que otros lo vean.</p> }
+        </div>
+      }
+      @if (p.empresa) {
+        <div class="bio">
+          @if (p.empresa.descripcion) { <p class="pre-line">{{ p.empresa.descripcion }}</p> }
+          @if (p.empresa.sitioWeb) { <a class="btn-link mt-8" [href]="p.empresa.sitioWeb" target="_blank" rel="noopener"><mat-icon>language</mat-icon>{{ p.empresa.sitioWeb }}</a> }
+        </div>
+      }
+    </section>
+
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab" role="tab" [class.active]="pestana() === 'publicaciones'" (click)="cambiar('publicaciones')">{{ p.portafolio ? 'Portafolio y publicaciones' : 'Publicaciones' }}</button>
+      @if (p.empresa) { <button type="button" class="tab" role="tab" [class.active]="pestana() === 'materiales'" (click)="cambiar('materiales')">Materiales disponibles <span class="count">{{ p.empresa.materialesActivos }}</span></button> }
+      <button type="button" class="tab" role="tab" [class.active]="pestana() === 'seguidores'" (click)="cambiar('seguidores')">Seguidores</button>
+      <button type="button" class="tab" role="tab" [class.active]="pestana() === 'siguiendo'" (click)="cambiar('siguiendo')">Siguiendo</button>
+    </div>
+
+    @switch (pestana()) {
+      @case ('publicaciones') {
+        <div class="stack contenido-estrecho">
+          @for (pub of publicaciones(); track pub.id) {
+            <app-post-card [publicacion]="pub" (cambiada)="reemplazar($event)" (eliminada)="quitar($event)" />
+          } @empty {
+            <div class="card"><app-empty-state icon="article" title="Sin publicaciones todavía" [compacto]="true" /></div>
+          }
+        </div>
+      }
+      @case ('materiales') {
+        <div class="grid-cards">
+          @for (m of listaMateriales(); track m.id) { <app-material-card [material]="m" (abrir)="abrirMaterial($event)" /> }
+          @empty { <div class="card"><app-empty-state icon="inventory_2" title="Sin materiales disponibles" [compacto]="true" /></div> }
+        </div>
+      }
+      @default {
+        <ul class="list-card contenido-estrecho">
+          @for (u of personas(); track u.id) {
+            <li class="list-item">
+              <a [routerLink]="[auth.prefijo(), 'usuarios', u.id]"><app-avatar [name]="u.nombre" [src]="u.avatarUrl" [size]="40" /></a>
+              <div class="grow"><a class="strong link-plano" [routerLink]="[auth.prefijo(), 'usuarios', u.id]">{{ u.nombre }}</a>
+                <div class="xsmall muted">{{ u.rol | etiqueta:'rol' }}</div></div>
+              @if (u.siguiendoPorMi) { <span class="badge badge-secundario">Lo sigues</span> }
+            </li>
+          } @empty { <li class="list-item muted">No hay personas para mostrar.</li> }
+        </ul>
+      }
+    }
+  }
+</div>

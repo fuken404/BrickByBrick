@@ -1,150 +1,67 @@
-import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-
 import { EventApiService } from '../../../core/services/event-api.service';
-import { Evento } from '../../../core/models';
-import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
+import { Evento, FiltrosEvento } from '../../../core/models';
+import { EventCardComponent } from '../../../shared/components/event-card/event-card.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { ConfirmationModalComponent } from '../../../shared/components/confirmation-modal/confirmation-modal.component';
+import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
+
+type Alcance = NonNullable<FiltrosEvento['alcance']>;
 
 @Component({
   selector: 'app-empresa-eventos',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule, SkeletonLoaderComponent, EmptyStateComponent, ConfirmationModalComponent],
+  imports: [RouterLink, MatIconModule, EventCardComponent, EmptyStateComponent, SkeletonLoaderComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
-      <div class="page-header-row">
-        <div>
-          <h1 class="page-title">Mis eventos</h1>
-          <p class="page-subtitle">{{ total() }} eventos creados</p>
-        </div>
-        <a routerLink="/empresa/eventos/nuevo" class="btn btn-primary">
-          <mat-icon>add</mat-icon> Nuevo evento
-        </a>
+      <header class="page-header">
+        <div><h1 class="page-title">Mis eventos</h1><p class="page-subtitle">Organiza entregas masivas, talleres y ferias para la comunidad.</p></div>
+        <div class="actions"><a class="btn btn-primary" routerLink="/empresa/eventos/nuevo"><mat-icon>add</mat-icon>Crear evento</a></div>
+      </header>
+      <div class="tabs">
+        <button type="button" class="tab" [class.active]="alcance() === 'proximos'" (click)="cambiar('proximos')">Próximos</button>
+        <button type="button" class="tab" [class.active]="alcance() === 'pasados'" (click)="cambiar('pasados')">Pasados</button>
+        <button type="button" class="tab" [class.active]="alcance() === 'todos'" (click)="cambiar('todos')">Todos</button>
       </div>
-
-      @if (loading()) {
-        <app-skeleton-loader type="list" [count]="5" />
-      } @else if (eventos().length === 0) {
-        <app-empty-state
-          icon="event_busy"
-          title="Sin eventos"
-          description="Crea eventos para conectar con beneficiarios."
-          actionLabel="Crear evento"
-          [actionFn]="irANuevo.bind(this)"
-        />
+      @if (cargando()) {
+        <app-skeleton-loader type="card" [count]="6" />
+      } @else if (!items().length) {
+        <div class="card"><app-empty-state icon="event" title="No hay eventos aquí" description="Crea un evento para entregar materiales a varios beneficiarios a la vez."
+          actionLabel="Crear evento" (accion)="router.navigate(['/empresa/eventos/nuevo'])" /></div>
       } @else {
-        <div class="eventos-list">
-          @for (e of eventos(); track e.id) {
-            <div class="evento-card card">
-              <div class="evento-img-wrap">
-                @if (e.imagenUrl) {
-                  <img [src]="e.imagenUrl" [alt]="e.nombre" class="evento-img" />
-                } @else {
-                  <div class="evento-img-ph"><mat-icon>event</mat-icon></div>
-                }
-              </div>
-              <div class="evento-info">
-                <div class="evento-tipo">{{ tipoLabel(e.tipoEvento) }}</div>
-                <h3 class="evento-nombre">{{ e.nombre }}</h3>
-                <div class="evento-meta">
-                  <span><mat-icon>calendar_today</mat-icon> {{ e.fechaInicio | date:'dd/MM/yyyy HH:mm' }}</span>
-                  @if (e.direccion) {
-                    <span><mat-icon>location_on</mat-icon> {{ e.direccion }}</span>
-                  }
-                  <span><mat-icon>people</mat-icon> {{ e._count.inscripciones }} inscritos
-                    @if (e.capacidadMaxima) { / {{ e.capacidadMaxima }} max }
-                  </span>
-                </div>
-              </div>
-              <div class="evento-actions">
-                <span class="estado-pill estado-{{ e.estado }}">{{ e.estado }}</span>
-                <a [routerLink]="['/empresa/eventos', e.id, 'editar']" class="action-btn" title="Editar">
-                  <mat-icon>edit</mat-icon>
-                </a>
-                @if (e.estado === 'borrador') {
-                  <button class="action-btn success" (click)="publicar(e)" title="Publicar">
-                    <mat-icon>publish</mat-icon>
-                  </button>
-                }
-                @if (e.estado === 'publicado') {
-                  <button class="action-btn warning" (click)="cambiarEstado(e, 'cancelado')" title="Cancelar evento">
-                    <mat-icon>cancel</mat-icon>
-                  </button>
-                }
-                <button class="action-btn danger" (click)="eventoAEliminar.set(e)" title="Eliminar">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
-            </div>
-          }
+        <div class="grid-cards">
+          @for (e of items(); track e.id) { <app-event-card [evento]="e" [mostrarEstado]="true" (abrir)="router.navigate(['/empresa/eventos', $event.id])" /> }
         </div>
-      }
-
-      @if (eventoAEliminar()) {
-        <app-confirmation-modal
-          title="Eliminar evento"
-          [message]="'¿Eliminar ' + eventoAEliminar()!.nombre + '? Esta acción no se puede deshacer.'"
-          confirmLabel="Eliminar"
-          [dangerous]="true"
-          (confirmed)="eliminar()"
-          (cancelled)="eventoAEliminar.set(null)"
-        />
+        @if (hayMas()) { <div class="load-more"><button type="button" class="btn btn-ghost" (click)="cargar(true)">Cargar más</button></div> }
       }
     </div>
   `,
-  styleUrl: './eventos.component.scss',
 })
 export class EmpresaEventosComponent implements OnInit {
-  private readonly eventSvc = inject(EventApiService);
-  private readonly router   = inject(Router);
+  private readonly api = inject(EventApiService);
+  protected readonly router = inject(Router);
+  protected readonly alcance = signal<Alcance>('proximos');
+  protected readonly items = signal<Evento[]>([]);
+  protected readonly cargando = signal(true);
+  protected readonly hayMas = signal(false);
+  private pagina = 1;
 
-  readonly eventos         = signal<Evento[]>([]);
-  readonly loading         = signal(true);
-  readonly total           = signal(0);
-  readonly eventoAEliminar = signal<Evento | null>(null);
+  ngOnInit(): void { this.cargar(); }
 
-  readonly tipoLabels: Record<string, string> = {
-    entrega_masiva: 'Entrega masiva',
-    taller:         'Taller',
-    feria:          'Feria',
-    otro:           'Otro',
-  };
+  cambiar(a: Alcance): void { this.alcance.set(a); this.cargar(); }
 
-  tipoLabel(t: string) { return this.tipoLabels[t] ?? t; }
-
-  ngOnInit() {
-    this.eventSvc.getMisEventos({ limit: 50 }).subscribe({
-      next: r => { this.eventos.set(r.data.items); this.total.set(r.data.total); this.loading.set(false); },
-      error: () => this.loading.set(false),
-    });
-  }
-
-  irANuevo() { this.router.navigate(['/empresa/eventos/nuevo']); }
-
-  publicar(e: Evento) { this.cambiarEstado(e, 'publicado'); }
-
-  cambiarEstado(e: Evento, estado: string) {
-    this.eventSvc.update(e.id, { estado: estado as Evento['estado'] }).subscribe({
-      next: () => {
-        this.eventos.update(list =>
-          list.map(x => x.id === e.id ? { ...x, estado: estado as Evento['estado'] } : x)
-        );
+  cargar(mas = false): void {
+    this.pagina = mas ? this.pagina + 1 : 1;
+    if (!mas) this.cargando.set(true);
+    this.api.misEventos({ alcance: this.alcance(), page: this.pagina, limit: 12 }).subscribe({
+      next: (r) => {
+        this.items.update((l) => (mas ? [...l, ...r.data.items] : r.data.items));
+        this.hayMas.set(r.data.page < r.data.totalPages);
+        this.cargando.set(false);
       },
-    });
-  }
-
-  eliminar() {
-    const e = this.eventoAEliminar();
-    if (!e) return;
-    this.eventSvc.delete(e.id).subscribe({
-      next: () => {
-        this.eventos.update(list => list.filter(x => x.id !== e.id));
-        this.eventoAEliminar.set(null);
-      },
+      error: () => this.cargando.set(false),
     });
   }
 }

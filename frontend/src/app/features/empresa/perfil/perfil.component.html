@@ -1,0 +1,119 @@
+<div class="page" style="max-width:920px">
+  @if (!me()) {
+    <div class="card card-pad-lg center muted"><mat-icon class="spin">sync</mat-icon></div>
+  } @else {
+    @let m = me()!;
+    @let c = m.constructora;
+    <header class="card card-pad-lg row" style="gap:20px;flex-wrap:wrap">
+      <label style="position:relative;cursor:pointer" title="Cambiar logo">
+        <app-avatar [name]="c?.razonSocial ?? m.email" [src]="c?.logoUrl" [size]="84" />
+        <span class="icon-btn" style="position:absolute;right:-4px;bottom:-4px;background:var(--bg-card);box-shadow:0 1px 4px rgba(0,0,0,.2)">
+          <mat-icon [class.spin]="subiendo() === 'logo'">{{ subiendo() === 'logo' ? 'sync' : 'photo_camera' }}</mat-icon>
+        </span>
+        <input type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" (change)="subirLogo($event)" aria-label="Cambiar logo" />
+      </label>
+      <div class="grow">
+        <h1 class="page-title">{{ c?.razonSocial }}</h1>
+        <p class="muted small">NIT {{ c?.nit }} · {{ c?.localidad?.nombre ?? 'Sin localidad' }}</p>
+        @if (c?.verificada) {
+          <span class="badge badge-verificado mt-4"><mat-icon style="font-size:14px;width:14px;height:14px">verified</mat-icon>Verificada {{ c?.fechaVerificacion ? ('desde ' + (c?.fechaVerificacion | date:'mediumDate')) : '' }}</span>
+        } @else {
+          <span class="badge badge-pendiente-verificacion mt-4">Verificación pendiente</span>
+        }
+      </div>
+      <a class="btn btn-ghost btn-sm" [routerLink]="['/empresa/usuarios', m.id]"><mat-icon>visibility</mat-icon>Ver perfil público</a>
+    </header>
+
+    @if (!c?.verificada && c?.motivoRechazo) {
+      <div class="alert danger mt-16"><mat-icon>error</mat-icon><span><strong>La verificación fue rechazada:</strong> {{ c?.motivoRechazo }}. Corrige los documentos y vuelve a subirlos.</span></div>
+    }
+
+    <div class="tabs mt-16" role="tablist">
+      <button type="button" role="tab" class="tab" [class.active]="pestana() === 'empresa'" (click)="pestana.set('empresa')">Empresa</button>
+      <button type="button" role="tab" class="tab" [class.active]="pestana() === 'documentos'" (click)="pestana.set('documentos')">Documentos</button>
+      <button type="button" role="tab" class="tab" [class.active]="pestana() === 'seguridad'" (click)="pestana.set('seguridad')">Cuenta y seguridad</button>
+    </div>
+
+    @switch (pestana()) {
+      @case ('empresa') {
+        <form class="card card-pad-lg stack" [formGroup]="form" (ngSubmit)="guardar()">
+          <div class="form-grid">
+            <div class="form-group span-2">
+              <label class="form-label" for="c-razon">Razón social</label>
+              <input id="c-razon" class="form-input" formControlName="razonSocial" />
+              <app-campo-error [control]="form.controls.razonSocial" [servidor]="errores()['razonSocial']" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="c-nit">NIT</label>
+              <input id="c-nit" class="form-input" [value]="c?.nit" disabled />
+              <span class="form-hint">Para corregirlo escribe a soporte.</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="c-emp">Número de empleados</label>
+              <input id="c-emp" type="number" min="1" class="form-input" formControlName="numEmpleados" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="c-rep">Representante legal</label>
+              <input id="c-rep" class="form-input" formControlName="representanteLegal" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="c-cargo">Cargo</label>
+              <input id="c-cargo" class="form-input" formControlName="cargoRepresentante" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="c-dir">Dirección</label>
+              <input id="c-dir" class="form-input" formControlName="direccion" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="c-loc">Localidad</label>
+              <select id="c-loc" class="form-select" formControlName="localidadId">
+                <option [ngValue]="null">Sin especificar</option>
+                @for (l of catalogo.localidades(); track l.id) { <option [ngValue]="l.id">{{ l.nombre }}</option> }
+              </select>
+            </div>
+            <div class="form-group span-2">
+              <label class="form-label" for="c-web">Sitio web</label>
+              <input id="c-web" class="form-input" formControlName="sitioWeb" placeholder="https://" />
+              @if (form.controls.sitioWeb.touched && form.controls.sitioWeb.invalid) { <span class="form-error">Incluye https://</span> }
+              <app-campo-error [servidor]="errores()['sitioWeb']" />
+            </div>
+            <div class="form-group span-2">
+              <label class="form-label" for="c-desc">Descripción</label>
+              <textarea id="c-desc" class="form-textarea" rows="4" formControlName="descripcion" placeholder="Cuéntale a la comunidad sobre tu empresa y sus proyectos."></textarea>
+            </div>
+          </div>
+          <div class="form-actions"><button type="submit" class="btn btn-primary" [disabled]="guardando() || form.pristine">Guardar cambios</button></div>
+        </form>
+      }
+      @case ('documentos') {
+        <div class="stack">
+          <p class="small muted">El equipo de BrickByBrick revisa el RUT y la Cámara de Comercio (vigencia no mayor a 30 días) para verificar tu empresa. Formatos: PDF, JPG o PNG, máx. 10 MB.</p>
+          @for (d of documentos(); track d.tipo) {
+            <div class="card card-pad-lg stack-sm">
+              <div class="row-between">
+                <h3>{{ d.tipo | etiqueta:'documento' }}</h3>
+                @if (d.actual; as doc) { @let b = doc.estado | estadoBadge:'documento'; <span class="badge" [class]="b.cssClass">{{ b.label }}</span> }
+                @else { <span class="badge badge-warning">Sin cargar</span> }
+              </div>
+              @if (d.actual; as doc) {
+                <p class="small muted">Subido el {{ doc.fechaSubida | date:'mediumDate' }}{{ doc.revisadoEn ? ' · revisado el ' + (doc.revisadoEn | date:'mediumDate') : '' }}</p>
+                @if (doc.estado === 'rechazado' && doc.motivoRechazo) { <div class="alert danger"><mat-icon>info</mat-icon><span>{{ doc.motivoRechazo }}</span></div> }
+                <a class="btn-link small" [href]="doc.url | uploadUrl" target="_blank" rel="noopener"><mat-icon>open_in_new</mat-icon>Ver documento</a>
+              }
+              @if (!d.actual || d.actual.estado !== 'aprobado') {
+                <label class="btn btn-sm btn-secondary" style="align-self:flex-start">
+                  <mat-icon [class.spin]="subiendo() === d.tipo">{{ subiendo() === d.tipo ? 'sync' : 'upload_file' }}</mat-icon>
+                  {{ d.actual ? 'Subir nueva versión' : 'Subir documento' }}
+                  <input type="file" accept="application/pdf,image/jpeg,image/png" class="sr-only" (change)="subirDocumento(d.tipo, $event)" />
+                </label>
+              }
+            </div>
+          }
+        </div>
+      }
+      @case ('seguridad') {
+        <div class="stack"><app-seguridad-cuenta [me]="m" (cambiado)="cuentaCambiada($event)" /></div>
+      }
+    }
+  }
+</div>

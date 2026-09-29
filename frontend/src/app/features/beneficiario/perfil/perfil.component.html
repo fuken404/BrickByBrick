@@ -1,0 +1,103 @@
+<div class="page" style="max-width:900px">
+  @if (!me()) {
+    <div class="card card-pad-lg center muted"><mat-icon class="spin">sync</mat-icon></div>
+  } @else {
+    @let m = me()!;
+    @let b = m.beneficiario;
+    <header class="card card-pad-lg row" style="gap:20px;flex-wrap:wrap">
+      <label class="avatar-edit" style="position:relative;cursor:pointer" title="Cambiar foto">
+        <app-avatar [name]="b?.nombreCompleto ?? m.email" [src]="m.avatarUrl" [size]="84" />
+        <span class="icon-btn" style="position:absolute;right:-4px;bottom:-4px;background:var(--bg-card);box-shadow:0 1px 4px rgba(0,0,0,.2)">
+          <mat-icon [class.spin]="subiendoAvatar()">{{ subiendoAvatar() ? 'sync' : 'photo_camera' }}</mat-icon>
+        </span>
+        <input type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" (change)="subirAvatar($event)" aria-label="Cambiar foto de perfil" />
+      </label>
+      <div class="grow">
+        <h1 class="page-title">{{ b?.nombreCompleto }}</h1>
+        <p class="muted small">C.C. {{ b?.cedula }} · {{ b?.localidad?.nombre ?? 'Sin localidad' }}</p>
+        @if (b?.esAlimentadorWeb) { <span class="badge badge-secundario mt-4"><mat-icon style="font-size:14px;width:14px;height:14px">auto_awesome</mat-icon>Creador destacado</span> }
+      </div>
+      <a class="btn btn-ghost btn-sm" [routerLink]="['/beneficiario/usuarios', m.id]"><mat-icon>visibility</mat-icon>Ver mi perfil público</a>
+    </header>
+
+    <div class="tabs mt-16" role="tablist">
+      <button type="button" role="tab" class="tab" [class.active]="pestana() === 'datos'" (click)="pestana.set('datos')">Datos personales</button>
+      <button type="button" role="tab" class="tab" [class.active]="pestana() === 'portafolio'" (click)="pestana.set('portafolio')">Portafolio</button>
+      <button type="button" role="tab" class="tab" [class.active]="pestana() === 'seguridad'" (click)="pestana.set('seguridad')">Cuenta y seguridad</button>
+    </div>
+
+    @switch (pestana()) {
+      @case ('datos') {
+        <form class="card card-pad-lg stack" [formGroup]="datos" (ngSubmit)="guardarDatos()">
+          <div class="form-grid">
+            <div class="form-group span-2">
+              <label class="form-label" for="p-nombre">Nombre completo</label>
+              <input id="p-nombre" class="form-input" formControlName="nombreCompleto" autocomplete="name" />
+              <app-campo-error [control]="datos.controls.nombreCompleto" [servidor]="errores()['nombreCompleto']" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="p-cedula">Cédula</label>
+              <input id="p-cedula" class="form-input" [value]="b?.cedula" disabled />
+              <span class="form-hint">Para corregirla escribe a soporte.</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="p-fecha">Fecha de nacimiento</label>
+              <input id="p-fecha" type="date" class="form-input" formControlName="fechaNacimiento" />
+              <app-campo-error [control]="datos.controls.fechaNacimiento" [servidor]="errores()['fechaNacimiento']" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="p-genero">Género</label>
+              <select id="p-genero" class="form-select" formControlName="genero">
+                <option value="">Sin especificar</option>
+                <option value="femenino">Femenino</option>
+                <option value="masculino">Masculino</option>
+                <option value="no_binario">No binario</option>
+                <option value="prefiero_no_decir">Prefiero no decir</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="p-estrato">Estrato</label>
+              <select id="p-estrato" class="form-select" formControlName="estrato">
+                <option [ngValue]="null">Sin especificar</option>
+                @for (e of [1,2,3,4,5,6]; track e) { <option [ngValue]="e">{{ e }}</option> }
+              </select>
+            </div>
+            <div class="form-group span-2">
+              <label class="form-label" for="p-loc">Localidad</label>
+              <select id="p-loc" class="form-select" formControlName="localidadId">
+                <option [ngValue]="null" disabled>Selecciona tu localidad</option>
+                @for (l of catalogo.localidades(); track l.id) { <option [ngValue]="l.id">{{ l.nombre }}</option> }
+              </select>
+              <span class="form-hint">Te avisaremos de eventos en tu localidad.</span>
+              <app-campo-error [control]="datos.controls.localidadId" />
+            </div>
+          </div>
+          <div class="form-actions"><button type="submit" class="btn btn-primary" [disabled]="guardando() || datos.pristine">Guardar cambios</button></div>
+        </form>
+      }
+      @case ('portafolio') {
+        <form class="card card-pad-lg stack" [formGroup]="portafolio" (ngSubmit)="guardarPortafolio()">
+          <p class="small muted">Muestra tu emprendimiento o proyecto en tu perfil público. Tus publicaciones de la comunidad aparecen ahí automáticamente.</p>
+          <div class="form-group">
+            <label class="form-label" for="pf-nombre">Nombre del emprendimiento</label>
+            <input id="pf-nombre" class="form-input" formControlName="nombreEmprendimiento" placeholder="Ej: Taller Reutiliza" />
+            <app-campo-error [control]="portafolio.controls.nombreEmprendimiento" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="pf-bio">Descripción</label>
+            <textarea id="pf-bio" class="form-textarea" rows="5" formControlName="bioPublica" placeholder="¿Qué haces con los materiales reutilizados?"></textarea>
+            <app-campo-error [control]="portafolio.controls.bioPublica" />
+          </div>
+          <label class="switch-row">
+            <span><strong>Portafolio público</strong><br /><span class="small muted">Visible para cualquier usuario de la plataforma.</span></span>
+            <input type="checkbox" role="switch" formControlName="portafolioPublico" />
+          </label>
+          <div class="form-actions"><button type="submit" class="btn btn-primary" [disabled]="guardando() || portafolio.pristine">Guardar portafolio</button></div>
+        </form>
+      }
+      @case ('seguridad') {
+        <div class="stack"><app-seguridad-cuenta [me]="m" (cambiado)="cuentaCambiada($event)" /></div>
+      }
+    }
+  }
+</div>

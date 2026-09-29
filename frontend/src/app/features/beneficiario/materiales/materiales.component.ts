@@ -1,167 +1,150 @@
-import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { Router } from '@angular/router';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-
+import { Subject, debounceTime } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MaterialApiService } from '../../../core/services/material-api.service';
-import { Material, FiltrosMaterial } from '../../../core/models';
+import { CatalogStore } from '../../../core/stores/catalog.store';
+import { AuthStore } from '../../../core/auth/auth.store';
+import { EstadoMaterial, FiltrosMaterial, Material } from '../../../core/models';
 import { MaterialCardComponent } from '../../../shared/components/material-card/material-card.component';
-import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
 
-interface CatItem { id: number; nombre: string; }
-
+/** Catálogo de materiales disponibles (beneficiario). */
 @Component({
   selector: 'app-materiales',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, MaterialCardComponent, SkeletonLoaderComponent, EmptyStateComponent],
+  imports: [FormsModule, MatIconModule, MaterialCardComponent, EmptyStateComponent, SkeletonLoaderComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
-      <div class="page-header">
-        <h1 class="page-title">Materiales disponibles</h1>
-        <p class="page-subtitle">{{ total() }} materiales encontrados</p>
-      </div>
-
-      <div class="filters-bar card">
-        <div class="search-wrap">
-          <mat-icon class="search-icon">search</mat-icon>
-          <input class="search-input" type="text" placeholder="Buscar materiales..."
-                 [(ngModel)]="query" (input)="onSearch()" />
-          @if (query) {
-            <button class="clear-btn" (click)="query=''; onSearch()"><mat-icon>close</mat-icon></button>
-          }
+      <header class="page-header">
+        <div>
+          <h1 class="page-title">Materiales disponibles</h1>
+          <p class="page-subtitle">{{ total() }} material(es) donados por constructoras verificadas.</p>
         </div>
+      </header>
 
-        <div class="filter-chips">
-          <button class="chip" [class.active]="!filtros().categoriaId" (click)="setCat(undefined)">
-            Todos
-          </button>
-          @for (c of categorias; track c.id) {
-            <button class="chip" [class.active]="filtros().categoriaId === c.id" (click)="setCat(c.id)">
-              {{ c.nombre }}
-            </button>
-          }
-        </div>
-
-        <select class="select-sm" [(ngModel)]="estadoMat" (change)="applyFilters()">
-          <option value="">Cualquier estado</option>
-          <option value="nuevo">Nuevo</option>
-          <option value="buen_estado">Buen estado</option>
-          <option value="usado">Usado</option>
-        </select>
-      </div>
-
-      @if (loading()) {
-        <app-skeleton-loader type="card" [count]="8" />
-      } @else if (materiales().length === 0) {
-        <app-empty-state
-          icon="inventory_2"
-          title="Sin resultados"
-          description="No encontramos materiales con ese filtro."
-          actionLabel="Limpiar filtros"
-          [actionFn]="resetFiltros.bind(this)"
-        />
-      } @else {
-        <div class="grid">
-          @for (m of materiales(); track m.id) {
-            <app-material-card [material]="m" (clicked)="goToDetalle($event)" />
-          }
-        </div>
-
-        @if (hasMore()) {
-          <div class="load-more">
-            <button class="btn btn-ghost" (click)="loadMore()" [disabled]="loadingMore()">
-              {{ loadingMore() ? 'Cargando...' : 'Cargar más' }}
-            </button>
+      <div class="card card-pad stack-sm">
+        <div class="toolbar">
+          <div class="search grow">
+            <mat-icon>search</mat-icon>
+            <input class="form-input" [(ngModel)]="q" (ngModelChange)="buscar$.next()" placeholder="Buscar por nombre o descripción…" aria-label="Buscar materiales" />
           </div>
+          <select class="form-select" [(ngModel)]="localidadId" (ngModelChange)="cargar()" aria-label="Localidad">
+            <option [ngValue]="undefined">Todas las localidades</option>
+            @for (l of catalogo.localidades(); track l.id) { <option [ngValue]="l.id">{{ l.nombre }}</option> }
+          </select>
+          <select class="form-select" [(ngModel)]="estadoMaterial" (ngModelChange)="cargar()" aria-label="Estado del material">
+            <option [ngValue]="undefined">Cualquier estado</option>
+            <option value="nuevo">Nuevo</option>
+            <option value="buen_estado">Buen estado</option>
+            <option value="usado">Usado</option>
+          </select>
+          <select class="form-select" [(ngModel)]="orden" (ngModelChange)="cargar()" aria-label="Ordenar">
+            <option value="recientes">Más recientes</option>
+            <option value="vencen">Próximos a vencer</option>
+            <option value="cantidad">Mayor cantidad</option>
+          </select>
+        </div>
+        <div class="chips" role="group" aria-label="Categorías">
+          <button type="button" class="chip" [class.active]="!categoriaId" (click)="categoria(undefined)">Todas</button>
+          @for (c of catalogo.categorias(); track c.id) {
+            <button type="button" class="chip" [class.active]="categoriaId === c.id" (click)="categoria(c.id)">
+              <mat-icon [style.color]="c.colorHex">{{ c.icono }}</mat-icon>{{ c.nombre }}
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (cargando()) {
+        <app-skeleton-loader type="card" [count]="8" />
+      } @else if (!items().length) {
+        <div class="card">
+          <app-empty-state icon="search_off" title="No encontramos materiales" description="Prueba con otros filtros o vuelve pronto: las constructoras publican material nuevo constantemente."
+            [actionLabel]="hayFiltros() ? 'Limpiar filtros' : null" (accion)="limpiar()" />
+        </div>
+      } @else {
+        <div class="grid-cards">
+          @for (m of items(); track m.id) { <app-material-card [material]="m" (abrir)="abrir($event)" /> }
+        </div>
+        @if (hayMas()) {
+          <div class="load-more"><button type="button" class="btn btn-ghost" (click)="cargar(true)" [disabled]="cargandoMas()">Cargar más</button></div>
         }
       }
     </div>
   `,
-  styleUrl: './materiales.component.scss',
 })
 export class MaterialesComponent implements OnInit {
-  private readonly matSvc = inject(MaterialApiService);
+  private readonly api = inject(MaterialApiService);
+  protected readonly catalogo = inject(CatalogStore);
+  private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
-  readonly materiales  = signal<Material[]>([]);
-  readonly loading     = signal(true);
-  readonly loadingMore = signal(false);
-  readonly total       = signal(0);
-  readonly filtros     = signal<FiltrosMaterial>({ page: 1, limit: 12 });
+  protected readonly items = signal<Material[]>([]);
+  protected readonly total = signal(0);
+  protected readonly cargando = signal(true);
+  protected readonly cargandoMas = signal(false);
+  protected readonly hayMas = signal(false);
+  protected readonly buscar$ = new Subject<void>();
 
-  query     = '';
-  estadoMat = '';
-  private searchTimer: ReturnType<typeof setTimeout> | null = null;
+  protected q = '';
+  protected categoriaId?: number;
+  protected localidadId?: number;
+  protected estadoMaterial?: EstadoMaterial;
+  protected orden: NonNullable<FiltrosMaterial['orden']> = 'recientes';
+  private pagina = 1;
 
-  readonly categorias: CatItem[] = [
-    { id: 1,  nombre: 'Ladrillo' },
-    { id: 2,  nombre: 'Cemento' },
-    { id: 3,  nombre: 'Arena/Grava' },
-    { id: 4,  nombre: 'Madera' },
-    { id: 5,  nombre: 'Hierro/Acero' },
-    { id: 6,  nombre: 'Cerámica' },
-    { id: 7,  nombre: 'Pintura' },
-    { id: 8,  nombre: 'Ventanas/Puertas' },
-    { id: 9,  nombre: 'Plomería' },
-    { id: 10, nombre: 'Eléctrico' },
-  ];
+  constructor() {
+    this.buscar$.pipe(debounceTime(350), takeUntilDestroyed()).subscribe(() => this.cargar());
+  }
 
-  hasMore() { return this.materiales().length < this.total(); }
+  ngOnInit(): void {
+    this.catalogo.cargarTodo();
+    const params = this.route.snapshot.queryParamMap;
+    this.q = params.get('q') ?? '';
+    const cat = Number(params.get('categoriaId'));
+    if (cat) this.categoriaId = cat;
+    this.cargar();
+  }
 
-  ngOnInit() { this.load(); }
+  hayFiltros(): boolean {
+    return !!(this.q || this.categoriaId || this.localidadId || this.estadoMaterial);
+  }
 
-  private load(append = false) {
-    if (append) this.loadingMore.set(true);
-    else        this.loading.set(true);
+  categoria(id: number | undefined): void {
+    this.categoriaId = id;
+    this.cargar();
+  }
 
-    this.matSvc.getAll(this.filtros()).subscribe({
-      next: r => {
-        const items = r.data.items;
-        this.materiales.update(prev => append ? [...prev, ...items] : items);
+  limpiar(): void {
+    this.q = '';
+    this.categoriaId = this.localidadId = this.estadoMaterial = undefined;
+    this.cargar();
+  }
+
+  cargar(mas = false): void {
+    this.pagina = mas ? this.pagina + 1 : 1;
+    (mas ? this.cargandoMas : this.cargando).set(true);
+    this.api.catalogo({
+      q: this.q.trim() || undefined, categoriaId: this.categoriaId, localidadId: this.localidadId,
+      estadoMaterial: this.estadoMaterial, orden: this.orden, page: this.pagina, limit: 12,
+    }).subscribe({
+      next: (r) => {
+        this.items.update((l) => (mas ? [...l, ...r.data.items] : r.data.items));
         this.total.set(r.data.total);
-        this.loading.set(false);
-        this.loadingMore.set(false);
+        this.hayMas.set(r.data.page < r.data.totalPages);
+        this.cargando.set(false);
+        this.cargandoMas.set(false);
       },
-      error: () => { this.loading.set(false); this.loadingMore.set(false); },
+      error: () => { this.cargando.set(false); this.cargandoMas.set(false); },
     });
   }
 
-  onSearch() {
-    if (this.searchTimer) clearTimeout(this.searchTimer);
-    this.searchTimer = setTimeout(() => this.applyFilters(), 400);
-  }
-
-  applyFilters() {
-    this.filtros.update(f => ({
-      ...f,
-      q: this.query || undefined,
-      estado: (this.estadoMat as FiltrosMaterial['estado']) || undefined,
-      page: 1,
-    }));
-    this.load();
-  }
-
-  setCat(id: number | undefined) {
-    this.filtros.update(f => ({ ...f, categoriaId: id, page: 1 }));
-    this.load();
-  }
-
-  loadMore() {
-    this.filtros.update(f => ({ ...f, page: (f.page ?? 1) + 1 }));
-    this.load(true);
-  }
-
-  resetFiltros() {
-    this.query = '';
-    this.estadoMat = '';
-    this.filtros.set({ page: 1, limit: 12 });
-    this.load();
-  }
-
-  goToDetalle(m: Material) {
-    this.router.navigate(['/beneficiario/materiales', m.id]);
+  abrir(m: Material): void {
+    this.router.navigate([this.auth.prefijo(), 'materiales', m.id]);
   }
 }

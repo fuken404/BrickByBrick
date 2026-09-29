@@ -1,220 +1,181 @@
-import { Component, inject, signal, computed, HostListener } from '@angular/core';
-import { RouterOutlet, RouterLink, Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
-import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { AuthStore } from '../../core/auth/auth.store';
-import { NotificationService } from '../../core/services/notification.service';
-import { RolUsuario } from '../../core/models';
+import { NotificationStore } from '../../core/stores/notification.store';
+import { NotificationApiService } from '../../core/services/notification-api.service';
+import { AuthApiService } from '../../core/services/auth-api.service';
+import { ToastService } from '../../core/services/toast.service';
+import { Notificacion, RolUsuario } from '../../core/models';
+import { mensajeError } from '../../core/utils/http';
+import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
+import { ClickOutsideDirective } from '../../shared/directives/click-outside.directive';
+import { FechaRelativaPipe } from '../../shared/pipes/fecha-relativa.pipe';
 
-interface NavItem {
-  path: string;
-  icon: string;
-  label: string;
-  badge?: boolean;
-}
+interface NavItem { ruta: string; icon: string; label: string; badge?: 'notif' | 'mensajes'; movil?: boolean }
+
+const NAV: Record<RolUsuario, NavItem[]> = {
+  BENEFICIARIO: [
+    { ruta: 'dashboard', icon: 'home', label: 'Inicio', movil: true },
+    { ruta: 'materiales', icon: 'inventory_2', label: 'Materiales', movil: true },
+    { ruta: 'eventos', icon: 'event', label: 'Eventos', movil: true },
+    { ruta: 'mis-solicitudes', icon: 'assignment', label: 'Mis solicitudes' },
+    { ruta: 'comunidad', icon: 'forum', label: 'Comunidad', movil: true },
+    { ruta: 'grupos', icon: 'groups', label: 'Grupos' },
+    { ruta: 'mensajes', icon: 'chat', label: 'Mensajes', badge: 'mensajes' },
+    { ruta: 'notificaciones', icon: 'notifications', label: 'Notificaciones', badge: 'notif' },
+    { ruta: 'perfil', icon: 'person', label: 'Mi perfil' },
+  ],
+  CONSTRUCTORA: [
+    { ruta: 'dashboard', icon: 'home', label: 'Inicio', movil: true },
+    { ruta: 'materiales', icon: 'inventory_2', label: 'Mis materiales', movil: true },
+    { ruta: 'donaciones', icon: 'volunteer_activism', label: 'Solicitudes', movil: true },
+    { ruta: 'eventos', icon: 'event', label: 'Eventos', movil: true },
+    { ruta: 'tributario', icon: 'receipt_long', label: 'Beneficio tributario' },
+    { ruta: 'comunidad', icon: 'forum', label: 'Comunidad' },
+    { ruta: 'grupos', icon: 'groups', label: 'Grupos' },
+    { ruta: 'mensajes', icon: 'chat', label: 'Mensajes', badge: 'mensajes' },
+    { ruta: 'notificaciones', icon: 'notifications', label: 'Notificaciones', badge: 'notif' },
+    { ruta: 'perfil', icon: 'business', label: 'Perfil de empresa' },
+  ],
+  ADMINISTRADOR: [
+    { ruta: 'dashboard', icon: 'dashboard', label: 'Dashboard', movil: true },
+    { ruta: 'usuarios', icon: 'manage_accounts', label: 'Usuarios', movil: true },
+    { ruta: 'constructoras', icon: 'business', label: 'Constructoras' },
+    { ruta: 'materiales', icon: 'inventory_2', label: 'Materiales' },
+    { ruta: 'donaciones', icon: 'volunteer_activism', label: 'Solicitudes' },
+    { ruta: 'eventos', icon: 'event', label: 'Eventos' },
+    { ruta: 'moderacion', icon: 'shield', label: 'Moderación', movil: true },
+    { ruta: 'metricas', icon: 'insights', label: 'Métricas', movil: true },
+    { ruta: 'comunidad', icon: 'forum', label: 'Comunidad' },
+    { ruta: 'configuracion', icon: 'settings', label: 'Configuración' },
+    { ruta: 'auditoria', icon: 'history', label: 'Auditoría' },
+    { ruta: 'perfil', icon: 'admin_panel_settings', label: 'Mi cuenta' },
+  ],
+};
+
+const BUSQUEDA: Record<RolUsuario, { ruta: string; placeholder: string }> = {
+  BENEFICIARIO: { ruta: 'materiales', placeholder: 'Buscar materiales…' },
+  CONSTRUCTORA: { ruta: 'materiales', placeholder: 'Buscar en mis materiales…' },
+  ADMINISTRADOR: { ruta: 'usuarios', placeholder: 'Buscar usuarios por nombre, cédula o NIT…' },
+};
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, CommonModule, MatIconModule, MatBadgeModule, MatTooltipModule],
-  template: `
-    <div class="shell" [class.sidebar-collapsed]="sidebarCollapsed()">
-      <!-- Sidebar -->
-      <aside class="sidebar" [class.dark]="isDark()" [class.collapsed]="sidebarCollapsed()">
-        <!-- Logo -->
-        <div class="sidebar-logo">
-          <div class="logo-icon">
-            <mat-icon>layers</mat-icon>
-          </div>
-          @if (!sidebarCollapsed()) {
-            <div class="logo-text">
-              <span class="brand">BrickByBrick</span>
-              <span class="role-label">{{ roleLabel() }}</span>
-            </div>
-          }
-        </div>
-
-        <!-- Nav items -->
-        <nav class="sidebar-nav">
-          @for (item of navItems(); track item.path) {
-            <a class="nav-item" [class.active]="isActive(item.path)"
-               [routerLink]="item.path" [matTooltip]="sidebarCollapsed() ? item.label : ''">
-              <mat-icon>{{ item.icon }}</mat-icon>
-              @if (!sidebarCollapsed()) {
-                <span>{{ item.label }}</span>
-                @if (item.badge && unreadCount() > 0) {
-                  <span class="nav-badge">{{ unreadCount() > 99 ? '99+' : unreadCount() }}</span>
-                }
-              }
-            </a>
-          }
-        </nav>
-
-        <!-- User section -->
-        <div class="sidebar-user">
-          @if (!sidebarCollapsed()) {
-            <div class="user-info">
-              <div class="user-avatar">{{ initials() }}</div>
-              <div class="user-details">
-                <span class="user-name">{{ userName() }}</span>
-                <span class="user-email">{{ userEmail() }}</span>
-              </div>
-            </div>
-          }
-          <button class="logout-btn" (click)="logout()" matTooltip="Cerrar sesión">
-            <mat-icon>logout</mat-icon>
-          </button>
-        </div>
-      </aside>
-
-      <!-- Main content -->
-      <div class="main">
-        <!-- Topbar -->
-        <header class="topbar">
-          <button class="menu-toggle" (click)="toggleSidebar()">
-            <mat-icon>{{ sidebarCollapsed() ? 'menu_open' : 'menu' }}</mat-icon>
-          </button>
-
-          <div class="search-wrapper">
-            <mat-icon class="search-icon">search</mat-icon>
-            <input class="form-input search-input" placeholder="Buscar materiales, eventos..." />
-          </div>
-
-          <div class="topbar-actions">
-            <button class="icon-btn notif-btn" (click)="goToNotifications()"
-                    [matBadge]="unreadCount() > 0 ? unreadCount() : null"
-                    matBadgeColor="warn" matBadgeSize="small">
-              <mat-icon>notifications</mat-icon>
-            </button>
-            <div class="topbar-avatar" (click)="goToProfile()">{{ initials() }}</div>
-          </div>
-        </header>
-
-        <!-- Page content -->
-        <main class="content">
-          <div class="content-inner">
-            <router-outlet />
-          </div>
-        </main>
-      </div>
-    </div>
-
-    <!-- Mobile bottom nav -->
-    <nav class="mobile-nav">
-      @for (item of mobileNavItems(); track item.path) {
-        <a class="mobile-nav-item" [class.active]="isActive(item.path)" [routerLink]="item.path">
-          <mat-icon [matBadge]="item.badge && unreadCount() > 0 ? unreadCount() : null"
-                    matBadgeColor="warn" matBadgeSize="small">{{ item.icon }}</mat-icon>
-          <span>{{ item.label }}</span>
-        </a>
-      }
-    </nav>
-  `,
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, MatIconModule, MatTooltipModule, AvatarComponent, ClickOutsideDirective, FechaRelativaPipe],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
 })
 export class AppShellComponent {
-  protected readonly auth    = inject(AuthStore);
-  protected readonly notifSvc = inject(NotificationService);
-  protected readonly router  = inject(Router);
+  protected readonly auth = inject(AuthStore);
+  protected readonly contadores = inject(NotificationStore);
+  private readonly notifApi = inject(NotificationApiService);
+  private readonly authApi = inject(AuthApiService);
+  private readonly toast = inject(ToastService);
+  private readonly router = inject(Router);
 
-  protected readonly sidebarCollapsed = signal(false);
-  protected readonly unreadCount = this.notifSvc.unreadCount;
+  protected readonly colapsado = signal(false);
+  protected readonly drawerAbierto = signal(false);
+  protected readonly panelNotif = signal(false);
+  protected readonly menuUsuario = signal(false);
+  protected readonly ultimas = signal<Notificacion[]>([]);
+  protected readonly cargandoNotif = signal(false);
+  protected readonly reenviando = signal(false);
+  protected busqueda = '';
 
-  protected readonly isDark = computed(() => this.auth.rol() === 'ADMINISTRADOR');
-
-  protected readonly userName = computed(() => {
-    const perfil = this.auth.perfil();
-    if (!perfil) return 'Usuario';
-    return 'nombreCompleto' in perfil ? perfil.nombreCompleto :
-           'razonSocial'    in perfil ? perfil.razonSocial    : 'Usuario';
+  protected readonly rol = computed(() => this.auth.rol() ?? 'BENEFICIARIO');
+  protected readonly prefijo = computed(() => this.auth.prefijo());
+  protected readonly items = computed(() => NAV[this.rol()]);
+  protected readonly itemsMovil = computed(() => this.items().filter((i) => i.movil));
+  protected readonly oscuro = computed(() => this.rol() === 'ADMINISTRADOR');
+  protected readonly buscador = computed(() => BUSQUEDA[this.rol()]);
+  protected readonly etiquetaRol = computed(() => ({ BENEFICIARIO: 'Beneficiario', CONSTRUCTORA: 'Constructora', ADMINISTRADOR: 'Administrador' })[this.rol()]);
+  protected readonly empresaPendiente = computed(() => {
+    const p = this.auth.user()?.perfil;
+    return p?.tipo === 'constructora' && !p.verificada;
   });
 
-  protected readonly userEmail  = computed(() => this.auth.userEmail());
-  protected readonly initials   = computed(() => {
-    const name = this.userName();
-    return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-  });
-  protected readonly roleLabel  = computed(() => {
-    const map: Record<RolUsuario, string> = {
-      BENEFICIARIO: 'Beneficiario',
-      CONSTRUCTORA: 'Constructora',
-      ADMINISTRADOR: 'Administrador',
-    };
-    return map[this.auth.rol() ?? 'BENEFICIARIO'];
-  });
-
-  // Navigation definitions per role
-  private readonly NAV_ITEMS: Record<RolUsuario, NavItem[]> = {
-    BENEFICIARIO: [
-      { path: '/beneficiario/dashboard',       icon: 'home',        label: 'Inicio' },
-      { path: '/beneficiario/materiales',      icon: 'inventory_2', label: 'Materiales' },
-      { path: '/beneficiario/eventos',         icon: 'event',       label: 'Eventos' },
-      { path: '/beneficiario/publicaciones',   icon: 'article',     label: 'Publicaciones' },
-      { path: '/beneficiario/mis-solicitudes', icon: 'layers',      label: 'Mis Solicitudes' },
-      { path: '/beneficiario/grupos',          icon: 'group',       label: 'Grupos' },
-      { path: '/beneficiario/notificaciones',  icon: 'notifications',label: 'Notificaciones', badge: true },
-      { path: '/beneficiario/perfil',          icon: 'person',      label: 'Mi Perfil' },
-    ],
-    CONSTRUCTORA: [
-      { path: '/empresa/dashboard',      icon: 'home',          label: 'Inicio' },
-      { path: '/empresa/materiales',     icon: 'inventory_2',   label: 'Mis Materiales' },
-      { path: '/empresa/eventos',        icon: 'event',         label: 'Eventos' },
-      { path: '/empresa/publicaciones',   icon: 'article',       label: 'Comunidad' },
-      { path: '/empresa/donaciones',     icon: 'volunteer_activism', label: 'Donaciones' },
-      { path: '/empresa/tributario',     icon: 'percent',       label: 'Tributario' },
-      { path: '/empresa/notificaciones', icon: 'notifications', label: 'Notificaciones', badge: true },
-      { path: '/empresa/perfil',         icon: 'business',      label: 'Perfil Empresa' },
-    ],
-    ADMINISTRADOR: [
-      { path: '/admin/dashboard',     icon: 'dashboard',     label: 'Dashboard' },
-      { path: '/admin/beneficiarios', icon: 'group',         label: 'Beneficiarios' },
-      { path: '/admin/constructoras', icon: 'business',      label: 'Constructoras' },
-      { path: '/admin/materiales',    icon: 'inventory_2',   label: 'Materiales' },
-      { path: '/admin/donaciones',    icon: 'volunteer_activism', label: 'Donaciones' },
-      { path: '/admin/eventos',       icon: 'event',         label: 'Eventos' },
-      { path: '/admin/publicaciones', icon: 'article',       label: 'Publicaciones' },
-      { path: '/admin/reportes',      icon: 'bar_chart',     label: 'Reportes' },
-      { path: '/admin/configuracion', icon: 'settings',      label: 'Configuración' },
-      { path: '/admin/perfil',        icon: 'manage_accounts', label: 'Mi perfil' },
-    ],
-  };
-
-  protected readonly navItems = computed(() => this.NAV_ITEMS[this.auth.rol() ?? 'BENEFICIARIO']);
-  protected readonly mobileNavItems = computed(() => this.navItems().slice(0, 5));
-
-  isActive(path: string): boolean {
-    return this.router.url.startsWith(path);
+  constructor() {
+    this.ajustarAncho();
+    this.router.events.pipe(filter((e) => e instanceof NavigationEnd), takeUntilDestroyed(inject(DestroyRef))).subscribe(() => {
+      this.drawerAbierto.set(false);
+      this.panelNotif.set(false);
+      this.menuUsuario.set(false);
+    });
   }
 
-  toggleSidebar(): void {
-    this.sidebarCollapsed.update(v => !v);
+  protected contador(item: NavItem): number {
+    if (item.badge === 'notif') return this.contadores.noLeidas();
+    if (item.badge === 'mensajes') return this.contadores.mensajesNoLeidos();
+    return 0;
   }
 
-  logout(): void {
-    this.auth.clearAuth();
-    this.notifSvc.disconnect();
-    this.router.navigate(['/login']);
+  protected buscar(): void {
+    const q = this.busqueda.trim();
+    this.router.navigate([this.prefijo(), this.buscador().ruta], { queryParams: q ? { q } : {} });
+    this.busqueda = '';
   }
 
-  goToNotifications(): void {
-    const rol = this.auth.rol();
-    if (rol === 'BENEFICIARIO') this.router.navigate(['/beneficiario/notificaciones']);
-    else if (rol === 'CONSTRUCTORA') this.router.navigate(['/empresa/notificaciones']);
+  protected alternarNotificaciones(): void {
+    const abrir = !this.panelNotif();
+    this.panelNotif.set(abrir);
+    this.menuUsuario.set(false);
+    if (!abrir) return;
+    this.cargandoNotif.set(true);
+    this.notifApi.listar({ limit: 8 }).subscribe({
+      next: (r) => {
+        this.ultimas.set(r.data.items);
+        this.contadores.noLeidas.set(r.data.noLeidas);
+        this.cargandoNotif.set(false);
+      },
+      error: () => this.cargandoNotif.set(false),
+    });
   }
 
-  goToProfile(): void {
-    const rol = this.auth.rol();
-    if (rol === 'BENEFICIARIO')   this.router.navigate(['/beneficiario/perfil']);
-    else if (rol === 'CONSTRUCTORA')  this.router.navigate(['/empresa/perfil']);
-    else if (rol === 'ADMINISTRADOR') this.router.navigate(['/admin/perfil']);
+  protected abrirNotificacion(n: Notificacion): void {
+    if (!n.leida) {
+      this.notifApi.marcarLeida(n.id).subscribe(() => this.contadores.descontar());
+      this.ultimas.update((l) => l.map((x) => (x.id === n.id ? { ...x, leida: true } : x)));
+    }
+    this.panelNotif.set(false);
+    if (n.urlDestino) this.router.navigateByUrl(n.urlDestino);
+  }
+
+  protected marcarTodas(): void {
+    this.notifApi.marcarTodas().subscribe(() => {
+      this.ultimas.update((l) => l.map((x) => ({ ...x, leida: true })));
+      this.contadores.noLeidas.set(0);
+    });
+  }
+
+  protected reenviarVerificacion(): void {
+    this.reenviando.set(true);
+    this.authApi.reenviarVerificacion().subscribe({
+      next: (r) => { this.toast.exito(r.message); this.reenviando.set(false); },
+      error: (e) => { this.toast.error(mensajeError(e)); this.reenviando.set(false); },
+    });
+  }
+
+  protected cerrarSesion(): void {
+    this.auth.cerrarSesion().subscribe(() => this.router.navigate(['/login']));
   }
 
   @HostListener('window:resize')
-  onResize(): void {
-    if (window.innerWidth < 1024) this.sidebarCollapsed.set(true);
+  protected ajustarAncho(): void {
+    if (typeof window !== 'undefined' && window.innerWidth < 1280 && window.innerWidth >= 1024) this.colapsado.set(true);
+  }
+
+  @HostListener('document:keydown.escape')
+  protected cerrarPaneles(): void {
+    this.panelNotif.set(false);
+    this.menuUsuario.set(false);
+    this.drawerAbierto.set(false);
   }
 }

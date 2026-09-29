@@ -395,3 +395,16 @@
 
   @include mobile { flex-direction: column; gap: 8px; }
 }
+
+// Ajustes v2
+.landing-nav .nav-brand { text-decoration: none; color: inherit; }
+.mat-preview-item { text-decoration: none; color: inherit; }
+.perfil-card { padding: 28px; display: flex; flex-direction: column; gap: 12px;
+  .perfil-icon { width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+  h3 { font-size: 19px; }
+  p { color: $text-secondary; font-size: 14px; line-height: 1.7; }
+  ul { list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 14px;
+    li { display: flex; gap: 8px; align-items: flex-start; } mat-icon { font-size: 18px; width: 18px; height: 18px; color: $accent; } }
+  .btn { align-self: flex-start; margin-top: auto; } }
+.footer-link a { color: inherit; text-decoration: none; &:hover { color: #fff; } }
+.tax-nota { color: rgba(255,255,255,.65); font-size: 12px; margin-top: 16px; line-height: 1.6; max-width: 520px; }

@@ -1,274 +1,120 @@
-import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { DecimalPipe } from '@angular/common';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-
+import { AuthStore } from '../../../core/auth/auth.store';
 import { MaterialApiService } from '../../../core/services/material-api.service';
-import { Material, SolicitudMaterial, EstadoMaterial, EstadoPubMaterial } from '../../../core/models';
-import { BadgeComponent } from '../../../shared/components/badge/badge.component';
+import { SocialApiService } from '../../../core/services/social-api.service';
+import { ToastService } from '../../../core/services/toast.service';
+import { DialogoService } from '../../../shared/services/dialogo.service';
+import { Material } from '../../../core/models';
+import { erroresPorCampo, mensajeError } from '../../../core/utils/http';
+import { formatearDia } from '../../../core/utils/fechas';
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { CampoErrorComponent } from '../../../shared/components/campo-error.component';
+import { EstadoBadgePipe } from '../../../shared/pipes/estado-badge.pipe';
 import { UploadUrlPipe } from '../../../shared/pipes/upload-url.pipe';
-
-type BadgeType = 'disponible' | 'pendiente' | 'aprobado' | 'entregado' | 'rechazado' | 'verificado' | 'pendiente-verificacion' | 'secundario' | 'primary' | 'warning' | 'danger';
+import { FechaRelativaPipe } from '../../../shared/pipes/fecha-relativa.pipe';
+import { CopCurrencyPipe } from '../../../shared/pipes/cop-currency.pipe';
 
 @Component({
   selector: 'app-material-detalle',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, MatIconModule, BadgeComponent, UploadUrlPipe],
+  imports: [RouterLink, DecimalPipe, ReactiveFormsModule, MatIconModule, EmptyStateComponent, CampoErrorComponent, EstadoBadgePipe, UploadUrlPipe, FechaRelativaPipe, CopCurrencyPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `
-    <div class="page">
-      <!-- Breadcrumb -->
-      <nav class="breadcrumb">
-        <a routerLink="/beneficiario/materiales" class="bc-link">
-          <mat-icon>arrow_back</mat-icon> Materiales
-        </a>
-      </nav>
-
-      @if (loading()) {
-        <div class="loading-wrap">
-          <div class="spinner"></div>
-          <p>Cargando material…</p>
-        </div>
-      } @else if (!material()) {
-        <div class="not-found">
-          <mat-icon>error_outline</mat-icon>
-          <h2>Material no encontrado</h2>
-          <a routerLink="/beneficiario/materiales" class="btn btn-primary">Volver al catálogo</a>
-        </div>
-      } @else {
-        <div class="detalle-grid">
-          <!-- Galería -->
-          <div class="gallery-col">
-            <div class="main-photo" [style.background]="headerBg()">
-              @if (material()!.fotos?.length) {
-                <img [src]="material()!.fotos[activePhoto()].url | uploadUrl" [alt]="material()!.nombre" class="main-img" />
-              } @else {
-                <mat-icon class="placeholder-icon">inventory_2</mat-icon>
-              }
-            </div>
-            @if ((material()!.fotos?.length ?? 0) > 1) {
-              <div class="thumbs">
-                @for (f of material()!.fotos; track f.id; let i = $index) {
-                  <img [src]="f.url | uploadUrl" [alt]="'Foto ' + (i+1)" class="thumb"
-                       [class.active]="activePhoto() === i"
-                       (click)="activePhoto.set(i)" />
-                }
-              </div>
-            }
-          </div>
-
-          <!-- Info -->
-          <div class="info-col">
-            <div class="cat-badge" [style.background]="material()!.categoria?.colorHex + '18'" [style.color]="material()!.categoria?.colorHex">
-              {{ material()!.categoria?.nombre }}
-            </div>
-
-            <h1 class="mat-title">{{ material()!.nombre }}</h1>
-
-            <div class="meta-row">
-              <app-badge [type]="estadoMatBadge(material()!.estadoMaterial)" />
-              <app-badge [type]="estadoPubBadge(material()!.estadoPublicacion)" />
-            </div>
-
-            <div class="qty-block">
-              <div class="qty-value">{{ material()!.cantidad }}</div>
-              <div class="qty-unit">{{ material()!.unidadMedida }}</div>
-              <div class="qty-label">disponibles</div>
-            </div>
-
-            @if (material()!.descripcion) {
-              <p class="mat-desc">{{ material()!.descripcion }}</p>
-            }
-
-            @if (material()!.condicionesRetiro) {
-              <div class="detail-block">
-                <div class="detail-label"><mat-icon>info</mat-icon> Condiciones de retiro</div>
-                <p class="detail-text">{{ material()!.condicionesRetiro }}</p>
-              </div>
-            }
-
-            @if (material()!.fechaLimite) {
-              <div class="detail-block">
-                <div class="detail-label"><mat-icon>event</mat-icon> Disponible hasta</div>
-                <p class="detail-text">{{ material()!.fechaLimite | date:'dd/MM/yyyy' }}</p>
-              </div>
-            }
-
-            <!-- Empresa -->
-            <div class="empresa-block card">
-              <div class="empresa-logo">
-                @if (material()!.constructora?.logoUrl) {
-                  <img [src]="material()!.constructora!.logoUrl! | uploadUrl" alt="logo" />
-                } @else {
-                  <mat-icon>business</mat-icon>
-                }
-              </div>
-              <div class="empresa-info">
-                <div class="empresa-name">{{ material()!.constructora?.razonSocial }}</div>
-                @if (material()!.constructora?.localidad) {
-                  <div class="empresa-loc">
-                    <mat-icon>location_on</mat-icon>
-                    {{ material()!.constructora!.localidad!.nombre }}
-                  </div>
-                }
-                @if (material()!.constructora?.verificada) {
-                  <span class="verified-badge"><mat-icon>verified</mat-icon> Verificada</span>
-                }
-              </div>
-            </div>
-
-            <!-- Solicitud CTA -->
-            @if (material()!.estadoPublicacion === 'activo') {
-              <button class="btn btn-primary btn-lg btn-full" (click)="showModal.set(true)">
-                <mat-icon>send</mat-icon> Solicitar material
-              </button>
-            } @else {
-              <div class="not-available-msg">
-                <mat-icon>block</mat-icon>
-                Este material ya no está disponible.
-              </div>
-            }
-          </div>
-        </div>
-
-        <!-- Solicitud modal -->
-        @if (showModal()) {
-          <div class="modal-overlay" (click)="showModal.set(false)">
-            <div class="modal" (click)="$event.stopPropagation()">
-              <div class="modal-header">
-                <h3>Solicitar material</h3>
-                <button class="icon-btn" (click)="showModal.set(false)"><mat-icon>close</mat-icon></button>
-              </div>
-
-              <div class="modal-body">
-                <div class="form-group">
-                  <label class="form-label">Cantidad a solicitar *</label>
-                  <div class="qty-input-wrap">
-                    <input type="number" class="form-control" [(ngModel)]="cantidadSol"
-                           [min]="1" [max]="material()!.cantidad" placeholder="0" />
-                    <span class="qty-unit-label">{{ material()!.unidadMedida }}</span>
-                  </div>
-                  <span class="form-hint">Máximo: {{ material()!.cantidad }} {{ material()!.unidadMedida }}</span>
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label">Propósito de uso *</label>
-                  <input type="text" class="form-control" [(ngModel)]="propositoUso"
-                         placeholder="¿Para qué vas a usar el material?" />
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label">Descripción del proyecto</label>
-                  <textarea class="form-control" [(ngModel)]="descripcionProyecto" rows="3"
-                            placeholder="Cuéntanos más sobre tu proyecto de construcción..."></textarea>
-                </div>
-
-                @if (solicitudError()) {
-                  <div class="alert alert-error">{{ solicitudError() }}</div>
-                }
-                @if (solicitudExito()) {
-                  <div class="alert alert-success">¡Solicitud enviada exitosamente!</div>
-                }
-              </div>
-
-              <div class="modal-footer">
-                <button class="btn btn-ghost" (click)="showModal.set(false)">Cancelar</button>
-                <button class="btn btn-primary" (click)="enviarSolicitud()" [disabled]="enviando()">
-                  {{ enviando() ? 'Enviando...' : 'Enviar solicitud' }}
-                </button>
-              </div>
-            </div>
-          </div>
-        }
-      }
-    </div>
-  `,
-  styleUrl: './material-detalle.component.scss',
+  templateUrl: './material-detalle.component.html',
+  styles: [`
+    .galeria { aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .galeria img { width: 100%; height: 100%; object-fit: cover; }
+    .galeria mat-icon { font-size: 72px; width: 72px; height: 72px; opacity: .6; }
+    .miniaturas { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .miniaturas button { width: 64px; height: 64px; border-radius: 8px; overflow: hidden; border: 2px solid transparent; padding: 0; cursor: pointer; background: none; }
+    .miniaturas button.activa { border-color: var(--primary); }
+    .miniaturas img { width: 100%; height: 100%; object-fit: cover; }
+  `],
 })
-export class MaterialDetalleComponent implements OnInit {
-  private readonly route  = inject(ActivatedRoute);
-  private readonly router = inject(Router);
-  private readonly matSvc = inject(MaterialApiService);
+export class MaterialDetalleComponent {
+  readonly id = input.required<string>();
+  protected readonly auth = inject(AuthStore);
+  private readonly api = inject(MaterialApiService);
+  private readonly social = inject(SocialApiService);
+  private readonly toast = inject(ToastService);
+  private readonly dialogo = inject(DialogoService);
+  protected readonly router = inject(Router);
 
-  readonly material       = signal<Material | null>(null);
-  readonly loading        = signal(true);
-  readonly activePhoto    = signal(0);
-  readonly showModal      = signal(false);
-  readonly enviando       = signal(false);
-  readonly solicitudError = signal('');
-  readonly solicitudExito = signal(false);
+  protected readonly material = signal<Material | null>(null);
+  protected readonly cargando = signal(true);
+  protected readonly foto = signal(0);
+  protected readonly enviando = signal(false);
+  protected readonly erroresServidor = signal<Record<string, string>>({});
 
-  cantidadSol       = 1;
-  propositoUso      = '';
-  descripcionProyecto = '';
+  protected readonly form = inject(FormBuilder).nonNullable.group({
+    cantidadSolicitada: [1, [Validators.required, Validators.min(0.01)]],
+    propositoUso: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(200)]],
+    descripcionProyecto: ['', Validators.maxLength(2000)],
+  });
 
-  headerBg() {
-    const color = this.material()?.categoria?.colorHex ?? '#C0392B';
-    return `linear-gradient(135deg, ${color}18, ${color}08)`;
-  }
+  protected readonly vence = computed(() => formatearDia(this.material()?.fechaLimite));
+  protected readonly disponible = computed(() => this.material()?.estadoPublicacion === 'activo');
+  protected readonly color = computed(() => this.material()?.categoria.colorHex ?? '#6B6B6B');
 
-  estadoMatBadge(e: EstadoMaterial): BadgeType {
-    const map: Record<EstadoMaterial, BadgeType> = {
-      nuevo:       'disponible',
-      buen_estado: 'aprobado',
-      usado:       'secundario',
-    };
-    return map[e] ?? 'secundario';
-  }
-
-  estadoPubBadge(e: EstadoPubMaterial): BadgeType {
-    const map: Record<EstadoPubMaterial, BadgeType> = {
-      borrador: 'pendiente',
-      activo:   'disponible',
-      pausado:  'warning',
-      agotado:  'rechazado',
-      vencido:  'danger',
-    };
-    return map[e] ?? 'secundario';
-  }
-
-  ngOnInit() {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (!id) { this.router.navigate(['/beneficiario/materiales']); return; }
-
-    this.matSvc.getById(id).subscribe({
-      next: r => { this.material.set(r.data); this.loading.set(false); },
-      error: () => { this.loading.set(false); },
+  constructor() {
+    effect(() => {
+      const id = this.id();
+      untracked(() => this.cargar(id));
     });
   }
 
-  enviarSolicitud() {
-    if (!this.propositoUso.trim()) {
-      this.solicitudError.set('El propósito de uso es requerido.');
-      return;
-    }
-    if (this.cantidadSol < 1) {
-      this.solicitudError.set('La cantidad debe ser mayor a 0.');
-      return;
-    }
+  private cargar(id: string): void {
+    this.cargando.set(true);
+    this.api.obtener(id).subscribe({
+      next: (r) => {
+        this.material.set(r.data);
+        this.foto.set(0);
+        const c = this.form.controls.cantidadSolicitada;
+        c.setValidators([Validators.required, Validators.min(0.01), Validators.max(r.data.cantidad)]);
+        c.setValue(Math.min(1, r.data.cantidad));
+        this.cargando.set(false);
+      },
+      error: () => { this.material.set(null); this.cargando.set(false); },
+    });
+  }
 
+  solicitar(): void {
+    this.form.markAllAsTouched();
+    if (this.form.invalid) return;
+    const v = this.form.getRawValue();
     this.enviando.set(true);
-    this.solicitudError.set('');
-
-    this.matSvc.crearSolicitud(this.material()!.id, {
-      cantidadSolicitada: this.cantidadSol,
-      propositoUso: this.propositoUso,
-      descripcionProyecto: this.descripcionProyecto || undefined,
+    this.erroresServidor.set({});
+    this.api.solicitar(this.id(), {
+      cantidadSolicitada: Number(v.cantidadSolicitada),
+      propositoUso: v.propositoUso.trim(),
+      descripcionProyecto: v.descripcionProyecto.trim() || undefined,
     }).subscribe({
-      next: () => {
+      next: (r) => {
         this.enviando.set(false);
-        this.solicitudExito.set(true);
-        setTimeout(() => {
-          this.showModal.set(false);
-          this.solicitudExito.set(false);
-          this.router.navigate(['/beneficiario/mis-solicitudes']);
-        }, 1800);
+        this.material.update((m) => (m ? { ...m, miSolicitudActiva: r.data } : m));
+        this.toast.info('Solicitud enviada. Te avisaremos cuando la constructora responda.', 'Ver', () =>
+          this.router.navigate(['/beneficiario/mis-solicitudes'], { queryParams: { id: r.data.id } }));
       },
       error: (e) => {
         this.enviando.set(false);
-        this.solicitudError.set(e.error?.message ?? 'Error al enviar la solicitud.');
+        this.erroresServidor.set(erroresPorCampo(e));
+        this.toast.error(mensajeError(e));
       },
     });
+  }
+
+  reportar(): void {
+    const m = this.material();
+    if (!m) return;
+    this.dialogo.pedirTexto({
+      titulo: 'Reportar material', mensaje: '¿Qué problema encontraste con esta publicación?',
+      confirmar: 'Enviar reporte', campo: { etiqueta: 'Motivo', minimo: 10 },
+    }).subscribe((motivo) => this.social.reportar('material', m.id, motivo).subscribe({
+      next: (r) => this.toast.exito(r.message),
+      error: (e) => this.toast.error(mensajeError(e)),
+    }));
   }
 }

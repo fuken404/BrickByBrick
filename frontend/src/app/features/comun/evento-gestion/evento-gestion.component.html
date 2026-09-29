@@ -1,0 +1,111 @@
+<div class="page">
+  <a class="btn-link" [routerLink]="[auth.prefijo(), 'eventos']"><mat-icon>arrow_back</mat-icon>Eventos</a>
+
+  @if (cargando()) {
+    <div class="card card-pad-lg center muted"><mat-icon class="spin">sync</mat-icon></div>
+  } @else if (!evento()) {
+    <div class="card"><app-empty-state icon="event_busy" title="Evento no encontrado" /></div>
+  } @else {
+    @let e = evento()!;
+    <header class="page-header">
+      <div>
+        <div class="row mb-4">
+          <span class="badge badge-secundario">{{ e.tipoEvento | etiqueta:'tipoEvento' }}</span>
+          @let est = e.estado | estadoBadge:'evento';
+          <span class="badge" [class]="est.cssClass">{{ est.label }}</span>
+        </div>
+        <h1 class="page-title">{{ e.nombre }}</h1>
+        <p class="page-subtitle">{{ e.fechaInicio | date:"EEEE d 'de' MMMM, h:mm a" }} – {{ e.fechaFin | date:'h:mm a' }} ·
+          {{ e.localidad?.nombre }}{{ e.direccion ? ', ' + e.direccion : '' }}</p>
+        @if (auth.isAdmin()) { <p class="small muted">Organiza: <strong>{{ e.constructora.razonSocial }}</strong></p> }
+      </div>
+      <div class="actions">
+        @if (auth.isEmpresa() && !['finalizado', 'cancelado'].includes(e.estado)) {
+          <a class="btn btn-sm btn-secondary" [routerLink]="[auth.prefijo(), 'eventos', e.id, 'editar']"><mat-icon>edit</mat-icon>Editar</a>
+        }
+        @switch (e.estado) {
+          @case ('borrador') {
+            <button type="button" class="btn btn-sm btn-primary" (click)="cambiarEstado('publicado')"><mat-icon>publish</mat-icon>Publicar</button>
+            <button type="button" class="btn btn-sm btn-danger-outline" (click)="eliminar()"><mat-icon>delete</mat-icon>Eliminar</button>
+          }
+          @case ('publicado') {
+            <button type="button" class="btn btn-sm btn-secondary" (click)="cambiarEstado('en_curso')"><mat-icon>play_arrow</mat-icon>Iniciar</button>
+            <button type="button" class="btn btn-sm btn-danger-outline" (click)="cambiarEstado('cancelado')"><mat-icon>cancel</mat-icon>Cancelar</button>
+          }
+          @case ('en_curso') {
+            <button type="button" class="btn btn-sm btn-accent" (click)="cambiarEstado('finalizado')"><mat-icon>flag</mat-icon>Finalizar</button>
+            <button type="button" class="btn btn-sm btn-danger-outline" (click)="cambiarEstado('cancelado')"><mat-icon>cancel</mat-icon>Cancelar</button>
+          }
+        }
+      </div>
+    </header>
+
+    @if (e.estado === 'cancelado' && e.motivoCancelacion) {
+      <div class="alert danger"><mat-icon>event_busy</mat-icon><span><strong>Cancelado:</strong> {{ e.motivoCancelacion }}</span></div>
+    }
+
+    <div class="grid-kpi">
+      <app-kpi-card label="Inscritos" [value]="e.inscritos" icon="how_to_reg" color="#2E86AB" [sub]="e.capacidadMaxima ? 'de ' + e.capacidadMaxima + ' cupos' : 'Sin límite de cupos'" />
+      <app-kpi-card label="Participación (IPE)" [value]="ipe()" formato="pct" icon="donut_large" color="#C0392B" sub="Inscripciones / cupos" />
+      <app-kpi-card label="Asistieron" [value]="asistieron()" icon="task_alt" color="#27AE60" />
+      <app-kpi-card label="Materiales asociados" [value]="e.materiales?.length ?? 0" icon="inventory_2" color="#E67E22" />
+    </div>
+
+    <div class="split">
+      <section class="section">
+        <div class="section-head">
+          <h2 class="section-title">Inscritos</h2>
+          <div class="row">
+            @if (cambiosAsistencia()) {
+              <button type="button" class="btn btn-sm btn-accent" (click)="guardarAsistencia()" [disabled]="guardandoAsistencia()"><mat-icon>save</mat-icon>Guardar asistencia</button>
+            }
+            <button type="button" class="btn btn-sm btn-ghost" (click)="exportar()" [disabled]="!inscritos().length"><mat-icon>download</mat-icon>Exportar CSV</button>
+          </div>
+        </div>
+        @if (!puedeAsistencia() && e.estado !== 'borrador') {
+          <p class="small muted">La asistencia se podrá registrar desde el día del evento.</p>
+        }
+        @if (!inscritos().length) {
+          <div class="card"><app-empty-state icon="group" title="Aún no hay inscritos" [compacto]="true" /></div>
+        } @else {
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Beneficiario</th><th>Contacto</th><th>Inscripción</th><th>Estado</th><th>Asistió</th></tr></thead>
+              <tbody>
+                @for (i of inscritos(); track i.id) {
+                  <tr>
+                    <td><div class="cell-title strong">{{ i.beneficiario?.nombreCompleto }}</div><div class="cell-sub xsmall muted">C.C. {{ i.beneficiario?.cedula }} · {{ i.beneficiario?.localidad?.nombre }}</div></td>
+                    <td class="small">{{ i.beneficiario?.usuario?.telefono ?? '—' }}<br /><span class="muted">{{ i.beneficiario?.usuario?.email }}</span></td>
+                    <td class="small">{{ i.fechaInscripcion | date:'short' }}</td>
+                    <td>@let ei = i.estado | estadoBadge:'inscripcion'; <span class="badge" [class]="ei.cssClass">{{ ei.label }}</span></td>
+                    <td>
+                      <label class="check" [attr.aria-label]="'Asistencia de ' + i.beneficiario?.nombreCompleto">
+                        <input type="checkbox" [checked]="asistio(i)" [disabled]="!puedeAsistencia()" (change)="marcar(i, $event)" />
+                      </label>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </section>
+
+      <aside class="stack">
+        <div class="card card-pad stack-sm">
+          <h3>Imagen del evento</h3>
+          @if (e.imagenUrl) { <img [src]="e.imagenUrl | uploadUrl" alt="Imagen del evento" style="width:100%;border-radius:8px;max-height:180px;object-fit:cover" /> }
+          @if (!['finalizado', 'cancelado'].includes(e.estado)) { <app-file-upload [multiple]="false" etiqueta="Subir o cambiar imagen" (archivos)="subirImagen($event)" /> }
+        </div>
+        @if (e.descripcion) { <div class="card card-pad"><h3 class="mb-8">Descripción</h3><p class="small pre-line">{{ e.descripcion }}</p></div> }
+        <div class="card card-pad stack-sm">
+          <h3>Materiales asociados</h3>
+          @for (m of e.materiales ?? []; track m.material.id) {
+            <div class="row small"><mat-icon [style.color]="m.material.categoria.colorHex">{{ m.material.categoria.icono }}</mat-icon>
+              <span class="grow">{{ m.material.nombre }}</span><span class="muted">{{ m.material.cantidad | number:'1.0-2' }} {{ m.material.unidadMedida }}</span></div>
+          } @empty { <p class="small muted">Sin materiales asociados.</p> }
+        </div>
+      </aside>
+    </div>
+  }
+</div>

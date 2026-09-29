@@ -1,0 +1,57 @@
+<article class="event-card card" (click)="abrir.emit(evento())" (keydown.enter)="abrir.emit(evento())"
+         tabindex="0" role="button" [attr.aria-label]="'Ver evento ' + evento().nombre">
+  <div class="event-header">
+    @if (evento().imagenUrl) {
+      <img [src]="evento().imagenUrl | uploadUrl" [alt]="evento().nombre" class="event-img" loading="lazy" />
+    } @else {
+      <div class="event-date-block">
+        <span class="dia">{{ evento().fechaInicio | date:'d':'':'es-CO' }}</span>
+        <span class="mes">{{ evento().fechaInicio | date:'MMM':'':'es-CO' }}</span>
+      </div>
+    }
+    <span class="badge tipo-badge">{{ evento().tipoEvento | etiqueta:'tipoEvento' }}</span>
+    @if (mostrarEstado()) {
+      @let est = evento().estado | estadoBadge:'evento';
+      <span class="badge status-badge" [class]="est.cssClass">{{ est.label }}</span>
+    } @else if (inscrito()) {
+      <span class="badge status-badge badge-aprobado"><mat-icon>check</mat-icon>Inscrito</span>
+    }
+  </div>
+
+  <div class="event-body">
+    <div class="event-date">{{ evento().fechaInicio | date:"EEEE d 'de' MMMM, h:mm a":'':'es-CO' }}</div>
+    <h3 class="event-title clamp-2">{{ evento().nombre }}</h3>
+    <div class="event-company">{{ evento().constructora.razonSocial }}</div>
+    @if (evento().localidad || evento().direccion) {
+      <div class="meta-row"><mat-icon>location_on</mat-icon>
+        <span class="truncate">{{ evento().localidad?.nombre }}{{ evento().localidad && evento().direccion ? ' · ' : '' }}{{ evento().direccion }}</span>
+      </div>
+    }
+
+    @if (evento().capacidadMaxima) {
+      <div class="capacity">
+        <div class="capacity-label"><span>Cupos</span><span>{{ evento().inscritos }} / {{ evento().capacidadMaxima }}</span></div>
+        <div class="capacity-bar" role="progressbar" [attr.aria-valuenow]="ocupacion()" aria-valuemin="0" aria-valuemax="100">
+          <div class="capacity-fill" [style.width.%]="ocupacion()" [class.alto]="ocupacion() >= 80"></div>
+        </div>
+      </div>
+    } @else {
+      <div class="meta-row"><mat-icon>group</mat-icon><span>{{ evento().inscritos }} inscritos · cupo libre</span></div>
+    }
+
+    @if (!mostrarEstado() && abiertoInscripcion()) {
+      @if (inscrito()) {
+        <button type="button" class="btn btn-sm btn-accent-outline event-btn" (click)="$event.stopPropagation(); abrir.emit(evento())">
+          <mat-icon>check_circle</mat-icon> Ver mi inscripción
+        </button>
+      } @else if (lleno()) {
+        <button type="button" class="btn btn-sm event-btn" disabled>Cupos agotados</button>
+      } @else {
+        <button type="button" class="btn btn-primary btn-sm event-btn" [disabled]="procesando()"
+                (click)="$event.stopPropagation(); inscribirse.emit(evento())">
+          {{ procesando() ? 'Inscribiendo…' : 'Inscribirme' }}
+        </button>
+      }
+    }
+  </div>
+</article>

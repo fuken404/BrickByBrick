@@ -1,0 +1,136 @@
+<div class="register-page">
+  <div class="register-container">
+    <a class="register-brand" routerLink="/"><div class="brand-icon"><mat-icon>layers</mat-icon></div><span>BrickByBrick</span></a>
+
+    <ol class="stepper" aria-label="Pasos del registro">
+      @for (s of pasos; track s; let i = $index) {
+        <li class="step-item" [attr.aria-current]="paso() === i ? 'step' : null">
+          <div class="step-circle" [class.done]="paso() > i" [class.active]="paso() === i">
+            @if (paso() > i) { <mat-icon>check</mat-icon> } @else { {{ i + 1 }} }
+          </div>
+          <span class="step-label" [class.active]="paso() === i">{{ s }}</span>
+        </li>
+        @if (i < pasos.length - 1) { <div class="step-line" [class.done]="paso() > i" aria-hidden="true"></div> }
+      }
+    </ol>
+
+    <div class="register-card card">
+      @switch (paso()) {
+        @case (0) {
+          <h2>Datos personales</h2>
+          <p class="step-subtitle">Los usamos para validar que cumples las condiciones del programa. No se muestran públicamente.</p>
+          <form class="form-grid" [formGroup]="datos" (ngSubmit)="siguiente()">
+            <div class="form-group span-2">
+              <label class="form-label" for="nombre">Nombre completo *</label>
+              <input id="nombre" class="form-input" formControlName="nombreCompleto" autocomplete="name" placeholder="Ej: Carlos Andrés Rivera" />
+              <app-campo-error [control]="datos.controls.nombreCompleto" [servidor]="erroresServidor()['nombreCompleto']" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cedula">Cédula *</label>
+              <input id="cedula" class="form-input" formControlName="cedula" inputmode="numeric" placeholder="Solo números" />
+              <app-campo-error [control]="datos.controls.cedula" [servidor]="erroresServidor()['cedula']" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="fecha">Fecha de nacimiento *</label>
+              <input id="fecha" class="form-input" type="date" formControlName="fechaNacimiento" [max]="hoy" />
+              <app-campo-error [control]="datos.controls.fechaNacimiento" [servidor]="erroresServidor()['fechaNacimiento']" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="genero">Género</label>
+              <select id="genero" class="form-select" formControlName="genero">
+                <option value="">Prefiero no decir</option>
+                @for (g of ['femenino', 'masculino', 'no_binario']; track g) { <option [value]="g">{{ g | etiqueta:'genero' }}</option> }
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="estrato">Estrato socioeconómico</label>
+              <select id="estrato" class="form-select" formControlName="estrato">
+                <option value="">Seleccionar</option>
+                @for (e of [1,2,3,4,5,6]; track e) { <option [value]="e">Estrato {{ e }}</option> }
+              </select>
+            </div>
+            <div class="form-group span-2">
+              <label class="form-label" for="localidad">Localidad en Bogotá *</label>
+              <select id="localidad" class="form-select" formControlName="localidadId">
+                <option value="">Seleccionar localidad</option>
+                @for (l of catalogo.localidades(); track l.id) { <option [value]="l.id">{{ l.nombre }}</option> }
+              </select>
+              <span class="form-hint">Te avisaremos de materiales y eventos cerca de ti.</span>
+              <app-campo-error [control]="datos.controls.localidadId" />
+            </div>
+            <button type="submit" class="sr-only">Siguiente</button>
+          </form>
+        }
+        @case (1) {
+          <h2>Cuenta y contacto</h2>
+          <p class="step-subtitle">Con estos datos ingresarás y la constructora podrá coordinar la entrega contigo.</p>
+          <form class="form-grid" [formGroup]="cuenta" (ngSubmit)="siguiente()">
+            <div class="form-group">
+              <label class="form-label" for="email">Correo electrónico *</label>
+              <input id="email" class="form-input" type="email" formControlName="email" autocomplete="email" placeholder="correo@ejemplo.com" />
+              <app-campo-error [control]="cuenta.controls.email" [servidor]="erroresServidor()['email']" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="tel">Celular *</label>
+              <input id="tel" class="form-input" type="tel" formControlName="telefono" autocomplete="tel" placeholder="3001234567" />
+              <app-campo-error [control]="cuenta.controls.telefono" [servidor]="erroresServidor()['telefono']" />
+            </div>
+            <div class="form-group span-2">
+              <label class="form-label" for="pass">Contraseña *</label>
+              <div class="input-group">
+                <input id="pass" class="form-input" [type]="mostrarPass() ? 'text' : 'password'" formControlName="password" autocomplete="new-password" />
+                <button type="button" class="pass-toggle input-suffix" (click)="mostrarPass.update(v => !v)" [attr.aria-label]="mostrarPass() ? 'Ocultar' : 'Mostrar'">
+                  <mat-icon>{{ mostrarPass() ? 'visibility_off' : 'visibility' }}</mat-icon>
+                </button>
+              </div>
+              <div class="password-meter" [class]="'password-meter n' + nivel()" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+              <span class="form-hint">Mínimo 8 caracteres, con mayúscula, minúscula y número.</span>
+              <app-campo-error [control]="cuenta.controls.password" [servidor]="erroresServidor()['password']" />
+            </div>
+            <div class="form-group span-2">
+              <label class="form-label" for="confirmar">Confirmar contraseña *</label>
+              <input id="confirmar" class="form-input" type="password" formControlName="confirmar" autocomplete="new-password" />
+              @if (cuenta.hasError('noCoinciden') && cuenta.controls.confirmar.touched) {
+                <span class="form-error"><mat-icon>error_outline</mat-icon>Las contraseñas no coinciden</span>
+              }
+            </div>
+            <button type="submit" class="sr-only">Siguiente</button>
+          </form>
+        }
+        @case (2) {
+          <h2>Confirmación</h2>
+          <p class="step-subtitle">Revisa tus datos antes de crear la cuenta.</p>
+          <div class="summary-box">
+            <dl class="dl">
+              <dt>Nombre</dt><dd>{{ datos.controls.nombreCompleto.value }}</dd>
+              <dt>Cédula</dt><dd>{{ datos.controls.cedula.value }}</dd>
+              <dt>Localidad</dt><dd>{{ localidadNombre() }}</dd>
+              <dt>Correo</dt><dd>{{ cuenta.controls.email.value }}</dd>
+              <dt>Celular</dt><dd>{{ cuenta.controls.telefono.value }}</dd>
+            </dl>
+          </div>
+          <label class="check">
+            <input type="checkbox" [formControl]="acepta" />
+            <span>Acepto los <a routerLink="/terminos" target="_blank">términos de uso</a> y autorizo el tratamiento de mis datos personales conforme a la
+              <a routerLink="/privacidad" target="_blank">política de tratamiento de datos</a> (Ley 1581 de 2012).</span>
+          </label>
+          @if (acepta.touched && acepta.invalid) { <span class="form-error mt-8"><mat-icon>error_outline</mat-icon>Debes aceptar para continuar</span> }
+        }
+      }
+
+      @if (error()) { <div class="alert danger mt-16" role="alert"><mat-icon>warning</mat-icon><span>{{ error() }}</span></div> }
+
+      <div class="step-nav">
+        <button type="button" class="btn btn-ghost" (click)="anterior()"><mat-icon>chevron_left</mat-icon>{{ paso() > 0 ? 'Anterior' : 'Volver' }}</button>
+        @if (paso() < 2) {
+          <button type="button" class="btn btn-primary" (click)="siguiente()">Siguiente <mat-icon>chevron_right</mat-icon></button>
+        } @else {
+          <button type="button" class="btn btn-primary" (click)="crear()" [disabled]="enviando()">
+            @if (enviando()) { <mat-icon class="spin">sync</mat-icon> } @else { <mat-icon>check</mat-icon> } Crear cuenta
+          </button>
+        }
+      </div>
+    </div>
+    <p class="login-link">¿Ya tienes cuenta? <a routerLink="/login">Ingresa aquí</a></p>
+  </div>
+</div>

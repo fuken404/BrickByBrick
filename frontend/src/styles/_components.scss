@@ -1,0 +1,180 @@
+// =============================================================
+// BrickByBrick — Clases de composición reutilizables
+// =============================================================
+@use 'sass:color';
+@use 'variables' as *;
+@use 'mixins' as *;
+
+// ─── Página ─────────────────────────────────────────────────
+.page { display: flex; flex-direction: column; gap: 24px; }
+
+.page-header {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  .page-title { font-size: 28px; margin-bottom: 4px; }
+  .page-subtitle { color: $text-secondary; font-size: 14px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+}
+
+.section { display: flex; flex-direction: column; gap: 14px; }
+.section-title { font-size: 20px; display: flex; align-items: center; gap: 8px; }
+.section-head { @include flex-between; gap: 12px; flex-wrap: wrap; }
+
+.stack { display: flex; flex-direction: column; gap: 16px; }
+.stack-sm { display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.row-between { @include flex-between; gap: 12px; flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+.muted { color: $text-secondary; }
+.small { font-size: 13px; }
+.xsmall { font-size: 12px; }
+.strong { font-weight: 600; }
+.center { text-align: center; }
+.truncate { @include truncate; }
+.clamp-2 { @include truncate(2); }
+.clamp-3 { @include truncate(3); }
+.pre-line { white-space: pre-line; }
+
+.grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+.grid-cards-sm { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.grid-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
+.split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 24px; align-items: start; }
+@include tablet-down { .split { grid-template-columns: 1fr; } }
+
+.card-pad { padding: 20px; }
+.card-pad-lg { padding: 28px; }
+@include mobile { .card-pad-lg { padding: 20px; } }
+
+// ─── Barra de filtros ───────────────────────────────────────
+.toolbar {
+  @include card-base;
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  .search { position: relative; flex: 1; min-width: 220px;
+    mat-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: $text-secondary; font-size: 18px; }
+    .form-input { padding-left: 38px; }
+  }
+  .form-select { width: auto; min-width: 170px; }
+}
+
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px;
+  border-radius: $radius-pill; border: 1.5px solid $border; background: $bg-card;
+  font: 500 13px $font-body; color: $text-secondary; cursor: pointer; transition: all $transition-fast;
+  mat-icon { font-size: 16px; }
+  &:hover { border-color: $primary; color: $primary; }
+  &.active { background: $primary; border-color: $primary; color: #fff; }
+  @include focus-ring;
+}
+
+.tabs {
+  display: flex; gap: 4px; border-bottom: 1px solid $border; overflow-x: auto;
+  .tab {
+    padding: 10px 16px; border: none; background: none; cursor: pointer; white-space: nowrap;
+    font: 600 14px $font-body; color: $text-secondary; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    display: inline-flex; align-items: center; gap: 6px;
+    &.active { color: $primary; border-bottom-color: $primary; }
+    &:hover:not(.active) { color: $text-primary; }
+    .count { background: $bg-base; border-radius: $radius-pill; padding: 0 8px; font-size: 12px; }
+    @include focus-ring;
+  }
+}
+
+// ─── Botones extra ──────────────────────────────────────────
+.btn-block { width: 100%; }
+.btn-danger-outline { background: transparent; border: 1.5px solid $danger; color: $danger;
+  &:hover:not(:disabled) { background: $danger; color: #fff; } }
+.btn-accent-outline { background: transparent; border: 1.5px solid $accent; color: $accent;
+  &:hover:not(:disabled) { background: $accent; color: #fff; } }
+.btn-dark { background: $bg-dark; color: #fff; &:hover:not(:disabled) { background: #000; } }
+.btn mat-icon { font-size: 18px; }
+.btn-link {
+  background: none; border: none; padding: 0; cursor: pointer; color: $secondary; font: 600 13px $font-body;
+  display: inline-flex; align-items: center; gap: 2px; text-decoration: none;
+  &:hover { text-decoration: underline; }
+  mat-icon { font-size: 18px; }
+}
+.icon-btn {
+  @include icon-btn;
+  color: $text-secondary;
+  mat-icon { font-size: 20px; }
+  &.danger:hover { color: $danger; background: $danger-light; }
+  &.active { color: $primary; }
+}
+
+// ─── Formularios ────────────────────────────────────────────
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 18px;
+  .span-2 { grid-column: 1 / -1; } }
+@include mobile { .form-grid { grid-template-columns: 1fr; } }
+.form-hint { font-size: 12px; color: $text-secondary; }
+.form-input.ng-invalid.ng-touched, .form-select.ng-invalid.ng-touched, .form-textarea.ng-invalid.ng-touched { border-color: $danger; }
+.form-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.input-group { position: relative;
+  .form-input { padding-right: 44px; }
+  .input-suffix { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
+}
+.check { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; cursor: pointer;
+  input { margin-top: 3px; accent-color: $primary; width: 16px; height: 16px; } }
+.switch-row { @include flex-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid rgba($border, .6);
+  &:last-child { border-bottom: none; } }
+
+// ─── Alertas ────────────────────────────────────────────────
+.alert {
+  display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: $radius-card;
+  font-size: 14px; border: 1px solid;
+  mat-icon { flex-shrink: 0; font-size: 20px; margin-top: 1px; }
+  .alert-title { font-weight: 700; margin-bottom: 2px; }
+  &.info { background: rgba($secondary, .07); border-color: rgba($secondary, .25); color: color.adjust($secondary, $lightness: -12%); }
+  &.success { background: rgba($accent, .08); border-color: rgba($accent, .3); color: color.adjust($accent, $lightness: -10%); }
+  &.warning { background: $warning-light; border-color: rgba($warning, .35); color: color.adjust($warning, $lightness: -15%); }
+  &.danger { background: $danger-light; border-color: rgba($danger, .3); color: color.adjust($danger, $lightness: -12%); }
+}
+
+// ─── Estados / pills ────────────────────────────────────────
+.badge-warning { @include badge-variant($warning-light, $warning); }
+.badge-oscuro { @include badge-variant(rgba(0,0,0,.72), #fff); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: $border;
+  &.ok { background: $accent; } &.warn { background: $warning; } &.err { background: $danger; } }
+
+// ─── Tablas ─────────────────────────────────────────────────
+.table-wrap { @include card-base; overflow-x: auto;
+  .data-table { min-width: 720px; }
+  .data-table td .row { flex-wrap: nowrap; }
+}
+.cell-user { display: flex; align-items: center; gap: 10px; min-width: 200px;
+  .cell-title { font-weight: 600; font-size: 14px; }
+  .cell-sub { font-size: 12px; color: $text-secondary; } }
+
+// ─── Listas ─────────────────────────────────────────────────
+.list-card { @include card-base; overflow: hidden;
+  .list-item { display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; border-bottom: 1px solid rgba($border, .6);
+    &:last-child { border-bottom: none; }
+    &.clickable { cursor: pointer; &:hover { background: rgba($bg-base, .6); } } } }
+
+// ─── Paginación y carga ─────────────────────────────────────
+.load-more { display: flex; justify-content: center; padding: 8px 0; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.skeleton-block { @include skeleton; border-radius: $radius-card; }
+
+// ─── Descripción de datos ───────────────────────────────────
+.dl { display: grid; grid-template-columns: minmax(140px, 200px) 1fr; gap: 10px 16px; font-size: 14px;
+  dt { color: $text-secondary; } dd { margin: 0; font-weight: 500; word-break: break-word; } }
+@include mobile { .dl { grid-template-columns: 1fr; gap: 2px 0; dd { margin-bottom: 8px; } } }
+
+// ─── Diálogos (MatDialog) ───────────────────────────────────
+.bbb-dialog .mat-mdc-dialog-surface { border-radius: $radius-card !important; }
+.dialog { padding: 24px; display: flex; flex-direction: column; gap: 16px; max-width: 520px;
+  h2 { font-size: 20px; }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; } }
+
+// ─── Toasts (MatSnackBar) ───────────────────────────────────
+.mat-mdc-snack-bar-container {
+  &.toast-exito { --mdc-snackbar-container-color: #{$accent}; --mat-snack-bar-button-color: #fff; --mdc-snackbar-supporting-text-color: #fff; }
+  &.toast-error { --mdc-snackbar-container-color: #{$danger}; --mat-snack-bar-button-color: #fff; --mdc-snackbar-supporting-text-color: #fff; }
+  &.toast-info { --mdc-snackbar-container-color: #{$bg-dark}; --mat-snack-bar-button-color: #{color.adjust($primary, $lightness: 25%)}; --mdc-snackbar-supporting-text-color: #fff; }
+}
+
+// ─── Accesibilidad ──────────────────────────────────────────
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+a, button { @include focus-ring; }

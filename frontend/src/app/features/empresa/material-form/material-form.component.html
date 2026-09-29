@@ -1,0 +1,130 @@
+<div class="page" style="max-width:900px">
+  <a class="btn-link" routerLink="/empresa/materiales"><mat-icon>arrow_back</mat-icon>Mis materiales</a>
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">{{ esEdicion() ? 'Editar material' : 'Publicar material' }}</h1>
+      <p class="page-subtitle">Describe el material sobrante para que los beneficiarios sepan qué pueden solicitar.</p>
+    </div>
+  </header>
+
+  @if (!verificada()) {
+    <div class="alert warning"><mat-icon>pending</mat-icon><span>Tu empresa aún no está verificada: puedes guardar el material como borrador y publicarlo cuando se apruebe la verificación.</span></div>
+  }
+
+  @if (cargando()) {
+    <div class="card card-pad-lg center muted"><mat-icon class="spin">sync</mat-icon></div>
+  } @else {
+    <form class="stack" [formGroup]="form" (ngSubmit)="guardar(verificada() && (!esEdicion() || material()?.estadoPublicacion === 'borrador'))">
+      <section class="card card-pad-lg stack">
+        <h2 class="section-title"><mat-icon>inventory_2</mat-icon>Información del material</h2>
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label class="form-label" for="m-nombre">Nombre *</label>
+            <input id="m-nombre" class="form-input" formControlName="nombre" placeholder="Ej: Ladrillo prensado 25x12x6" />
+            <app-campo-error [control]="form.controls.nombre" [servidor]="errores()['nombre']" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="m-cat">Categoría *</label>
+            <select id="m-cat" class="form-select" formControlName="categoriaId">
+              <option [ngValue]="null" disabled>Selecciona una categoría</option>
+              @for (c of catalogo.categorias(); track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+            </select>
+            <app-campo-error [control]="form.controls.categoriaId" [servidor]="errores()['categoriaId']" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="m-estado">Estado del material *</label>
+            <select id="m-estado" class="form-select" formControlName="estadoMaterial">
+              <option value="nuevo">Nuevo</option>
+              <option value="buen_estado">Buen estado</option>
+              <option value="usado">Usado</option>
+            </select>
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="m-desc">Descripción</label>
+            <textarea id="m-desc" class="form-textarea" rows="4" formControlName="descripcion" placeholder="Medidas, marca, condiciones, cantidad por lote…"></textarea>
+            <app-campo-error [control]="form.controls.descripcion" [servidor]="errores()['descripcion']" />
+          </div>
+        </div>
+      </section>
+
+      <section class="card card-pad-lg stack">
+        <h2 class="section-title"><mat-icon>straighten</mat-icon>Cantidad y valor</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="m-cant">Cantidad disponible *</label>
+            <input id="m-cant" type="number" min="0.01" step="any" class="form-input" formControlName="cantidad" />
+            <app-campo-error [control]="form.controls.cantidad" [servidor]="errores()['cantidad']" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="m-unidad">Unidad de medida *</label>
+            <input id="m-unidad" class="form-input" formControlName="unidadMedida" list="unidades" />
+            <datalist id="unidades">@for (u of unidades; track u) { <option [value]="u"></option> }</datalist>
+            <app-campo-error [control]="form.controls.unidadMedida" [servidor]="errores()['unidadMedida']" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="m-valor">Valor unitario (COP) *</label>
+            <div class="input-group">
+              <input id="m-valor" type="number" min="0" step="1" class="form-input" formControlName="valorUnitarioCop" placeholder="Valor comercial por unidad" />
+              <span class="input-suffix">/ {{ form.controls.unidadMedida.value || 'unidad' }}</span>
+            </div>
+            <span class="form-hint">Obligatorio para publicar. Base para las constancias de donación y el estimado tributario.</span>
+            <app-campo-error [control]="form.controls.valorUnitarioCop" [servidor]="errores()['valorUnitarioCop']" />
+          </div>
+          <div class="form-group">
+            <span class="form-label">Valor total estimado</span>
+            <div class="strong" style="font-size:20px;padding-top:6px">{{ total() | copCurrency }}</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card card-pad-lg stack">
+        <h2 class="section-title"><mat-icon>local_shipping</mat-icon>Retiro</h2>
+        <div class="form-grid">
+          <div class="form-group span-2">
+            <label class="form-label" for="m-cond">Condiciones de retiro</label>
+            <textarea id="m-cond" class="form-textarea" rows="3" formControlName="condicionesRetiro" placeholder="Horarios, dirección de la obra, si se requiere transporte propio…"></textarea>
+            <app-campo-error [control]="form.controls.condicionesRetiro" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="m-fecha">Disponible hasta</label>
+            <input id="m-fecha" type="date" class="form-input" formControlName="fechaLimite" [min]="hoy" />
+            <span class="form-hint">Al vencer, las solicitudes pendientes se rechazan automáticamente.</span>
+            <app-campo-error [control]="form.controls.fechaLimite" [servidor]="errores()['fechaLimite']" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="m-max">Máximo de solicitudes</label>
+            <input id="m-max" type="number" min="1" step="1" class="form-input" formControlName="maxSolicitudes" placeholder="Sin límite" />
+            <app-campo-error [control]="form.controls.maxSolicitudes" [servidor]="errores()['maxSolicitudes']" />
+          </div>
+        </div>
+      </section>
+
+      <section class="card card-pad-lg stack">
+        <h2 class="section-title"><mat-icon>photo_library</mat-icon>Fotos</h2>
+        @if (fotosExistentes().length) {
+          <div class="fotos">
+            @for (f of fotosExistentes(); track f.id) {
+              <div class="foto"><img [src]="f.url | uploadUrl" alt="Foto del material" />
+                <button type="button" (click)="eliminarFoto(f)" aria-label="Eliminar foto"><mat-icon>close</mat-icon></button></div>
+            }
+          </div>
+        }
+        @if (cupoFotos() > 0) {
+          <app-file-upload [maxFiles]="cupoFotos()" [maxSizeMb]="5" [etiqueta]="'Agrega hasta ' + cupoFotos() + ' foto(s) (JPG, PNG o WebP, máx. 5 MB)'" (archivos)="nuevasFotos.set($event)" />
+        } @else {
+          <p class="small muted">Alcanzaste el máximo de {{ 5 }} fotos.</p>
+        }
+      </section>
+
+      <div class="form-actions">
+        <a class="btn btn-ghost" routerLink="/empresa/materiales">Cancelar</a>
+        @if (!esEdicion() || material()?.estadoPublicacion === 'borrador') {
+          <button type="button" class="btn btn-secondary" (click)="guardar(false)" [disabled]="guardando()">{{ esEdicion() ? 'Guardar borrador' : 'Guardar como borrador' }}</button>
+          <button type="submit" class="btn btn-primary" [disabled]="guardando() || !verificada()"><mat-icon>publish</mat-icon>Publicar</button>
+        } @else {
+          <button type="button" class="btn btn-primary" (click)="guardar(false)" [disabled]="guardando()">Guardar cambios</button>
+        }
+      </div>
+    </form>
+  }
+</div>

@@ -1,0 +1,87 @@
+// =============================================================
+// Pantallas de autenticación (login, registro, recuperación)
+// =============================================================
+@use 'variables' as *;
+@use 'mixins' as *;
+
+.auth-layout { min-height: 100vh; display: grid; grid-template-columns: 40% 60%; background: #fff; }
+.auth-left {
+  background: linear-gradient(160deg, $primary 0%, $primary-dark 100%);
+  display: flex; align-items: center; justify-content: center; padding: 48px; position: relative; overflow: hidden;
+  &::before {
+    content: ''; position: absolute; inset: 0; opacity: .07;
+    background-image: repeating-linear-gradient(0deg, #fff 0, #fff 1px, transparent 1px, transparent 32px),
+                      repeating-linear-gradient(90deg, #fff 0, #fff 1px, transparent 1px, transparent 64px);
+  }
+  &.empresa { background: linear-gradient(160deg, $secondary 0%, $secondary-dark 100%); }
+}
+.auth-left-inner { position: relative; text-align: center; color: #fff; max-width: 320px; }
+.auth-brand {
+  .brand-icon { width: 64px; height: 64px; background: rgba(255,255,255,.15); border-radius: 16px; @include flex-center; margin: 0 auto 20px;
+    mat-icon { color: #fff; font-size: 32px; width: 32px; height: 32px; } }
+  h1 { color: #fff; font-size: 32px; margin-bottom: 8px; }
+}
+.auth-tagline { color: rgba(255,255,255,.8); font-size: 15px; line-height: 1.7; margin-bottom: 36px; }
+.auth-stats { display: flex; flex-direction: column; gap: 12px; }
+.stat-item { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.1); border-radius: 8px; padding: 10px 16px; text-align: left;
+  mat-icon { color: rgba(255,255,255,.85); font-size: 18px; width: 18px; height: 18px; }
+  span { font-size: 14px; color: rgba(255,255,255,.9); } }
+.auth-right { display: flex; align-items: center; justify-content: center; padding: 48px 24px; }
+.auth-form-container { width: 100%; max-width: 420px; }
+.auth-form-container h2 { margin-bottom: 8px; }
+.auth-subtitle { color: $text-secondary; font-size: 14px; margin-bottom: 28px; }
+.auth-form { display: flex; flex-direction: column; gap: 18px; }
+.role-tabs { display: flex; gap: 6px; padding: 4px; background: $bg-base; border-radius: 10px; margin-bottom: 24px;
+  button { flex: 1; height: 36px; border-radius: 8px; border: none; cursor: pointer; background: transparent; color: $text-secondary;
+    font: 600 13px $font-body; transition: all 200ms; @include focus-ring;
+    &.active { color: #fff; } } }
+.divider { display: flex; align-items: center; gap: 16px; margin: 24px 0; color: $text-secondary; font-size: 13px;
+  &::before, &::after { content: ''; flex: 1; height: 1px; background: $border; } }
+.auth-switch { text-align: center; font-size: 14px; color: $text-secondary; a { color: $primary; font-weight: 600; text-decoration: none; } }
+.back-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 28px; font-size: 13px; color: $text-secondary; text-decoration: none;
+  mat-icon { font-size: 16px; width: 16px; height: 16px; } &:hover { color: $primary; } }
+.pass-toggle { background: none; border: none; cursor: pointer; padding: 4px; display: flex; mat-icon { color: $text-secondary; font-size: 18px; } }
+.otp-input { letter-spacing: 12px; font-size: 24px !important; text-align: center; height: 56px !important; font-weight: 700; }
+.forgot-link { text-align: right; margin-top: -8px; a { font-size: 13px; color: $secondary; font-weight: 500; text-decoration: none; } }
+
+// Registro por pasos
+.register-page { min-height: 100vh; background: $bg-base; padding: 40px 20px; display: flex; justify-content: center; }
+.register-container { width: 100%; max-width: 640px; }
+.register-brand { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 28px; text-decoration: none; color: inherit;
+  .brand-icon { width: 36px; height: 36px; border-radius: 8px; background: $primary; @include flex-center; mat-icon { color: #fff; } &.secondary { background: $secondary; } }
+  span { font-family: $font-display; font-weight: 700; font-size: 20px; } }
+.stepper { display: flex; align-items: center; margin-bottom: 24px; }
+.step-item { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 90px; }
+.step-circle { width: 34px; height: 34px; border-radius: 50%; border: 2px solid $border; background: #fff; @include flex-center;
+  font-weight: 700; font-size: 14px; color: $text-secondary;
+  &.active { border-color: $primary; color: $primary; } &.done { background: $accent; border-color: $accent; color: #fff; }
+  mat-icon { font-size: 18px; width: 18px; height: 18px; } }
+.step-label { font-size: 12px; color: $text-secondary; text-align: center; &.active { color: $text-primary; font-weight: 600; } }
+.step-line { flex: 1; height: 2px; background: $border; margin-bottom: 22px; &.done { background: $accent; } }
+.register-card { padding: 32px; }
+.register-card h2 { font-size: 22px; margin-bottom: 4px; }
+.step-subtitle { color: $text-secondary; font-size: 14px; margin-bottom: 24px; }
+.step-nav { @include flex-between; margin-top: 28px; gap: 12px; }
+.summary-box { background: $bg-base; border-radius: $radius-card; padding: 16px 18px; margin-bottom: 20px; }
+.login-link { text-align: center; margin-top: 20px; font-size: 14px; color: $text-secondary; a { color: $primary; font-weight: 600; text-decoration: none; } }
+
+// Tarjetas simples (recuperar, verificar)
+.simple-page { min-height: 100vh; background: $bg-base; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.simple-card { max-width: 440px; width: 100%; padding: 40px; }
+.status-icon { width: 72px; height: 72px; border-radius: 50%; @include flex-center; margin: 0 auto 20px;
+  mat-icon { font-size: 36px; width: 36px; height: 36px; }
+  &.ok { background: rgba($accent, .1); mat-icon { color: $accent; } }
+  &.err { background: $danger-light; mat-icon { color: $danger; } }
+  &.neutro { background: $bg-base; mat-icon { color: $text-secondary; } } }
+
+.password-meter { display: flex; gap: 4px; margin-top: 6px;
+  span { flex: 1; height: 4px; border-radius: 2px; background: $border; }
+  &.n1 span:nth-child(-n+1) { background: $danger; } &.n2 span:nth-child(-n+2) { background: $warning; }
+  &.n3 span:nth-child(-n+3) { background: #d4ac0d; } &.n4 span { background: $accent; } }
+
+@include tablet-down {
+  .auth-layout { grid-template-columns: 1fr; }
+  .auth-left { display: none; }
+  .register-card { padding: 22px; }
+  .step-item { min-width: 70px; }
+}

@@ -1,75 +1,56 @@
-import { Component, OnInit, signal, inject, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterLink, ActivatedRoute } from '@angular/router';
+import { ChangeDetectionStrategy, Component, OnInit, inject, input, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthApiService } from '../../../core/services/auth-api.service';
+import { AuthStore } from '../../../core/auth/auth.store';
+import { mensajeError } from '../../../core/utils/http';
 
 @Component({
   selector: 'app-verify-email',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule],
+  imports: [RouterLink, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="verify-page">
-      <div class="verify-card card">
-        @if (loading()) {
-          <div class="status-icon loading"><mat-icon class="spin">sync</mat-icon></div>
-          <h2>Verificando tu correo...</h2>
-          <p>Por favor espera un momento.</p>
-        } @else if (success()) {
-          <div class="status-icon success"><mat-icon>check_circle</mat-icon></div>
-          <h2>¡Correo verificado!</h2>
-          <p>Tu cuenta está activa. Ya puedes iniciar sesión.</p>
-          <a routerLink="/login" class="btn btn-primary">Ir al login</a>
-        } @else {
-          <div class="status-icon error"><mat-icon>error</mat-icon></div>
-          <h2>Enlace inválido o expirado</h2>
-          <p>{{ errorMsg() }}</p>
-          <a routerLink="/login" class="btn btn-ghost">Volver al login</a>
+    <div class="simple-page">
+      <div class="simple-card card center">
+        @switch (estado()) {
+          @case ('cargando') {
+            <div class="status-icon neutro"><mat-icon class="spin">sync</mat-icon></div>
+            <h2>Verificando tu correo…</h2>
+          }
+          @case ('ok') {
+            <div class="status-icon ok"><mat-icon>check_circle</mat-icon></div>
+            <h2 class="mb-8">¡Correo verificado!</h2>
+            <p class="muted mb-24">Tu cuenta quedó confirmada.</p>
+            <a [routerLink]="auth.isAuthenticated() ? auth.rutaInicio() : '/login'" class="btn btn-primary">
+              {{ auth.isAuthenticated() ? 'Ir a mi panel' : 'Iniciar sesión' }}
+            </a>
+          }
+          @default {
+            <div class="status-icon err"><mat-icon>error</mat-icon></div>
+            <h2 class="mb-8">Enlace inválido o expirado</h2>
+            <p class="muted mb-24">{{ error() }} Puedes solicitar uno nuevo desde tu panel.</p>
+            <a routerLink="/login" class="btn btn-ghost">Ir al inicio de sesión</a>
+          }
         }
       </div>
     </div>
   `,
-  styles: [`
-    .verify-page {
-      min-height: 100vh; background: var(--bg-base);
-      display: flex; align-items: center; justify-content: center; padding: 20px;
-    }
-    .verify-card {
-      max-width: 420px; width: 100%; padding: 48px 40px;
-      text-align: center;
-      h2 { margin-bottom: 12px; }
-      p  { color: var(--text-secondary); font-size: 15px; margin-bottom: 28px; }
-    }
-    .status-icon {
-      width: 72px; height: 72px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 24px;
-      mat-icon { font-size: 36px; }
-    }
-    .status-icon.loading { background: var(--bg-base); mat-icon { color: var(--text-secondary); } }
-    .status-icon.success { background: rgba(39,174,96,.1); mat-icon { color: var(--accent); } }
-    .status-icon.error   { background: var(--danger-light); mat-icon { color: var(--danger); } }
-    .spin { animation: spin 1s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  `],
 })
 export class VerifyEmailComponent implements OnInit {
-  private readonly authApi = inject(AuthApiService);
-  private readonly route = inject(ActivatedRoute);
-
-  protected readonly loading = signal(true);
-  protected readonly success = signal(false);
-  protected readonly errorMsg = signal('');
+  readonly token = input.required<string>();
+  protected readonly auth = inject(AuthStore);
+  private readonly api = inject(AuthApiService);
+  protected readonly estado = signal<'cargando' | 'ok' | 'error'>('cargando');
+  protected readonly error = signal('');
 
   ngOnInit(): void {
-    const token = this.route.snapshot.paramMap.get('token') ?? '';
-    this.authApi.verifyEmail(token).subscribe({
-      next: () => { this.loading.set(false); this.success.set(true); },
-      error: err => {
-        this.loading.set(false);
-        this.errorMsg.set(err?.error?.message ?? 'El enlace de verificación no es válido o ha expirado.');
+    this.api.verifyEmail(this.token()).subscribe({
+      next: () => {
+        this.estado.set('ok');
+        this.auth.actualizarUsuario({ emailVerificado: true });
       },
+      error: (e) => { this.estado.set('error'); this.error.set(mensajeError(e, 'El enlace no es válido.')); },
     });
   }
 }

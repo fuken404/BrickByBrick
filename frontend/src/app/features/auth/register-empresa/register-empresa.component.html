@@ -1,0 +1,150 @@
+<div class="register-page">
+  <div class="register-container">
+    <a class="register-brand" routerLink="/"><div class="brand-icon secondary"><mat-icon>business</mat-icon></div><span>BrickByBrick · Constructoras</span></a>
+
+    <ol class="stepper" aria-label="Pasos del registro">
+      @for (s of pasos; track s; let i = $index) {
+        <li class="step-item" [attr.aria-current]="paso() === i ? 'step' : null">
+          <div class="step-circle" [class.done]="paso() > i" [class.active]="paso() === i">
+            @if (paso() > i) { <mat-icon>check</mat-icon> } @else { {{ i + 1 }} }
+          </div>
+          <span class="step-label" [class.active]="paso() === i">{{ s }}</span>
+        </li>
+        @if (i < pasos.length - 1) { <div class="step-line" [class.done]="paso() > i" aria-hidden="true"></div> }
+      }
+    </ol>
+
+    <div class="register-card card">
+      @switch (paso()) {
+        @case (0) {
+          <h2>Datos de la empresa</h2>
+          <p class="step-subtitle">Información legal de la constructora donante.</p>
+          <form class="form-grid" [formGroup]="empresa" (ngSubmit)="siguiente()">
+            <div class="form-group span-2">
+              <label class="form-label" for="razon">Razón social *</label>
+              <input id="razon" class="form-input" formControlName="razonSocial" placeholder="Ej: Constructora Andina S.A.S." />
+              <app-campo-error [control]="empresa.controls.razonSocial" [servidor]="erroresServidor()['razonSocial']" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="nit">NIT *</label>
+              <input id="nit" class="form-input" formControlName="nit" placeholder="900123456-7" />
+              <app-campo-error [control]="empresa.controls.nit" [servidor]="erroresServidor()['nit']" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="empleados">N.° de empleados</label>
+              <select id="empleados" class="form-select" formControlName="numEmpleados">
+                <option value="">Seleccionar</option>
+                <option value="10">1 – 10</option><option value="50">11 – 50</option><option value="200">51 – 200</option>
+                <option value="1000">201 – 1000</option><option value="1001">Más de 1000</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="rep">Representante legal *</label>
+              <input id="rep" class="form-input" formControlName="representanteLegal" autocomplete="name" />
+              <app-campo-error [control]="empresa.controls.representanteLegal" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cargo">Cargo *</label>
+              <input id="cargo" class="form-input" formControlName="cargoRepresentante" placeholder="Ej: Gerente general" />
+              <app-campo-error [control]="empresa.controls.cargoRepresentante" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="dir">Dirección de la sede *</label>
+              <input id="dir" class="form-input" formControlName="direccion" autocomplete="street-address" placeholder="Ej: Carrera 7 # 72-41" />
+              <app-campo-error [control]="empresa.controls.direccion" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="loc">Localidad *</label>
+              <select id="loc" class="form-select" formControlName="localidadId">
+                <option value="">Seleccionar</option>
+                @for (l of catalogo.localidades(); track l.id) { <option [value]="l.id">{{ l.nombre }}</option> }
+              </select>
+              <app-campo-error [control]="empresa.controls.localidadId" />
+            </div>
+            <div class="form-group span-2">
+              <label class="form-label" for="desc">Descripción breve</label>
+              <textarea id="desc" class="form-textarea" rows="3" formControlName="descripcion" placeholder="Actividad principal, tipo de proyectos…"></textarea>
+            </div>
+            <button type="submit" class="sr-only">Siguiente</button>
+          </form>
+        }
+        @case (1) {
+          <h2>Cuenta y contacto</h2>
+          <p class="step-subtitle">Credenciales de acceso de la empresa.</p>
+          <form class="form-grid" [formGroup]="cuenta" (ngSubmit)="siguiente()">
+            <div class="form-group span-2">
+              <label class="form-label" for="email">Correo corporativo *</label>
+              <input id="email" class="form-input" type="email" formControlName="email" autocomplete="email" placeholder="donaciones@empresa.com" />
+              <app-campo-error [control]="cuenta.controls.email" [servidor]="erroresServidor()['email']" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="tel">Teléfono *</label>
+              <input id="tel" class="form-input" type="tel" formControlName="telefono" placeholder="6013201234 o 3001234567" />
+              <app-campo-error [control]="cuenta.controls.telefono" [servidor]="erroresServidor()['telefono']" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="web">Sitio web</label>
+              <input id="web" class="form-input" type="url" formControlName="sitioWeb" placeholder="https://empresa.com" />
+              <app-campo-error [control]="cuenta.controls.sitioWeb" [servidor]="erroresServidor()['sitioWeb']" />
+            </div>
+            <div class="form-group span-2">
+              <label class="form-label" for="pass">Contraseña *</label>
+              <div class="input-group">
+                <input id="pass" class="form-input" [type]="mostrarPass() ? 'text' : 'password'" formControlName="password" autocomplete="new-password" />
+                <button type="button" class="pass-toggle input-suffix" (click)="mostrarPass.update(v => !v)" [attr.aria-label]="mostrarPass() ? 'Ocultar' : 'Mostrar'">
+                  <mat-icon>{{ mostrarPass() ? 'visibility_off' : 'visibility' }}</mat-icon>
+                </button>
+              </div>
+              <div [class]="'password-meter n' + nivel()" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+              <app-campo-error [control]="cuenta.controls.password" [servidor]="erroresServidor()['password']" />
+            </div>
+            <div class="form-group span-2">
+              <label class="form-label" for="confirmar">Confirmar contraseña *</label>
+              <input id="confirmar" class="form-input" type="password" formControlName="confirmar" autocomplete="new-password" />
+              @if (cuenta.hasError('noCoinciden') && cuenta.controls.confirmar.touched) {
+                <span class="form-error"><mat-icon>error_outline</mat-icon>Las contraseñas no coinciden</span>
+              }
+            </div>
+            <button type="submit" class="sr-only">Siguiente</button>
+          </form>
+        }
+        @case (2) {
+          <h2>Documentos de verificación</h2>
+          <p class="step-subtitle">Un administrador revisará tus documentos (1 a 2 días hábiles). Mientras tanto podrás preparar borradores.</p>
+          <div class="stack">
+            <div class="form-group">
+              <span class="form-label">RUT de la empresa *</span>
+              <app-file-upload [accept]="tiposDoc" [multiple]="false" etiqueta="Adjunta el RUT (PDF o imagen)" (archivos)="rut.set($event.length ? $event[0] : null)" />
+              @if (intentoDocs() && !rut()) { <span class="form-error"><mat-icon>error_outline</mat-icon>Adjunta el RUT</span> }
+            </div>
+            <div class="form-group">
+              <span class="form-label">Certificado de Cámara de Comercio *</span>
+              <app-file-upload [accept]="tiposDoc" [multiple]="false" etiqueta="Adjunta la Cámara de Comercio (vigente)" (archivos)="camara.set($event.length ? $event[0] : null)" />
+              @if (intentoDocs() && !camara()) { <span class="form-error"><mat-icon>error_outline</mat-icon>Adjunta la Cámara de Comercio</span> }
+            </div>
+            <label class="check">
+              <input type="checkbox" [formControl]="acepta" />
+              <span>Acepto los <a routerLink="/terminos" target="_blank">términos de uso</a> y autorizo el tratamiento de datos según la
+                <a routerLink="/privacidad" target="_blank">política de tratamiento de datos</a> (Ley 1581 de 2012).</span>
+            </label>
+            @if (acepta.touched && acepta.invalid) { <span class="form-error"><mat-icon>error_outline</mat-icon>Debes aceptar para continuar</span> }
+          </div>
+        }
+      }
+
+      @if (error()) { <div class="alert danger mt-16" role="alert"><mat-icon>warning</mat-icon><span>{{ error() }}</span></div> }
+
+      <div class="step-nav">
+        <button type="button" class="btn btn-ghost" (click)="anterior()"><mat-icon>chevron_left</mat-icon>{{ paso() > 0 ? 'Anterior' : 'Volver' }}</button>
+        @if (paso() < 2) {
+          <button type="button" class="btn btn-secondary" (click)="siguiente()">Siguiente <mat-icon>chevron_right</mat-icon></button>
+        } @else {
+          <button type="button" class="btn btn-secondary" (click)="registrar()" [disabled]="enviando()">
+            @if (enviando()) { <mat-icon class="spin">sync</mat-icon> } @else { <mat-icon>check</mat-icon> } Registrar empresa
+          </button>
+        }
+      </div>
+    </div>
+    <p class="login-link">¿Ya tienes cuenta? <a routerLink="/login">Ingresa aquí</a></p>
+  </div>
+</div>

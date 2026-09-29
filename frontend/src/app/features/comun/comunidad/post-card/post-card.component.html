@@ -1,0 +1,109 @@
+<article class="post-card card" [attr.aria-label]="'Publicación de ' + original().autor.nombre">
+  @if (esRepost()) {
+    <div class="repost-header">
+      <mat-icon>repeat</mat-icon>
+      <a [routerLink]="[auth.prefijo(), 'usuarios', publicacion().autor.id]">{{ propia() ? 'Compartiste' : publicacion().autor.nombre + ' compartió' }}</a>
+      <span>· {{ publicacion().createdAt | fechaRelativa }}</span>
+    </div>
+    @if (publicacion().contenido && !editando()) { <p class="repost-comentario pre-line">{{ publicacion().contenido }}</p> }
+  }
+
+  <header class="post-header">
+    <a class="post-author" [routerLink]="[auth.prefijo(), 'usuarios', original().autor.id]">
+      <app-avatar [name]="original().autor.nombre" [src]="original().autor.avatarUrl" [size]="42" />
+      <div>
+        <div class="author-name-row">
+          <span class="author-name">{{ original().autor.nombre }}</span>
+          @if (original().autor.verificada) { <mat-icon class="badge-icon verif" matTooltip="Empresa verificada">verified</mat-icon> }
+          @if (original().autor.esAlimentadorWeb) { <span class="badge badge-warning creador">Creador destacado</span> }
+        </div>
+        <span class="post-time">{{ original().createdAt | fechaRelativa }}{{ original().editada ? ' · editada' : '' }}</span>
+      </div>
+    </a>
+    <div class="row">
+      <span class="badge" [class]="claseTipo()">{{ original().tipo | etiqueta:'tipoPublicacion' }}</span>
+      @if (original().estado === 'suspendida') { <span class="badge badge-rechazado">Oculta</span> }
+      <div class="dropdown-host" (clickOutside)="menu.set(false)">
+        <button type="button" class="icon-btn" (click)="menu.update(v => !v)" aria-label="Más opciones" [attr.aria-expanded]="menu()">
+          <mat-icon>more_horiz</mat-icon>
+        </button>
+        @if (menu()) {
+          <div class="menu" role="menu">
+            @if (propia()) {
+              <button type="button" role="menuitem" (click)="empezarEdicion()"><mat-icon>edit</mat-icon>Editar</button>
+              <button type="button" role="menuitem" class="danger" (click)="eliminar()"><mat-icon>delete</mat-icon>Eliminar</button>
+            } @else {
+              <button type="button" role="menuitem" (click)="reportar()"><mat-icon>flag</mat-icon>Reportar</button>
+              @if (auth.isAdmin()) {
+                <button type="button" role="menuitem" class="danger" (click)="ocultar()"><mat-icon>visibility_off</mat-icon>Ocultar (moderación)</button>
+                <button type="button" role="menuitem" class="danger" (click)="eliminar()"><mat-icon>delete</mat-icon>Eliminar</button>
+              }
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </header>
+
+  @if (editando()) {
+    <form class="edicion stack-sm" (ngSubmit)="guardarEdicion()">
+      @if (!esRepost()) {
+        <div class="row">
+          <select class="form-select" name="tipo" [(ngModel)]="edicion.tipo" aria-label="Tipo" style="max-width:200px">
+            @for (t of tipos; track t[0]) { <option [value]="t[0]">{{ t[1] }}</option> }
+          </select>
+          <input class="form-input grow" name="titulo" [(ngModel)]="edicion.titulo" placeholder="Título (opcional)" aria-label="Título" />
+        </div>
+      }
+      <textarea class="form-textarea" rows="4" name="contenido" [(ngModel)]="edicion.contenido" aria-label="Contenido"></textarea>
+      <div class="form-actions">
+        <button type="button" class="btn btn-sm btn-ghost" (click)="editando.set(false)">Cancelar</button>
+        <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+      </div>
+    </form>
+  } @else {
+    @if (original().titulo) { <h3 class="post-title">{{ original().titulo }}</h3> }
+    <p class="post-content pre-line" [class.recortado]="larga() && !expandida()">{{ original().contenido }}</p>
+    @if (larga()) {
+      <button type="button" class="btn-link" (click)="expandida.update(v => !v)">{{ expandida() ? 'Ver menos' : 'Ver más' }}</button>
+    }
+  }
+
+  @if (original().fotos.length) {
+    <div class="post-images" [class]="'n' + (original().fotos.length > 4 ? 4 : original().fotos.length)">
+      @for (f of original().fotos.slice(0, 4); track f.id) {
+        <a [href]="f.url | uploadUrl" target="_blank" rel="noopener"><img [src]="f.url | uploadUrl" alt="Foto de la publicación" loading="lazy" /></a>
+      }
+    </div>
+  }
+
+  @if (original().materiales.length) {
+    <div class="chips mt-8">
+      @for (m of original().materiales; track m.id) { <span class="badge badge-secundario"><mat-icon style="font-size:14px;width:14px;height:14px">inventory_2</mat-icon>{{ m.nombre }}</span> }
+    </div>
+  }
+
+  <footer class="post-actions">
+    <button type="button" class="action-btn" [class.liked]="original().likedByMe" (click)="alternarLike()" [attr.aria-pressed]="original().likedByMe"
+            [attr.aria-label]="(original().likedByMe ? 'Quitar me gusta' : 'Me gusta') + ', ' + original().likes">
+      <mat-icon>{{ original().likedByMe ? 'favorite' : 'favorite_border' }}</mat-icon><span>{{ original().likes }}</span>
+    </button>
+    <button type="button" class="action-btn" [class.active]="verComentarios()" (click)="verComentarios.update(v => !v)"
+            [attr.aria-expanded]="verComentarios()" aria-label="Comentarios">
+      <mat-icon>chat_bubble_outline</mat-icon><span>{{ original().comentarios }}</span>
+    </button>
+    @if (!originalPropio()) {
+      <button type="button" class="action-btn" [class.reposted]="original().repostedByMe" (click)="compartir()"
+              [attr.aria-label]="original().repostedByMe ? 'Dejar de compartir' : 'Compartir'">
+        <mat-icon>repeat</mat-icon><span>{{ original().reposts }}</span>
+      </button>
+    } @else {
+      <span class="action-btn estatico" matTooltip="Veces compartida"><mat-icon>repeat</mat-icon><span>{{ original().reposts }}</span></span>
+    }
+    <a class="action-btn ms-auto" [routerLink]="[auth.prefijo(), 'comunidad', original().id]" aria-label="Abrir publicación"><mat-icon>open_in_new</mat-icon></a>
+  </footer>
+
+  @if (verComentarios()) {
+    <app-comentarios [publicacionId]="original().id" [autorPublicacionId]="original().autor.id" (cambioTotal)="ajustarComentarios($event)" />
+  }
+</article>

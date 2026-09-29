@@ -1,0 +1,166 @@
+<div class="landing">
+  <nav class="landing-nav">
+    <a class="nav-brand" routerLink="/">
+      <div class="brand-icon"><mat-icon>layers</mat-icon></div>
+      <span class="brand-name">BrickByBrick</span>
+    </a>
+    <div class="nav-actions">
+      @if (auth.isAuthenticated()) {
+        <a [routerLink]="auth.rutaInicio()" class="btn btn-primary">Ir a mi panel</a>
+      } @else {
+        <a routerLink="/login" class="btn btn-ghost">Ingresar</a>
+        <a routerLink="/registro" class="btn btn-primary">Registrarse</a>
+      }
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+      <div class="hero-left">
+        <div class="hero-badge"><mat-icon>recycling</mat-icon><span>Economía circular · Bogotá, Colombia</span></div>
+        <h1 class="hero-title">Conectamos lo que <span class="text-primary-color">sobra</span><br />con quien lo <span class="text-secondary-color">necesita</span></h1>
+        <p class="hero-desc">
+          Plataforma para donar materiales de construcción excedentes: las constructoras reducen residuos y obtienen
+          soporte para su beneficio tributario; familias y emprendimientos acceden gratis a materiales para sus proyectos.
+        </p>
+        <div class="hero-ctas">
+          <a routerLink="/registro/beneficiario" class="btn btn-primary btn-lg"><mat-icon>person</mat-icon> Soy beneficiario</a>
+          <a routerLink="/registro/empresa" class="btn btn-outline-secondary btn-lg"><mat-icon>business</mat-icon> Soy constructora</a>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="hero-card card">
+          @if (materiales().length) {
+            <div class="mat-preview-grid">
+              @for (m of materiales(); track m.id) {
+                <a class="mat-preview-item" routerLink="/login" [style.background]="m.categoria.colorHex + '12'">
+                  <div class="mat-preview-icon" [style.background]="m.categoria.colorHex + '20'">
+                    <mat-icon [style.color]="m.categoria.colorHex">{{ m.categoria.icono }}</mat-icon>
+                  </div>
+                  <div class="mat-preview-name clamp-2">{{ m.nombre }}</div>
+                  <div class="mat-preview-qty">{{ m.cantidad | number:'1.0-2' }} {{ m.unidadMedida }}</div>
+                  <span class="badge badge-disponible" style="font-size:11px;align-self:flex-start">Disponible</span>
+                </a>
+              }
+            </div>
+            <div class="mat-preview-footer">
+              <mat-icon style="color:var(--accent);font-size:18px">check_circle</mat-icon>
+              <span>{{ stats()?.materialesDisponibles ?? materiales().length }} materiales disponibles ahora mismo</span>
+            </div>
+          } @else {
+            <div class="center muted" style="padding:40px 16px">
+              <mat-icon style="font-size:40px;width:40px;height:40px;color:var(--primary)">inventory_2</mat-icon>
+              <p class="mt-8">Pronto verás aquí los materiales disponibles.</p>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  @if (stats(); as s) {
+    <section class="stats-bar" aria-label="Impacto de la plataforma">
+      <div class="stat"><div class="stat-value">{{ s.entregasRealizadas | number }}</div><div class="stat-label">Entregas de material</div></div>
+      <div class="stat"><div class="stat-value">{{ s.beneficiariosAtendidos | number }}</div><div class="stat-label">Beneficiarios atendidos</div></div>
+      <div class="stat"><div class="stat-value">{{ s.constructorasVerificadas | number }}</div><div class="stat-label">Constructoras verificadas</div></div>
+      <div class="stat"><div class="stat-value">{{ s.eventosRealizados | number }}</div><div class="stat-label">Jornadas y talleres</div></div>
+    </section>
+  }
+
+  <section class="how-section" id="como-funciona">
+    <div class="section-container">
+      <div class="section-heading"><h2>¿Cómo funciona?</h2><p>Un proceso simple, transparente y trazable.</p></div>
+      <div class="steps-grid">
+        @for (s of pasos; track s.title; let i = $index) {
+          <div class="step-card">
+            <div class="step-icon-wrapper" [style.background]="s.bg"><mat-icon [style.color]="s.color">{{ s.icon }}</mat-icon></div>
+            <div class="step-num" [style.background]="s.color">{{ i + 1 }}</div>
+            <h3>{{ s.title }}</h3>
+            <p>{{ s.desc }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="tax-section">
+    <div class="section-container tax-grid">
+      <div>
+        <div class="tax-badge"><mat-icon>percent</mat-icon><span>Beneficio tributario</span></div>
+        <h2 class="tax-title">Soporte para tu descuento en renta</h2>
+        <p class="tax-desc">Las donaciones pueden dar derecho a un descuento del 25 % del valor donado en el impuesto de renta
+          (arts. 255 y 257 del Estatuto Tributario, modificados por la Ley 1819 de 2016), con el tope del artículo 258.</p>
+        <a routerLink="/registro/empresa" class="btn btn-lg tax-cta">Registrar mi empresa</a>
+        <p class="tax-nota">El descuento procede para donaciones a entidades del Régimen Tributario Especial y no contribuyentes;
+          BrickByBrick entrega soportes informativos que tu contador debe validar.</p>
+      </div>
+      <div class="tax-benefits">
+        @for (b of beneficiosTributarios; track b.title) {
+          <div class="tax-item">
+            <div class="tax-item-icon"><mat-icon>{{ b.icon }}</mat-icon></div>
+            <div><div class="tax-item-title">{{ b.title }}</div><div class="tax-item-desc">{{ b.desc }}</div></div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="testimonials-section">
+    <div class="section-container">
+      <h2 class="center" style="margin-bottom:40px">¿Para quién es BrickByBrick?</h2>
+      <div class="testimonials-grid">
+        <div class="perfil-card card">
+          <div class="perfil-icon" style="background:rgba(192,57,43,.1)"><mat-icon style="color:var(--primary)">family_restroom</mat-icon></div>
+          <h3>Familias y comunidades</h3>
+          <p>Personas de Bogotá que necesitan materiales para mejorar su vivienda o sacar adelante un proyecto comunitario.</p>
+          <ul><li><mat-icon>check</mat-icon>Materiales gratuitos cerca de tu localidad</li><li><mat-icon>check</mat-icon>Jornadas de entrega y talleres</li></ul>
+          <a routerLink="/registro/beneficiario" class="btn btn-primary">Quiero materiales</a>
+        </div>
+        <div class="perfil-card card">
+          <div class="perfil-icon" style="background:rgba(39,174,96,.1)"><mat-icon style="color:var(--accent)">storefront</mat-icon></div>
+          <h3>Emprendimientos creativos</h3>
+          <p>Talleres que transforman madera, ladrillo o cerámica recuperada en productos, y quieren mostrarlos al mundo.</p>
+          <ul><li><mat-icon>check</mat-icon>Portafolio público de tus productos</li><li><mat-icon>check</mat-icon>Comunidad, grupos y mensajes</li></ul>
+          <a routerLink="/registro/beneficiario" class="btn btn-accent">Crear mi portafolio</a>
+        </div>
+        <div class="perfil-card card">
+          <div class="perfil-icon" style="background:rgba(46,134,171,.12)"><mat-icon style="color:var(--secondary)">apartment</mat-icon></div>
+          <h3>Constructoras responsables</h3>
+          <p>Empresas que quieren reducir residuos de obra, sumar impacto social y documentar sus donaciones.</p>
+          <ul><li><mat-icon>check</mat-icon>Solicitudes y entregas trazables</li><li><mat-icon>check</mat-icon>Constancias y resumen tributario</li></ul>
+          <a routerLink="/registro/empresa" class="btn btn-secondary">Donar excedentes</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="landing-footer">
+    <div class="section-container footer-grid">
+      <div>
+        <div class="footer-brand"><div class="footer-icon"><mat-icon>layers</mat-icon></div><span>BrickByBrick</span></div>
+        <p class="footer-desc">Conectando materiales excedentes con quienes más los necesitan. Bogotá, Colombia.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Plataforma</div>
+        <div class="footer-link"><a href="#como-funciona">¿Cómo funciona?</a></div>
+        <div class="footer-link"><a routerLink="/registro/beneficiario">Soy beneficiario</a></div>
+        <div class="footer-link"><a routerLink="/registro/empresa">Soy constructora</a></div>
+      </div>
+      <div>
+        <div class="footer-col-title">Cuenta</div>
+        <div class="footer-link"><a routerLink="/login">Ingresar</a></div>
+        <div class="footer-link"><a routerLink="/recuperar-password">Recuperar contraseña</a></div>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <div class="footer-link"><a routerLink="/terminos">Términos de uso</a></div>
+        <div class="footer-link"><a routerLink="/privacidad">Tratamiento de datos (Ley 1581)</a></div>
+      </div>
+    </div>
+    <div class="section-container footer-bottom">
+      <span>© {{ anio }} BrickByBrick · Proyecto de grado, Universidad Manuela Beltrán.</span>
+      <span>Hecho con propósito social en Bogotá</span>
+    </div>
+  </footer>
+</div>

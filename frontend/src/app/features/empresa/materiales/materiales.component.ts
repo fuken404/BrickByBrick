@@ -1,105 +1,80 @@
-import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { CommonModule } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-
 import { MaterialApiService } from '../../../core/services/material-api.service';
-import { Material } from '../../../core/models';
-import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
+import { ToastService } from '../../../core/services/toast.service';
+import { DialogoService } from '../../../shared/services/dialogo.service';
+import { EstadoPubMaterial, Material } from '../../../core/models';
+import { mensajeError } from '../../../core/utils/http';
+import { formatearDia } from '../../../core/utils/fechas';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import { ConfirmationModalComponent } from '../../../shared/components/confirmation-modal/confirmation-modal.component';
+import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
+import { EstadoBadgePipe } from '../../../shared/pipes/estado-badge.pipe';
+import { CopCurrencyPipe } from '../../../shared/pipes/cop-currency.pipe';
 import { UploadUrlPipe } from '../../../shared/pipes/upload-url.pipe';
 
-type BadgeType = 'disponible'|'pendiente'|'aprobado'|'entregado'|'rechazado'|'verificado'|'pendiente-verificacion'|'secundario'|'primary'|'warning'|'danger';
+const FILTROS: { estado: EstadoPubMaterial | undefined; label: string }[] = [
+  { estado: undefined, label: 'Todos' }, { estado: 'activo', label: 'Publicados' }, { estado: 'borrador', label: 'Borradores' },
+  { estado: 'pausado', label: 'Pausados' }, { estado: 'agotado', label: 'Agotados' }, { estado: 'vencido', label: 'Vencidos' },
+];
 
 @Component({
   selector: 'app-empresa-materiales',
   standalone: true,
-  imports: [CommonModule, RouterLink, MatIconModule, SkeletonLoaderComponent, EmptyStateComponent, ConfirmationModalComponent, UploadUrlPipe],
+  imports: [RouterLink, DecimalPipe, FormsModule, MatIconModule, EmptyStateComponent, SkeletonLoaderComponent, EstadoBadgePipe, CopCurrencyPipe, UploadUrlPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
-      <div class="page-header-row">
-        <div>
-          <h1 class="page-title">Mis materiales</h1>
-          <p class="page-subtitle">{{ total() }} publicaciones en total</p>
+      <header class="page-header">
+        <div><h1 class="page-title">Mis materiales</h1><p class="page-subtitle">{{ total() }} material(es) registrados.</p></div>
+        <div class="actions"><a class="btn btn-primary" routerLink="/empresa/materiales/nuevo"><mat-icon>add</mat-icon>Publicar material</a></div>
+      </header>
+
+      <div class="toolbar">
+        <div class="chips">
+          @for (f of filtros; track f.label) {
+            <button type="button" class="chip" [class.active]="estado() === f.estado" (click)="estado.set(f.estado); cargar()">{{ f.label }}</button>
+          }
         </div>
-        <a routerLink="/empresa/materiales/nuevo" class="btn btn-primary">
-          <mat-icon>add</mat-icon> Nuevo material
-        </a>
+        <div class="search"><mat-icon>search</mat-icon><input class="form-input" [(ngModel)]="q" (keyup.enter)="cargar()" placeholder="Buscar…" aria-label="Buscar materiales" /></div>
       </div>
 
-      <!-- Estado filter -->
-      <div class="filter-chips">
-        <button class="chip" [class.active]="!estadoFiltro" (click)="setEstado(undefined)">Todos</button>
-        @for (e of estadoOpts; track e.value) {
-          <button class="chip" [class.active]="estadoFiltro === e.value" (click)="setEstado(e.value)">{{ e.label }}</button>
-        }
-      </div>
-
-      @if (loading()) {
+      @if (cargando()) {
         <app-skeleton-loader type="list" [count]="6" />
-      } @else if (materiales().length === 0) {
-        <app-empty-state
-          icon="inventory_2"
-          title="Sin materiales"
-          description="Publica tus primeros materiales excedentes."
-          actionLabel="Publicar material"
-          [actionFn]="irANuevo.bind(this)"
-        />
+      } @else if (!items().length) {
+        <div class="card"><app-empty-state icon="inventory_2" title="No hay materiales aquí" description="Publica el material sobrante de tus obras para que llegue a quien lo necesita."
+          actionLabel="Publicar material" (accion)="router.navigate(['/empresa/materiales/nuevo'])" /></div>
       } @else {
-        <div class="materiales-table card">
-          <table>
-            <thead>
-              <tr>
-                <th>Material</th>
-                <th>Categoría</th>
-                <th>Cantidad</th>
-                <th>Estado pub.</th>
-                <th>Solicitudes</th>
-                <th>Publicado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Material</th><th>Disponible</th><th>Valor unitario</th><th>Vence</th><th>Solicitudes</th><th>Estado</th><th><span class="sr-only">Acciones</span></th></tr></thead>
             <tbody>
-              @for (m of materiales(); track m.id) {
+              @for (m of items(); track m.id) {
                 <tr>
                   <td>
-                    <div class="mat-cell">
-                      @if (m.fotos?.length) {
-                        <img [src]="m.fotos[0].url | uploadUrl" [alt]="m.nombre" class="mat-thumb" />
-                      } @else {
-                        <div class="mat-thumb-ph" [style.background]="(m.categoria?.colorHex ?? '#ccc') + '20'">
-                          <mat-icon [style.color]="m.categoria?.colorHex ?? '#ccc'">inventory_2</mat-icon>
-                        </div>
-                      }
-                      <span class="mat-nombre">{{ m.nombre }}</span>
+                    <div class="cell-user">
+                      @if (m.fotos.length) { <img [src]="m.fotos[0].url | uploadUrl" alt="" style="width:40px;height:40px;border-radius:8px;object-fit:cover" /> }
+                      @else { <mat-icon [style.color]="m.categoria.colorHex">{{ m.categoria.icono }}</mat-icon> }
+                      <div><div class="strong">{{ m.nombre }}</div><div class="xsmall muted">{{ m.categoria.nombre }}</div></div>
                     </div>
                   </td>
-                  <td>{{ m.categoria?.nombre }}</td>
-                  <td>{{ m.cantidad }} {{ m.unidadMedida }}</td>
+                  <td>{{ m.cantidad | number:'1.0-2' }}{{ m.cantidadInicial && m.cantidadInicial !== m.cantidad ? ' / ' + (m.cantidadInicial | number:'1.0-2') : '' }} {{ m.unidadMedida }}</td>
+                  <td>@if (m.valorUnitarioCop !== null) { {{ m.valorUnitarioCop | copCurrency }} } @else { <span class="badge badge-warning">Sin valor</span> }</td>
+                  <td class="small">{{ dia(m.fechaLimite) }}</td>
+                  <td><a class="btn-link" routerLink="/empresa/donaciones" [queryParams]="{ materialId: m.id }">{{ m._count.solicitudes }}</a></td>
+                  <td>@let b = m.estadoPublicacion | estadoBadge:'material'; <span class="badge" [class]="b.cssClass">{{ b.label }}</span></td>
                   <td>
-                    <span class="estado-pill estado-{{ m.estadoPublicacion }}">{{ m.estadoPublicacion }}</span>
-                  </td>
-                  <td>{{ m._count?.solicitudes ?? 0 }}</td>
-                  <td>{{ m.createdAt | date:'dd/MM/yy' }}</td>
-                  <td>
-                    <div class="acciones">
-                      <a [routerLink]="['/empresa/materiales', m.id, 'editar']" class="action-btn" title="Editar">
-                        <mat-icon>edit</mat-icon>
-                      </a>
-                      @if (m.estadoPublicacion === 'activo') {
-                        <button class="action-btn warning" (click)="cambiarEstado(m, 'pausado')" title="Pausar">
-                          <mat-icon>pause</mat-icon>
-                        </button>
-                      } @else if (m.estadoPublicacion === 'pausado') {
-                        <button class="action-btn success" (click)="cambiarEstado(m, 'activo')" title="Activar">
-                          <mat-icon>play_arrow</mat-icon>
-                        </button>
+                    <div class="row" style="justify-content:flex-end;flex-wrap:nowrap">
+                      @if (m.estadoPublicacion === 'borrador' || m.estadoPublicacion === 'pausado') {
+                        <button type="button" class="icon-btn" title="Publicar" aria-label="Publicar" (click)="estadoMaterial(m, 'activo')" [disabled]="procesando() === m.id"><mat-icon>publish</mat-icon></button>
                       }
-                      <button class="action-btn danger" (click)="confirmarEliminar(m)" title="Eliminar">
-                        <mat-icon>delete</mat-icon>
-                      </button>
+                      @if (m.estadoPublicacion === 'activo') {
+                        <button type="button" class="icon-btn" title="Pausar" aria-label="Pausar" (click)="estadoMaterial(m, 'pausado')" [disabled]="procesando() === m.id"><mat-icon>pause</mat-icon></button>
+                      }
+                      <a class="icon-btn" title="Editar" aria-label="Editar" [routerLink]="['/empresa/materiales', m.id, 'editar']"><mat-icon>edit</mat-icon></a>
+                      <button type="button" class="icon-btn danger" title="Eliminar" aria-label="Eliminar" (click)="eliminar(m)" [disabled]="procesando() === m.id"><mat-icon>delete</mat-icon></button>
                     </div>
                   </td>
                 </tr>
@@ -107,81 +82,67 @@ type BadgeType = 'disponible'|'pendiente'|'aprobado'|'entregado'|'rechazado'|'ve
             </tbody>
           </table>
         </div>
-      }
-
-      @if (materialAEliminar()) {
-        <app-confirmation-modal
-          title="Eliminar material"
-          [message]="'¿Estás seguro de que deseas eliminar ' + materialAEliminar()!.nombre + '? Esta acción no se puede deshacer.'"
-          confirmLabel="Eliminar"
-          [dangerous]="true"
-          (confirmed)="eliminar()"
-          (cancelled)="materialAEliminar.set(null)"
-        />
+        @if (hayMas()) { <div class="load-more"><button type="button" class="btn btn-ghost" (click)="cargar(true)">Cargar más</button></div> }
       }
     </div>
   `,
-  styleUrl: './materiales.component.scss',
 })
 export class EmpresaMaterialesComponent implements OnInit {
-  private readonly matSvc = inject(MaterialApiService);
-  private readonly router = inject(Router);
+  private readonly api = inject(MaterialApiService);
+  private readonly toast = inject(ToastService);
+  private readonly dialogo = inject(DialogoService);
+  protected readonly router = inject(Router);
 
-  readonly materiales         = signal<Material[]>([]);
-  readonly loading            = signal(true);
-  readonly total              = signal(0);
-  readonly materialAEliminar  = signal<Material | null>(null);
+  protected readonly filtros = FILTROS;
+  protected readonly estado = signal<EstadoPubMaterial | undefined>(undefined);
+  protected readonly items = signal<Material[]>([]);
+  protected readonly total = signal(0);
+  protected readonly cargando = signal(true);
+  protected readonly hayMas = signal(false);
+  protected readonly procesando = signal<string | null>(null);
+  protected q = '';
+  private pagina = 1;
 
-  estadoFiltro: string | undefined;
+  ngOnInit(): void { this.cargar(); }
 
-  readonly estadoOpts = [
-    { value: 'activo',   label: 'Activos' },
-    { value: 'pausado',  label: 'Pausados' },
-    { value: 'borrador', label: 'Borradores' },
-    { value: 'agotado',  label: 'Agotados' },
-    { value: 'vencido',  label: 'Vencidos' },
-  ];
+  dia(iso: string | null): string { return formatearDia(iso); }
 
-  ngOnInit() { this.load(); }
-
-  private load() {
-    this.loading.set(true);
-    const filtros: { estadoPublicacion?: string; limit: number } = { limit: 50 };
-    if (this.estadoFiltro) filtros.estadoPublicacion = this.estadoFiltro;
-    this.matSvc.getMisMateriales(filtros).subscribe({
-      next: r => {
-        this.materiales.set(r.data.items);
+  cargar(mas = false): void {
+    this.pagina = mas ? this.pagina + 1 : 1;
+    if (!mas) this.cargando.set(true);
+    this.api.misMateriales({ estadoPublicacion: this.estado(), q: this.q.trim() || undefined, page: this.pagina, limit: 20 }).subscribe({
+      next: (r) => {
+        this.items.update((l) => (mas ? [...l, ...r.data.items] : r.data.items));
         this.total.set(r.data.total);
-        this.loading.set(false);
+        this.hayMas.set(r.data.page < r.data.totalPages);
+        this.cargando.set(false);
       },
-      error: () => this.loading.set(false),
+      error: () => this.cargando.set(false),
     });
   }
 
-  setEstado(v: string | undefined) { this.estadoFiltro = v; this.load(); }
-
-  irANuevo() { this.router.navigate(['/empresa/materiales/nuevo']); }
-
-  cambiarEstado(m: Material, estado: string) {
-    this.matSvc.cambiarEstado(m.id, estado).subscribe({
-      next: () => {
-        this.materiales.update(list =>
-          list.map(x => x.id === m.id ? { ...x, estadoPublicacion: estado as Material['estadoPublicacion'] } : x)
-        );
+  estadoMaterial(m: Material, estado: 'activo' | 'pausado'): void {
+    this.procesando.set(m.id);
+    this.api.cambiarEstado(m.id, estado).subscribe({
+      next: (r) => {
+        this.procesando.set(null);
+        this.items.update((l) => l.map((x) => (x.id === m.id ? { ...x, ...r.data } : x)));
+        this.toast.exito(estado === 'activo' ? 'Material publicado' : 'Material pausado');
       },
+      error: (e) => { this.procesando.set(null); this.toast.error(mensajeError(e)); },
     });
   }
 
-  confirmarEliminar(m: Material) { this.materialAEliminar.set(m); }
-
-  eliminar() {
-    const m = this.materialAEliminar();
-    if (!m) return;
-    this.matSvc.delete(m.id).subscribe({
-      next: () => {
-        this.materiales.update(list => list.filter(x => x.id !== m.id));
-        this.materialAEliminar.set(null);
-      },
+  eliminar(m: Material): void {
+    this.dialogo.confirmar({
+      titulo: 'Eliminar material', mensaje: `"${m.nombre}" dejará de estar visible. Las entregas ya realizadas se conservan para tus constancias.`,
+      confirmar: 'Eliminar', peligroso: true,
+    }).subscribe(() => {
+      this.procesando.set(m.id);
+      this.api.eliminar(m.id).subscribe({
+        next: () => { this.procesando.set(null); this.items.update((l) => l.filter((x) => x.id !== m.id)); this.total.update((t) => t - 1); this.toast.exito('Material eliminado'); },
+        error: (e) => { this.procesando.set(null); this.toast.error(mensajeError(e)); },
+      });
     });
   }
 }
