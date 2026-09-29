@@ -1,5 +1,5 @@
 import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -22,6 +22,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
       <!-- Welcome header -->
       <div class="welcome-header">
         <div>
+          <p class="dashboard-eyebrow">TU PRÓXIMO PROYECTO EMPIEZA AQUÍ</p>
           <h1 class="page-title">Bienvenido, {{ nombreCorto() }}</h1>
           <p class="page-subtitle">Aquí tienes lo más reciente disponible para ti.</p>
         </div>
@@ -36,29 +37,29 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
           label="Solicitudes activas"
           [value]="solicitudesActivas()"
           icon="pending_actions"
-          iconColor="#2E86AB"
-          iconBg="rgba(46,134,171,.1)"
+          iconColor="#48635A"
+          iconBg="rgba(72,99,90,.1)"
         />
         <app-kpi-card
           label="Materiales recibidos"
           [value]="materialesRecibidos()"
           icon="check_circle"
-          iconColor="#27AE60"
-          iconBg="rgba(39,174,96,.1)"
+          iconColor="#38745B"
+          iconBg="rgba(56,116,91,.1)"
         />
         <app-kpi-card
           label="Eventos inscritos"
           [value]="eventosInscritos()"
           icon="event"
-          iconColor="#E67E22"
-          iconBg="rgba(230,126,34,.1)"
+          iconColor="#996923"
+          iconBg="rgba(153,105,35,.1)"
         />
         <app-kpi-card
           label="Materiales disponibles"
           [value]="totalMateriales()"
           icon="inventory_2"
-          iconColor="#C0392B"
-          iconBg="rgba(192,57,43,.1)"
+          iconColor="#AD5138"
+          iconBg="rgba(173,81,56,.1)"
         />
       </div>
 
@@ -94,7 +95,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
         } @else {
           <div class="events-grid">
             @for (e of eventos(); track e.id) {
-              <app-event-card [evento]="e" [inscrito]="false" (clicked)="irAEvento($event)" />
+              <app-event-card [evento]="e" [inscrito]="false" (clicked)="irAEvento($event)" (inscribirse)="irAEvento($event)" />
             }
           </div>
         }
@@ -104,6 +105,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
   styleUrl: './dashboard.component.scss',
 })
 export class BeneficiarioDashboardComponent implements OnInit {
+  private readonly router = inject(Router);
   private readonly auth     = inject(AuthStore);
   private readonly matSvc   = inject(MaterialApiService);
   private readonly eventSvc = inject(EventApiService);
@@ -143,10 +145,10 @@ export class BeneficiarioDashboardComponent implements OnInit {
   }
 
   irAMaterial(m: Material) {
-    window.location.href = `/beneficiario/materiales/${m.id}`;
+    this.router.navigate(['/beneficiario/materiales', m.id]);
   }
 
   irAEvento(e: Evento) {
-    window.location.href = `/beneficiario/eventos`;
+    this.router.navigate(['/beneficiario/eventos']);
   }
 }

@@ -36,8 +36,8 @@ interface ConfigSistema {
         <!-- Categorías -->
         <section class="card section-card">
           <div class="section-header">
-            <div class="section-icon" style="background:rgba(192,57,43,.1)">
-              <mat-icon style="color:#C0392B">category</mat-icon>
+            <div class="section-icon" style="background:rgba(173,81,56,.1)">
+              <mat-icon style="color:#AD5138">category</mat-icon>
             </div>
             <div>
               <div class="section-title">Categorías de materiales</div>
@@ -81,7 +81,7 @@ interface ConfigSistema {
                   <label>Color (hex)</label>
                   <div class="color-row">
                     <input type="color" class="color-picker" [(ngModel)]="catForm.colorHex" />
-                    <input class="inp" [(ngModel)]="catForm.colorHex" placeholder="#C0392B" />
+                    <input class="inp" [(ngModel)]="catForm.colorHex" placeholder="#AD5138" />
                   </div>
                 </div>
                 <div class="field">
@@ -102,8 +102,8 @@ interface ConfigSistema {
         <!-- Configuración del sistema -->
         <section class="card section-card">
           <div class="section-header">
-            <div class="section-icon" style="background:rgba(46,134,171,.1)">
-              <mat-icon style="color:#2E86AB">settings</mat-icon>
+            <div class="section-icon" style="background:rgba(72,99,90,.1)">
+              <mat-icon style="color:#48635A">settings</mat-icon>
             </div>
             <div>
               <div class="section-title">Parámetros del sistema</div>
@@ -154,8 +154,8 @@ interface ConfigSistema {
         <!-- Info del sistema -->
         <section class="card section-card info-section">
           <div class="section-header">
-            <div class="section-icon" style="background:rgba(39,174,96,.1)">
-              <mat-icon style="color:#27AE60">info</mat-icon>
+            <div class="section-icon" style="background:rgba(56,116,91,.1)">
+              <mat-icon style="color:#38745B">info</mat-icon>
             </div>
             <div>
               <div class="section-title">Información del sistema</div>
@@ -196,7 +196,7 @@ export class AdminConfiguracionComponent implements OnInit {
   readonly savingCfg   = signal(false);
   readonly cfgSaved    = signal(false);
 
-  catForm: CategoriaForm = { nombre: '', colorHex: '#C0392B', icono: 'category' };
+  catForm: CategoriaForm = { nombre: '', colorHex: '#AD5138', icono: 'category' };
 
   cfg: ConfigSistema = {
     maxFotosXMaterial:           8,
@@ -224,7 +224,7 @@ export class AdminConfiguracionComponent implements OnInit {
 
   abrirNuevaCategoria() {
     this.editId.set(null);
-    this.catForm = { nombre: '', colorHex: '#C0392B', icono: 'category' };
+    this.catForm = { nombre: '', colorHex: '#AD5138', icono: 'category' };
     this.showCatForm.set(true);
   }
 

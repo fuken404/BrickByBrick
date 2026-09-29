@@ -1,7 +1,7 @@
 @use '../../../../styles/variables' as *;
 @use '../../../../styles/mixins' as *;
 
-.page { padding: 32px; max-width: $content-max-w; }
+.page { padding: 0; max-width: $content-max-w; }
 
 .page-header-row { @include flex-between; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
 .page-title    { font-family: $font-display; font-size: 28px; color: $text-primary; }
@@ -32,20 +32,20 @@ table { width: 100%; border-collapse: collapse;
 .pill {
   display: inline-block; padding: 2px 10px; border-radius: $radius-pill;
   font-size: 11px; font-weight: 600; background: $warning-light; color: $warning;
-  &.on { background: rgba(39,174,96,.1); color: $accent; }
+  &.on { background: rgba(56,116,91,.1); color: $accent; }
 }
 
 .estado-pill {
   display: inline-block; padding: 2px 10px; border-radius: $radius-pill;
   font-size: 11px; font-weight: 600; text-transform: uppercase; background: $danger-light; color: $danger;
-  &.activo { background: rgba(39,174,96,.1); color: $accent; }
+  &.activo { background: rgba(56,116,91,.1); color: $accent; }
 }
 
 .action-btn {
   width: 30px; height: 30px; border: none; background: none; cursor: pointer;
   border-radius: 6px; @include flex-center; color: $text-secondary; transition: all $transition-fast;
   mat-icon { font-size: 18px; }
-  &.success:hover { background: rgba(39,174,96,.1); color: $accent; }
+  &.success:hover { background: rgba(56,116,91,.1); color: $accent; }
 }
 
 .verified-check { color: $accent; display: flex; mat-icon { font-size: 20px; } }
@@ -81,7 +81,7 @@ table { width: 100%; border-collapse: collapse;
 }
 
 .doc-icon {
-  width: 36px; height: 36px; border-radius: 8px; background: rgba(46,134,171,.1);
+  width: 36px; height: 36px; border-radius: 8px; background: rgba(72,99,90,.1);
   @include flex-center; flex-shrink: 0;
   mat-icon { color: $secondary; font-size: 20px; }
 }

@@ -8,17 +8,17 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 
 const TIPO_CONFIG: Record<TipoNotificacion, { icon: string; color: string }> = {
-  material_nuevo:        { icon: 'inventory_2',     color: '#C0392B' },
-  solicitud_aprobada:    { icon: 'check_circle',    color: '#27AE60' },
-  solicitud_rechazada:   { icon: 'cancel',          color: '#E74C3C' },
-  solicitud_entregada:   { icon: 'local_shipping',  color: '#27AE60' },
-  evento_inscripcion:    { icon: 'event_available', color: '#2E86AB' },
-  evento_cupos_bajos:    { icon: 'warning',         color: '#E67E22' },
-  comentario:            { icon: 'comment',         color: '#8E44AD' },
-  like:                  { icon: 'favorite',        color: '#E74C3C' },
-  grupo_invitacion:      { icon: 'group_add',       color: '#2E86AB' },
-  verificacion:          { icon: 'verified',        color: '#27AE60' },
-  material_vence:        { icon: 'schedule',        color: '#E67E22' },
+  material_nuevo:        { icon: 'inventory_2',     color: '#AD5138' },
+  solicitud_aprobada:    { icon: 'check_circle',    color: '#38745B' },
+  solicitud_rechazada:   { icon: 'cancel',          color: '#B53F36' },
+  solicitud_entregada:   { icon: 'local_shipping',  color: '#38745B' },
+  evento_inscripcion:    { icon: 'event_available', color: '#48635A' },
+  evento_cupos_bajos:    { icon: 'warning',         color: '#996923' },
+  comentario:            { icon: 'comment',         color: '#716453' },
+  like:                  { icon: 'favorite',        color: '#B53F36' },
+  grupo_invitacion:      { icon: 'group_add',       color: '#48635A' },
+  verificacion:          { icon: 'verified',        color: '#38745B' },
+  material_vence:        { icon: 'schedule',        color: '#996923' },
 };
 
 @Component({

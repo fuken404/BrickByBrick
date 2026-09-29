@@ -9,209 +9,80 @@ import { MatIconModule } from '@angular/material/icon';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="landing">
-      <!-- Topbar -->
-      <nav class="landing-nav">
-        <div class="nav-brand">
-          <div class="brand-icon"><mat-icon>layers</mat-icon></div>
-          <span class="brand-name">BrickByBrick</span>
-        </div>
-        <div class="nav-actions">
-          <a routerLink="/login" class="btn btn-ghost">Ingresar</a>
-          <a routerLink="/registro" class="btn btn-primary">Registrarse</a>
-        </div>
+      <a class="skip-link" href="#contenido">Saltar al contenido</a>
+      <nav class="landing-nav" aria-label="Navegación principal">
+        <a routerLink="/" class="brand"><img src="favicon.svg" width="34" height="34" alt="" />BrickByBrick<span class="brand-dot">.</span></a>
+        <div class="nav-links"><a href="#como-funciona">Cómo funciona</a><a href="#materiales">Los materiales</a><a href="#comunidad">Nuestro propósito</a></div>
+        <div class="nav-actions"><a routerLink="/login" class="login-link">Iniciar sesión</a><a routerLink="/registro" class="btn btn-primary">Comenzar <mat-icon>north_east</mat-icon></a></div>
       </nav>
 
-      <!-- Hero -->
-      <section class="hero">
-        <div class="hero-bg"></div>
-        <div class="hero-content">
-          <div class="hero-left">
-            <div class="hero-badge">
-              <mat-icon>emoji_events</mat-icon>
-              <span>Economía circular · Bogotá, Colombia</span>
-            </div>
-            <h1 class="hero-title">
-              Conectamos lo que <span class="text-primary-color">sobra</span><br />
-              con quien lo <span class="text-secondary-color">necesita</span>
-            </h1>
-            <p class="hero-desc">
-              Plataforma de donación de materiales de construcción excedentes entre constructoras
-              y familias de bajos recursos en Bogotá. Generamos valor social y beneficios tributarios.
-            </p>
-            <div class="hero-ctas">
-              <a routerLink="/registro/beneficiario" class="btn btn-primary btn-lg">
-                <mat-icon>person</mat-icon> Soy Beneficiario
-              </a>
-              <a routerLink="/registro/empresa" class="btn btn-outline-secondary btn-lg">
-                <mat-icon>business</mat-icon> Soy Constructora
-              </a>
-            </div>
+      <main id="contenido">
+        <section class="hero section-container">
+          <div class="hero-copy">
+            <p class="eyebrow"><span class="status-dot"></span> SEGUNDAS OPORTUNIDADES, NUEVOS COMIENZOS</p>
+            <h1>Lo que sobra<br />puede ser<br /><span>el comienzo.</span></h1>
+            <p class="hero-description">Unimos materiales de construcción con personas que los necesitan. Para que cada excedente encuentre un nuevo propósito.</p>
+            <div class="hero-actions"><a routerLink="/registro/beneficiario" class="btn btn-primary btn-lg">Encontrar materiales <mat-icon>arrow_forward</mat-icon></a><a routerLink="/registro/empresa" class="text-link">Quiero donar <mat-icon>north_east</mat-icon></a></div>
+            <div class="hero-location"><mat-icon>location_on</mat-icon> Construyendo comunidad en Bogotá, Colombia</div>
           </div>
-          <div class="hero-right">
-            <div class="hero-card card">
-              <div class="mat-preview-grid">
-                @for (m of previewMaterials; track m.cat) {
-                  <div class="mat-preview-item" [style.background]="m.color + '12'">
-                    <div class="mat-preview-icon" [style.background]="m.color + '18'">
-                      <mat-icon [style.color]="m.color">{{ m.icon }}</mat-icon>
-                    </div>
-                    <div class="mat-preview-name">{{ m.cat }}</div>
-                    <div class="mat-preview-qty">{{ m.qty }}</div>
-                    <span class="badge badge-disponible" style="font-size:11px;align-self:flex-start">Disponible</span>
-                  </div>
-                }
-              </div>
-              <div class="mat-preview-footer">
-                <mat-icon style="color:var(--accent);font-size:18px">check_circle</mat-icon>
-                <span>23 materiales nuevos esta semana cerca de ti</span>
-              </div>
-            </div>
+          <div class="hero-visual">
+            <div class="drawing-label"><span>DE EXCEDENTE A OPORTUNIDAD</span><span>FIG. 01</span></div>
+            <svg class="brick-drawing" viewBox="0 0 520 440" role="img" aria-label="Ilustración arquitectónica de bloques terracota que forman una nueva construcción">
+              <defs><pattern id="plan-grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#d5d8cb" stroke-width=".65"/></pattern></defs>
+              <rect width="520" height="440" fill="url(#plan-grid)"/>
+              <g fill="none" stroke="#9da594" stroke-width="1" stroke-dasharray="4 5"><path d="M55 322L261 425 476 314M261 425V86M58 322V172M476 314V176"/></g>
+              <g stroke="#f1ddd0" stroke-width="1.2" stroke-linejoin="round">
+                <path d="M96 278l164-83 164 83-164 83z" fill="#decbb7"/><path d="M96 278v42l164 83v-42z" fill="#b2a18e"/><path d="M260 361l164-83v42l-164 83z" fill="#c7b5a0"/>
+                <path d="M105 217l75-38 155 78-75 38z" fill="#d99a7b"/><path d="M105 217v50l155 78v-50z" fill="#ad5138"/><path d="M260 295l75-38v50l-75 38z" fill="#813e2d"/>
+                <path d="M187 175l75-38 155 78-75 38z" fill="#d99a7b"/><path d="M187 175v50l155 78v-50z" fill="#ad5138"/><path d="M342 253l75-38v50l-75 38z" fill="#813e2d"/>
+                <path d="M105 153l155-78 75 38-155 78z" fill="#e4b092"/><path d="M105 153v50l75 38v-50z" fill="#ad5138"/><path d="M180 191l155-78v50l-155 78z" fill="#98452f"/>
+                <path d="M268 199l75-38 74 37-75 38z" fill="#eee4d3"/><path d="M268 199v50l74 37v-50z" fill="#b9b79e"/><path d="M342 236l75-38v50l-75 38z" fill="#989e86"/>
+              </g>
+              <g stroke="#687565" fill="none"><path d="M119 95l130-65m-136 59 12 12m118-77 12 12M441 225v82m-6-82h12m-12 82h12"/></g>
+              <g fill="#687565" font-family="monospace" font-size="10"><text x="164" y="47" transform="rotate(-27 164 47)">NUEVAS POSIBILIDADES</text><text x="452" y="272">01</text></g>
+            </svg>
+            <div class="visual-note"><span class="note-icon"><mat-icon>all_inclusive</mat-icon></span><div><strong>El valor sigue aquí.</strong><span>Solo cambia de manos.</span></div><mat-icon>north_east</mat-icon></div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- Stats -->
-      <section class="stats-bar">
-        @for (s of stats; track s.label) {
-          <div class="stat">
-            <div class="stat-value">{{ s.value }}</div>
-            <div class="stat-label">{{ s.label }}</div>
-          </div>
-        }
-      </section>
+        <div class="principles section-container"><span>MENOS DESPERDICIO.<br /><strong>MÁS POSIBILIDADES.</strong></span><p><mat-icon>inventory_2</mat-icon> Materiales con vida útil</p><p><mat-icon>handshake</mat-icon> Conexiones con propósito</p><p><mat-icon>home_work</mat-icon> Proyectos que avanzan</p></div>
 
-      <!-- How it works -->
-      <section class="how-section">
-        <div class="section-container">
-          <div class="section-heading">
-            <h2>¿Cómo funciona?</h2>
-            <p>Un proceso simple, transparente y con impacto real.</p>
-          </div>
+        <section id="como-funciona" class="how-section section-container">
+          <div class="section-heading"><div><p class="eyebrow">01 / ASÍ CONSTRUIMOS JUNTOS</p><h2>Un camino simple.<br />Un impacto compartido.</h2></div><p>De una obra a un nuevo hogar.<br />Cada conexión cuenta.</p></div>
           <div class="steps-grid">
-            @for (s of howSteps; track s.title; let i = $index) {
-              <div class="step-card">
-                <div class="step-icon-wrapper" [style.background]="s.bg">
-                  <mat-icon [style.color]="s.color">{{ s.icon }}</mat-icon>
-                </div>
-                <div class="step-num" [style.background]="s.color">{{ i + 1 }}</div>
-                <h3>{{ s.title }}</h3>
-                <p>{{ s.desc }}</p>
-              </div>
+            @for (step of steps; track step.number) {
+              <article class="step"><div class="step-top"><span>{{ step.number }}</span><mat-icon>{{ step.icon }}</mat-icon></div><h3>{{ step.title }}</h3><p>{{ step.description }}</p></article>
             }
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- Tax benefits -->
-      <section class="tax-section">
-        <div class="section-container tax-grid">
-          <div>
-            <div class="tax-badge">
-              <mat-icon>percent</mat-icon>
-              <span>Beneficio tributario</span>
-            </div>
-            <h2 class="tax-title">Deduce hasta el 25% en impuesto de renta</h2>
-            <p class="tax-desc">El Artículo 255 de la Ley 1819 de 2016 permite a las empresas constructoras deducir el valor de sus donaciones para obtener una reducción significativa en su declaración de renta.</p>
-            <a routerLink="/registro/empresa" class="btn btn-lg tax-cta">Conocer más</a>
-          </div>
-          <div class="tax-benefits">
-            @for (b of taxBenefits; track b.title) {
-              <div class="tax-item">
-                <div class="tax-item-icon"><mat-icon>{{ b.icon }}</mat-icon></div>
-                <div>
-                  <div class="tax-item-title">{{ b.title }}</div>
-                  <div class="tax-item-desc">{{ b.desc }}</div>
-                </div>
-              </div>
+        <section id="materiales" class="materials-section"><div class="section-container">
+          <div class="section-heading"><div><p class="eyebrow">02 / MATERIALES, NO RESIDUOS</p><h2>Una segunda vida<br />empieza con lo que hay.</h2></div><a routerLink="/registro/beneficiario" class="text-link">Explorar posibilidades <mat-icon>north_east</mat-icon></a></div>
+          <div class="materials-grid">
+            @for (material of materials; track material.name) {
+              <a routerLink="/registro/beneficiario" class="material-tile"><div class="material-art" [class]="'material-art ' + material.style" aria-hidden="true"><span></span><span></span><span></span><span></span></div><div class="material-caption"><div><span>{{ material.label }}</span><h3>{{ material.name }}</h3></div><mat-icon>north_east</mat-icon></div></a>
             }
           </div>
-        </div>
-      </section>
+          <p class="catalog-note">Categorías de referencia. La disponibilidad se consulta dentro de la plataforma.</p>
+        </div></section>
 
-      <!-- Testimonials -->
-      <section class="testimonials-section">
-        <div class="section-container">
-          <h2 style="text-align:center;margin-bottom:48px">Lo que dicen nuestros usuarios</h2>
-          <div class="testimonials-grid">
-            @for (t of testimonials; track t.name) {
-              <div class="testimonial card">
-                <span class="quote-mark">"</span>
-                <p>{{ t.text }}</p>
-                <div class="testimonial-author">
-                  <div class="testimonial-avatar">{{ t.initials }}</div>
-                  <div>
-                    <div class="testimonial-name">{{ t.name }}</div>
-                    <div class="testimonial-role">{{ t.role }}</div>
-                  </div>
-                </div>
-              </div>
-            }
-          </div>
-        </div>
-      </section>
-
-      <!-- Footer -->
-      <footer class="landing-footer">
-        <div class="section-container footer-grid">
-          <div>
-            <div class="footer-brand">
-              <div class="footer-icon"><mat-icon>layers</mat-icon></div>
-              <span>BrickByBrick</span>
-            </div>
-            <p class="footer-desc">Conectando materiales excedentes con quienes más los necesitan. Bogotá, Colombia.</p>
-          </div>
-          @for (col of footerCols; track col.title) {
-            <div>
-              <div class="footer-col-title">{{ col.title }}</div>
-              @for (link of col.links; track link) {
-                <div class="footer-link">{{ link }}</div>
-              }
-            </div>
-          }
-        </div>
-        <div class="section-container footer-bottom">
-          <span>© 2026 BrickByBrick. Todos los derechos reservados.</span>
-          <span>Hecho con propósito social en Bogotá</span>
-        </div>
-      </footer>
+        <section id="comunidad" class="purpose-section section-container"><div><p class="eyebrow">03 / EL SIGUIENTE LADRILLO LO PONES TÚ</p><h2>Construir mejor<br />también es <span>compartir.</span></h2></div><div class="purpose-copy"><p>Una constructora con excedentes. Una familia con un proyecto. Acercamos ambas historias para transformar materiales que aún tienen mucho por dar.</p><a routerLink="/registro" class="btn btn-primary btn-lg">Ser parte del cambio <mat-icon>arrow_forward</mat-icon></a></div></section>
+      </main>
+      <footer class="landing-footer section-container"><a routerLink="/" class="brand"><img src="favicon.svg" width="30" height="30" alt="" />BrickByBrick.</a><span>Materiales que conectan. Comunidades que crecen.</span><div><a routerLink="/login">Ingresar</a><a routerLink="/registro/empresa">Registrar empresa</a></div><p>© 2026 BrickByBrick · Bogotá, Colombia</p></footer>
     </div>
   `,
   styleUrl: './landing.component.scss',
 })
 export class LandingComponent {
-  readonly previewMaterials = [
-    { cat: 'Ladrillo', qty: '2.400 unidades', color: '#C0392B', icon: 'layers' },
-    { cat: 'Concreto',  qty: '15 m³',         color: '#2E86AB', icon: 'view_in_ar' },
-    { cat: 'Madera',    qty: '48 m²',          color: '#E67E22', icon: 'grid_view' },
-    { cat: 'Cerámica',  qty: '120 m²',         color: '#27AE60', icon: 'tag' },
+  readonly steps = [
+    { number: '01', icon: 'inventory_2', title: 'Publica lo que puede servir.', description: 'Las constructoras comparten sus materiales excedentes con fotos, cantidades y condiciones de retiro.' },
+    { number: '02', icon: 'search', title: 'Encuentra lo que hace falta.', description: 'Explora materiales y envía una solicitud según las necesidades de tu hogar o proyecto comunitario.' },
+    { number: '03', icon: 'handshake', title: 'Conecta y construye.', description: 'Coordina la entrega con la empresa y dale un nuevo propósito a cada material que recibes.' },
   ];
-
-  readonly stats = [
-    { value: '1.240', label: 'Materiales donados' },
-    { value: '87',    label: 'Constructoras activas' },
-    { value: '3.400', label: 'Familias beneficiadas' },
-  ];
-
-  readonly howSteps = [
-    { icon: 'business',    title: 'Constructoras publican excedentes',    desc: 'Las empresas registran sus materiales sobrantes con fotos, cantidades y condiciones de retiro.', color: '#C0392B', bg: 'rgba(192,57,43,.08)' },
-    { icon: 'search',      title: 'Beneficiarios solicitan lo que necesitan', desc: 'Personas y emprendedores exploran el catálogo y envían solicitudes según su proyecto.',        color: '#2E86AB', bg: 'rgba(46,134,171,.08)' },
-    { icon: 'fact_check',  title: 'Entrega y certificado tributario',     desc: 'Se coordina el retiro del material y se genera el certificado de donación para deducciones fiscales.', color: '#27AE60', bg: 'rgba(39,174,96,.08)' },
-  ];
-
-  readonly taxBenefits = [
-    { icon: 'attach_money',  title: 'Deducción del 25%',     desc: 'Sobre el valor de los materiales donados' },
-    { icon: 'fact_check',    title: 'Certificado digital',   desc: 'Generado automáticamente con cada donación' },
-    { icon: 'shield',        title: 'Cumplimiento legal',    desc: 'Proceso verificado y documentado por BrickByBrick' },
-  ];
-
-  readonly testimonials = [
-    { name: 'Constructora Bolívar S.A.', initials: 'CB', role: 'Empresa constructora', text: 'Gracias a BrickByBrick hemos donado más de 800 sacos de cemento y ladrillos excedentes. El beneficio tributario del Art. 255 fue clave para nuestra decisión.' },
-    { name: 'María Elena Rodríguez',     initials: 'MR', role: 'Beneficiaria, Localidad Rafael Uribe', text: 'Con los materiales que conseguí pude terminar de construir el segundo piso de mi casa. Lo que parecía imposible se hizo realidad con el apoyo de esta plataforma.' },
-  ];
-
-  readonly footerCols = [
-    { title: 'Plataforma', links: ['Materiales disponibles', '¿Cómo funciona?', 'Eventos', 'Comunidad'] },
-    { title: 'Empresa',    links: ['Registrar empresa', 'Beneficios tributarios', 'Art. 255 Ley 1819', 'Soporte'] },
-    { title: 'Legal',      links: ['Términos de uso', 'Privacidad', 'Ley 1581/2012', 'Cookies'] },
+  readonly materials = [
+    { name: 'Ladrillos', label: 'ESTRUCTURA', style: 'bricks' },
+    { name: 'Madera', label: 'VERSATILIDAD', style: 'wood' },
+    { name: 'Cerámica', label: 'ACABADOS', style: 'tiles' },
+    { name: 'Concreto', label: 'SOLIDEZ', style: 'concrete' },
   ];
 }

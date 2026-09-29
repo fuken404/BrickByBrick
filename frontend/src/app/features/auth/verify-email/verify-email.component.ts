@@ -48,7 +48,7 @@ import { AuthApiService } from '../../../core/services/auth-api.service';
       mat-icon { font-size: 36px; }
     }
     .status-icon.loading { background: var(--bg-base); mat-icon { color: var(--text-secondary); } }
-    .status-icon.success { background: rgba(39,174,96,.1); mat-icon { color: var(--accent); } }
+    .status-icon.success { background: rgba(56,116,91,.1); mat-icon { color: var(--accent); } }
     .status-icon.error   { background: var(--danger-light); mat-icon { color: var(--danger); } }
     .spin { animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }

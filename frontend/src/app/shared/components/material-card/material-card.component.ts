@@ -13,7 +13,7 @@ import { UploadUrlPipe } from '../../pipes/upload-url.pipe';
   template: `
     <div class="material-card card">
       <!-- Header / image area -->
-      <div class="card-header" [style.background]="headerGradient">
+      <div class="card-header" [style.background]="headerBackground">
         @if (material.fotos?.length) {
           <img [src]="material.fotos[0].url | uploadUrl" [alt]="material.nombre" class="card-img" />
         } @else {
@@ -62,8 +62,8 @@ export class MaterialCardComponent {
   @Output() clicked = new EventEmitter<Material>();
 
   private readonly catColorMap: Record<string, string> = {
-    Ladrillo: '#C0392B', Madera: '#E67E22', Cerámica: '#8E44AD',
-    Concreto: '#6B6B6B', Hierro: '#2E86AB', Pintura: '#16A085',
+    Ladrillo: '#AD5138', Madera: '#996923', Cerámica: '#716453',
+    Concreto: '#6B6B6B', Hierro: '#48635A', Pintura: '#16A085',
     Vidrio: '#2980B9',
   };
 
@@ -71,9 +71,9 @@ export class MaterialCardComponent {
     return this.catColorMap[this.material.categoria.nombre] ?? this.material.categoria.colorHex ?? '#6B6B6B';
   }
 
-  get headerGradient(): string {
+  get headerBackground(): string {
     const c = this.catColor;
-    return `linear-gradient(145deg, ${c}18 0%, ${c}38 100%)`;
+    return `${c}14`;
   }
 
   get statusLabel(): string {

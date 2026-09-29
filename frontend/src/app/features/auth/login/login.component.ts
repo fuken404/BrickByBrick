@@ -55,24 +55,24 @@ type Role = 'beneficiario' | 'empresa' | 'admin';
           <!-- Form -->
           <form class="auth-form" (ngSubmit)="submit()" #loginForm="ngForm">
             <div class="form-group">
-              <label class="form-label">Correo electrónico</label>
-              <input class="form-input" type="email" name="email" placeholder="correo@ejemplo.com"
+              <label class="form-label" for="login-email">Correo electrónico</label>
+              <input class="form-input" id="login-email" autocomplete="email" type="email" name="email" placeholder="correo@ejemplo.com"
                      [(ngModel)]="email" required [class.error]="!!errorMsg()" />
             </div>
             <div class="form-group">
-              <label class="form-label">Contraseña</label>
+              <label class="form-label" for="login-password">Contraseña</label>
               <div class="pass-wrapper">
-                <input class="form-input" [type]="showPass() ? 'text' : 'password'" name="pass"
+                <input class="form-input" id="login-password" autocomplete="current-password" [type]="showPass() ? 'text' : 'password'" name="pass"
                        placeholder="Tu contraseña" [(ngModel)]="password" required
                        [class.error]="!!errorMsg()" />
-                <button type="button" class="pass-toggle" (click)="showPass.update(v => !v)">
+                <button type="button" class="pass-toggle" [attr.aria-label]="showPass() ? 'Ocultar contraseña' : 'Mostrar contraseña'" (click)="showPass.update(v => !v)">
                   <mat-icon>{{ showPass() ? 'visibility_off' : 'visibility' }}</mat-icon>
                 </button>
               </div>
             </div>
 
             @if (errorMsg()) {
-              <div class="form-error-banner">
+              <div class="form-error-banner" role="alert">
                 <mat-icon>warning</mat-icon>
                 {{ errorMsg() }}
               </div>
@@ -120,9 +120,9 @@ export class LoginComponent {
   protected readonly errorMsg = signal('');
 
   protected readonly stats = [
-    { icon: 'check_circle', text: '3.400 familias beneficiadas' },
-    { icon: 'business', text: '87 constructoras activas' },
-    { icon: 'volunteer_activism', text: '1.240 materiales donados' },
+    { icon: 'check_circle', text: 'Materiales para nuevos proyectos' },
+    { icon: 'business', text: 'Constructoras y comunidades conectadas' },
+    { icon: 'volunteer_activism', text: 'Una segunda vida para cada excedente' },
   ];
 
   protected readonly roles: { id: Role; label: string; color: string }[] = [

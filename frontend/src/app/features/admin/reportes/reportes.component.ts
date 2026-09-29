@@ -31,8 +31,8 @@ interface ReporteData {
       } @else {
         <div class="reports-grid">
           <div class="report-card card">
-            <div class="report-icon" style="background:rgba(192,57,43,.1)">
-              <mat-icon style="color:#C0392B">inventory_2</mat-icon>
+            <div class="report-icon" style="background:rgba(173,81,56,.1)">
+              <mat-icon style="color:#AD5138">inventory_2</mat-icon>
             </div>
             <div class="report-title">Total materiales donados</div>
             <div class="report-desc">Acumulado histórico de solicitudes entregadas</div>
@@ -40,8 +40,8 @@ interface ReporteData {
           </div>
 
           <div class="report-card card">
-            <div class="report-icon" style="background:rgba(39,174,96,.1)">
-              <mat-icon style="color:#27AE60">attach_money</mat-icon>
+            <div class="report-icon" style="background:rgba(56,116,91,.1)">
+              <mat-icon style="color:#38745B">attach_money</mat-icon>
             </div>
             <div class="report-title">Valor total estimado COP</div>
             <div class="report-desc">Estimado comercial de todas las donaciones</div>
@@ -50,8 +50,8 @@ interface ReporteData {
           </div>
 
           <div class="report-card card">
-            <div class="report-icon" style="background:rgba(46,134,171,.1)">
-              <mat-icon style="color:#2E86AB">family_restroom</mat-icon>
+            <div class="report-icon" style="background:rgba(72,99,90,.1)">
+              <mat-icon style="color:#48635A">family_restroom</mat-icon>
             </div>
             <div class="report-title">Familias beneficiadas</div>
             <div class="report-desc">Beneficiarios con al menos una solicitud entregada</div>
@@ -59,8 +59,8 @@ interface ReporteData {
           </div>
 
           <div class="report-card card">
-            <div class="report-icon" style="background:rgba(230,126,34,.1)">
-              <mat-icon style="color:#E67E22">percent</mat-icon>
+            <div class="report-icon" style="background:rgba(153,105,35,.1)">
+              <mat-icon style="color:#996923">percent</mat-icon>
             </div>
             <div class="report-title">Tasa de aprobación</div>
             <div class="report-desc">Solicitudes aprobadas o entregadas vs total</div>
@@ -68,8 +68,8 @@ interface ReporteData {
           </div>
 
           <div class="report-card card">
-            <div class="report-icon" style="background:rgba(46,134,171,.1)">
-              <mat-icon style="color:#2E86AB">business</mat-icon>
+            <div class="report-icon" style="background:rgba(72,99,90,.1)">
+              <mat-icon style="color:#48635A">business</mat-icon>
             </div>
             <div class="report-title">Constructoras activas este mes</div>
             <div class="report-desc">Con al menos un material publicado este mes</div>
@@ -77,8 +77,8 @@ interface ReporteData {
           </div>
 
           <div class="report-card card">
-            <div class="report-icon" style="background:rgba(142,68,173,.1)">
-              <mat-icon style="color:#8E44AD">gavel</mat-icon>
+            <div class="report-icon" style="background:rgba(113,100,83,.1)">
+              <mat-icon style="color:#716453">gavel</mat-icon>
             </div>
             <div class="report-title">Impacto tributario total</div>
             <div class="report-desc">Suma de deducciones Art. 255 generadas</div>

@@ -1,7 +1,7 @@
 @use '../../../../styles/variables' as *;
 @use '../../../../styles/mixins' as *;
 
-.dashboard { padding: 32px; max-width: $content-max-w; }
+.dashboard { padding: 0; max-width: $content-max-w; }
 
 .page-header { margin-bottom: 32px; }
 .page-title    { font-family: $font-display; font-size: 28px; color: $text-primary; margin-bottom: 4px; }

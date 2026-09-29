@@ -1,7 +1,7 @@
 @use '../../../../styles/variables' as *;
 @use '../../../../styles/mixins' as *;
 
-.page { padding: 32px; max-width: $content-max-w; }
+.page { padding: 0; max-width: $content-max-w; }
 
 .breadcrumb { margin-bottom: 24px; }
 .bc-link {
@@ -86,7 +86,7 @@
   display: flex;
   align-items: baseline;
   gap: 6px;
-  background: rgba(192,57,43,.06);
+  background: rgba(173,81,56,.06);
   border-radius: $radius-card;
   padding: 16px 20px;
   margin-bottom: 20px;
@@ -148,7 +148,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(39,174,96,.1);
+  background: rgba(56,116,91,.1);
   color: $accent;
   font-size: 11px;
   font-weight: 600;
@@ -236,7 +236,7 @@
   font-size: 14px;
   margin-bottom: 12px;
   &-error   { background: $danger-light;   color: $danger; }
-  &-success { background: rgba(39,174,96,.1); color: $accent; }
+  &-success { background: rgba(56,116,91,.1); color: $accent; }
 }
 
 .icon-btn {

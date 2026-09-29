@@ -1,7 +1,7 @@
 @use '../../../../styles/variables' as *;
 @use '../../../../styles/mixins' as *;
 
-.page { padding: 32px; max-width: $content-max-w; }
+.page { padding: 0; max-width: $content-max-w; }
 
 .page-header { margin-bottom: 24px; }
 .page-title  { font-family: $font-display; font-size: 28px; color: $text-primary; }
@@ -98,7 +98,7 @@
   text-transform: uppercase;
   letter-spacing: .5px;
   margin-bottom: 10px;
-  background: rgba(46,134,171,.1);
+  background: rgba(72,99,90,.1);
   color: $secondary;
 }
 

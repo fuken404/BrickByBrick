@@ -1,7 +1,7 @@
 @use '../../../../styles/variables' as *;
 @use '../../../../styles/mixins' as *;
 
-.page { padding: 32px; max-width: 700px; }
+.page { padding: 0; max-width: 700px; }
 
 .page-header-row {
   @include flex-between;
@@ -28,7 +28,7 @@
   transition: background $transition-fast;
 
   &:hover { background: $bg-base; }
-  &.unread { background: rgba(192,57,43,.02); }
+  &.unread { background: rgba(173,81,56,.02); }
   &:first-child { border-radius: $radius-card $radius-card 0 0; border: 1px solid $border; border-bottom: none; }
   &:last-child  { border-radius: 0 0 $radius-card $radius-card; border: 1px solid $border; border-top: none; }
   &:not(:first-child):not(:last-child) { border-left: 1px solid $border; border-right: 1px solid $border; }

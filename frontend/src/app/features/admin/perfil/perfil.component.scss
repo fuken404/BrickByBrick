@@ -1,7 +1,7 @@
 @use '../../../../styles/variables' as *;
 @use '../../../../styles/mixins' as *;
 
-.page { padding: 32px; max-width: 800px; }
+.page { padding: 0; max-width: 800px; }
 .page-title    { font-family: $font-display; font-size: 28px; color: $text-primary; }
 .page-subtitle { color: $text-secondary; font-size: 14px; margin: 4px 0 28px; }
 
@@ -18,13 +18,13 @@
 
 .avatar-circle {
   width: 56px; height: 56px; border-radius: 50%;
-  background: rgba(192,57,43,.1); @include flex-center; flex-shrink: 0;
+  background: rgba(173,81,56,.1); @include flex-center; flex-shrink: 0;
   mat-icon { font-size: 28px; color: $primary; }
 }
 
 .section-icon {
   width: 40px; height: 40px; border-radius: 10px;
-  background: rgba(46,134,171,.1); @include flex-center; flex-shrink: 0;
+  background: rgba(72,99,90,.1); @include flex-center; flex-shrink: 0;
   mat-icon { font-size: 20px; color: $secondary; }
 }
 
@@ -42,13 +42,13 @@
 
 .role-badge {
   display: inline-block; padding: 3px 12px; border-radius: $radius-pill;
-  background: rgba(192,57,43,.1); color: $primary; font-size: 12px; font-weight: 600;
+  background: rgba(173,81,56,.1); color: $primary; font-size: 12px; font-weight: 600;
 }
 
 .estado-pill {
   display: inline-block; padding: 3px 10px; border-radius: $radius-pill;
   font-size: 11px; font-weight: 600; text-transform: uppercase;
-  &.activo { background: rgba(39,174,96,.1); color: $accent; }
+  &.activo { background: rgba(56,116,91,.1); color: $accent; }
 }
 
 .form-stack { display: flex; flex-direction: column; gap: 20px; }

@@ -1,0 +1,35 @@
+@use 'variables' as *;
+
+// =============================================================
+// CSS Custom Properties (para compatibilidad con legacy CSS)
+// =============================================================
+:root {
+  --primary:        #{$primary};
+  --primary-dark:   #{$primary-dark};
+  --secondary:      #{$secondary};
+  --secondary-dark: #{$secondary-dark};
+  --accent:         #{$accent};
+  --accent-light:   #{$accent-light};
+  --bg-base:        #{$bg-base};
+  --bg-card:        #{$bg-card};
+  --bg-dark:        #{$bg-dark};
+  --text-primary:   #{$text-primary};
+  --text-secondary: #{$text-secondary};
+  --text-on-primary:#{$text-on-primary};
+  --border:         #{$border};
+  --warning:        #{$warning};
+  --warning-light:  #{$warning-light};
+  --danger:         #{$danger};
+  --danger-light:   #{$danger-light};
+  --radius-card:    #{$radius-card};
+  --radius-btn:     #{$radius-btn};
+  --radius-pill:    #{$radius-pill};
+  --shadow-card:    #{$shadow-card};
+  --shadow-elevated:#{$shadow-elevated};
+  --sidebar-width:  #{$sidebar-width};
+  --topbar-height:  #{$topbar-height};
+  --font-display:   #{$font-display};
+  --font-body:      #{$font-body};
+  --transition-fast:  #{$transition-fast};
+  --transition-modal: #{$transition-modal};
+}

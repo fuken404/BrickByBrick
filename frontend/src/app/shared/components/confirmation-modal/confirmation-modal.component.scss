@@ -39,7 +39,7 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: rgba(192, 57, 43, 0.1);
+  background: rgba(173, 81, 56, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -95,5 +95,5 @@
 .btn-danger {
   background: $danger;
   color: #fff;
-  &:hover { background: #c0392b; }
+  &:hover { background: #AD5138; }
 }

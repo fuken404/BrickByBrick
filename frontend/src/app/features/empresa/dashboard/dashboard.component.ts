@@ -1,5 +1,5 @@
 import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -20,6 +20,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
     <div class="dashboard">
       <div class="welcome-header">
         <div>
+          <p class="dashboard-eyebrow">CONSTRUIMOS MÁS CUANDO COMPARTIMOS</p>
           <h1 class="page-title">Panel de empresa</h1>
           <p class="page-subtitle">{{ razonSocial() }}</p>
         </div>
@@ -39,29 +40,29 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
           label="Materiales activos"
           [value]="materialesActivos()"
           icon="inventory_2"
-          iconColor="#C0392B"
-          iconBg="rgba(192,57,43,.1)"
+          iconColor="#AD5138"
+          iconBg="rgba(173,81,56,.1)"
         />
         <app-kpi-card
           label="Solicitudes pendientes"
           [value]="solicitudesPendientes()"
           icon="pending_actions"
-          iconColor="#E67E22"
-          iconBg="rgba(230,126,34,.1)"
+          iconColor="#996923"
+          iconBg="rgba(153,105,35,.1)"
         />
         <app-kpi-card
           label="Materiales entregados"
           [value]="entregados()"
           icon="check_circle"
-          iconColor="#27AE60"
-          iconBg="rgba(39,174,96,.1)"
+          iconColor="#38745B"
+          iconBg="rgba(56,116,91,.1)"
         />
         <app-kpi-card
           label="Eventos activos"
           [value]="eventosActivos()"
           icon="event"
-          iconColor="#2E86AB"
-          iconBg="rgba(46,134,171,.1)"
+          iconColor="#48635A"
+          iconBg="rgba(72,99,90,.1)"
         />
       </div>
 
@@ -141,6 +142,7 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
   styleUrl: './dashboard.component.scss',
 })
 export class EmpresaDashboardComponent implements OnInit {
+  private readonly router = inject(Router);
   private readonly auth     = inject(AuthStore);
   private readonly matSvc   = inject(MaterialApiService);
   private readonly eventSvc = inject(EventApiService);
@@ -198,6 +200,6 @@ export class EmpresaDashboardComponent implements OnInit {
   }
 
   irAMaterial(m: Material) {
-    window.location.href = `/empresa/materiales/${m.id}/editar`;
+    this.router.navigate(['/empresa/materiales', m.id, 'editar']);
   }
 }

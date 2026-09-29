@@ -1,7 +1,7 @@
 @use '../../../../styles/variables' as *;
 @use '../../../../styles/mixins' as *;
 
-.page { padding: 32px; max-width: $content-max-w; }
+.page { padding: 0; max-width: $content-max-w; }
 
 .page-header-row {
   @include flex-between;
@@ -75,7 +75,7 @@ table {
   background: $bg-base;
   color: $text-secondary;
 
-  &.on { background: rgba(39,174,96,.1); color: $accent; }
+  &.on { background: rgba(56,116,91,.1); color: $accent; }
 }
 
 .estado-pill {
@@ -88,7 +88,7 @@ table {
   background: $danger-light;
   color: $danger;
 
-  &.activo { background: rgba(39,174,96,.1); color: $accent; }
+  &.activo { background: rgba(56,116,91,.1); color: $accent; }
 }
 
 .acciones { display: flex; gap: 4px; }

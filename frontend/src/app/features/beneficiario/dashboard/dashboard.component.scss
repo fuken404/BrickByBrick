@@ -1,7 +1,7 @@
 @use '../../../../styles/variables' as *;
 @use '../../../../styles/mixins' as *;
 
-.dashboard { padding: 32px; max-width: $content-max-w; }
+.dashboard { padding: 0; max-width: $content-max-w; }
 
 .welcome-header {
   @include flex-between;

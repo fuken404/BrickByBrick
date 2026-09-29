@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use 'variables' as *;
 
 // --- Responsive mixins ---
@@ -77,7 +78,7 @@
 
 // --- Skeleton pulse ---
 @mixin skeleton {
-  background: linear-gradient(90deg, $bg-base 25%, darken($bg-base, 3%) 50%, $bg-base 75%);
+  background: linear-gradient(90deg, $bg-base 25%, color.adjust($bg-base, $lightness: -3%) 50%, $bg-base 75%);
   background-size: 400% 100%;
   animation: skeleton-pulse 1.5s ease infinite;
 }

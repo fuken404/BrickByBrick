@@ -37,7 +37,7 @@ export class AvatarComponent {
   @Input() size = 36;
   @Input() src: string | null = null;
 
-  private readonly palette = ['#C0392B', '#2E86AB', '#27AE60', '#E67E22', '#8E44AD', '#16A085'];
+  private readonly palette = ['#AD5138', '#48635A', '#38745B', '#996923', '#716453', '#16A085'];
 
   get initials(): string {
     return this.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();

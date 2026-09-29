@@ -11,8 +11,8 @@ import { CommonModule } from '@angular/common';
     <div class="kpi-card card">
       <div class="kpi-header">
         <span class="kpi-label">{{ label }}</span>
-        <div class="kpi-icon" [style.background]="iconBg">
-          <mat-icon [style.color]="iconColor">{{ icon }}</mat-icon>
+        <div class="kpi-icon">
+          <mat-icon>{{ icon }}</mat-icon>
         </div>
       </div>
       <div class="kpi-value">{{ displayValue }}</div>
@@ -25,18 +25,18 @@ import { CommonModule } from '@angular/common';
     </div>
   `,
   styles: [`
-    .kpi-card { padding: 20px; }
+    .kpi-card { padding: 24px; height: 100%; min-height: 150px; border-radius: 12px; box-shadow: none; }
     .kpi-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
     .kpi-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
     .kpi-icon {
-      width: 40px; height: 40px; border-radius: 10px;
+      width: 40px; height: 40px; border-radius: 8px; background: #f1f3eb; color: var(--secondary);
       display: flex; align-items: center; justify-content: center;
       mat-icon { font-size: 20px; }
     }
     .kpi-value {
       font-family: var(--font-display);
-      font-size: 32px;
-      font-weight: 700;
+      font-size: clamp(24px, 2.4vw, 36px); overflow-wrap: anywhere; letter-spacing: -1.5px; font-variant-numeric: tabular-nums;
+      font-weight: 500;
       color: var(--text-primary);
       line-height: 1;
       margin-bottom: 8px;
@@ -56,7 +56,7 @@ export class KpiCardComponent {
   @Input() unit = '';
   @Input() icon = 'analytics';
   @Input() iconColor = 'var(--primary)';
-  @Input() iconBg = 'rgba(192,57,43,0.08)';
+  @Input() iconBg = 'rgba(173,81,56,0.08)';
   @Input() change: number | null = null;
 
   get displayValue(): string {

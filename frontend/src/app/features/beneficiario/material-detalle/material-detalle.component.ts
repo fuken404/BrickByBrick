@@ -204,7 +204,7 @@ export class MaterialDetalleComponent implements OnInit {
   descripcionProyecto = '';
 
   headerBg() {
-    const color = this.material()?.categoria?.colorHex ?? '#C0392B';
+    const color = this.material()?.categoria?.colorHex ?? '#AD5138';
     return `linear-gradient(135deg, ${color}18, ${color}08)`;
   }
 

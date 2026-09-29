@@ -39,17 +39,17 @@ import { CertificadoDonacion } from '../../../core/models';
       <!-- Resumen acumulado -->
       <div class="resumen-grid">
         <div class="resumen-card card">
-          <div class="resumen-icon" style="background: rgba(192,57,43,.1)"><mat-icon style="color:#C0392B">inventory_2</mat-icon></div>
+          <div class="resumen-icon" style="background: rgba(173,81,56,.1)"><mat-icon style="color:#AD5138">inventory_2</mat-icon></div>
           <div class="resumen-value">-</div>
           <div class="resumen-label">Total materiales donados</div>
         </div>
         <div class="resumen-card card">
-          <div class="resumen-icon" style="background: rgba(39,174,96,.1)"><mat-icon style="color:#27AE60">attach_money</mat-icon></div>
+          <div class="resumen-icon" style="background: rgba(56,116,91,.1)"><mat-icon style="color:#38745B">attach_money</mat-icon></div>
           <div class="resumen-value">$—</div>
           <div class="resumen-label">Valor estimado COP</div>
         </div>
         <div class="resumen-card card">
-          <div class="resumen-icon" style="background: rgba(46,134,171,.1)"><mat-icon style="color:#2E86AB">percent</mat-icon></div>
+          <div class="resumen-icon" style="background: rgba(72,99,90,.1)"><mat-icon style="color:#48635A">percent</mat-icon></div>
           <div class="resumen-value">$—</div>
           <div class="resumen-label">Deducción estimada (25%)</div>
         </div>

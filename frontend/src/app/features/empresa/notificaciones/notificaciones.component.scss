@@ -1,7 +1,7 @@
 @use '../../../../styles/variables' as *;
 @use '../../../../styles/mixins' as *;
 
-.page { padding: 32px; max-width: 700px; }
+.page { padding: 0; max-width: 700px; }
 
 .page-header-row { @include flex-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
 .page-title  { font-family: $font-display; font-size: 28px; color: $text-primary; }
@@ -21,7 +21,7 @@
   transition: background $transition-fast;
 
   &:hover { background: $bg-base; }
-  &.unread { background: rgba(46,134,171,.02); }
+  &.unread { background: rgba(72,99,90,.02); }
   &:first-child { border-radius: $radius-card $radius-card 0 0; border: 1px solid $border; border-bottom: none; }
   &:last-child  { border-radius: 0 0 $radius-card $radius-card; border: 1px solid $border; border-top: none; }
   &:not(:first-child):not(:last-child) { border-left: 1px solid $border; border-right: 1px solid $border; }

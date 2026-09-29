@@ -116,7 +116,7 @@ import { AuthApiService } from '../../../core/services/auth-api.service';
     }
     .form-success-banner {
       display: flex; align-items: center; gap: 8px;
-      background: rgba(39,174,96,.08); border: 1px solid rgba(39,174,96,.3);
+      background: rgba(56,116,91,.08); border: 1px solid rgba(56,116,91,.3);
       border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--accent); margin-bottom: 16px;
       mat-icon { font-size: 16px; }
     }

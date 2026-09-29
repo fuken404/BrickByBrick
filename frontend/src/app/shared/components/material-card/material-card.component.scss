@@ -9,7 +9,7 @@
 }
 
 .card-header {
-  height: 160px;
+  height: 184px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -56,7 +56,7 @@
   right: 12px;
 }
 
-.card-body { padding: 16px; }
+.card-body { padding: 20px; }
 
 .card-title {
   font-size: 15px;
@@ -68,8 +68,8 @@
 
 .card-qty {
   font-family: $font-display;
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 25px;
+  font-weight: 500;
   color: $primary;
   margin-bottom: 12px;
 }
@@ -101,3 +101,9 @@
 .meta-row.time { font-size: 12px; }
 
 .card-btn { width: 100%; }
+
+.card-placeholder { background-image: linear-gradient(#ffffff50 1px, transparent 1px), linear-gradient(90deg, #ffffff50 1px, transparent 1px); background-size: 24px 24px; }
+.placeholder-circle { border-radius: 12px; }
+.card-btn { background: #f6f5f1; border: 1px solid $border; color: $text-primary; }
+.card-btn:hover { background: $primary; border-color: $primary; color: #fff; }
+.cat-badge, .status-badge { max-width: calc(50% - 18px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -18,9 +18,9 @@ import { MatIconModule } from '@angular/material/icon';
           </div>
           <p class="auth-tagline">Únete a la red de economía circular de materiales de construcción en Bogotá.</p>
           <div class="auth-stats">
-            <div class="stat-item"><mat-icon>check_circle</mat-icon><span>3.400 familias beneficiadas</span></div>
-            <div class="stat-item"><mat-icon>business</mat-icon><span>87 constructoras activas</span></div>
-            <div class="stat-item"><mat-icon>volunteer_activism</mat-icon><span>1.240 materiales donados</span></div>
+            <div class="stat-item"><mat-icon>check_circle</mat-icon><span>Materiales para nuevos proyectos</span></div>
+            <div class="stat-item"><mat-icon>business</mat-icon><span>Constructoras y comunidades conectadas</span></div>
+            <div class="stat-item"><mat-icon>volunteer_activism</mat-icon><span>Una segunda vida para cada excedente</span></div>
           </div>
         </div>
       </div>

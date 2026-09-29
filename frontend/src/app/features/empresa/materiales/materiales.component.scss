@@ -1,7 +1,7 @@
 @use '../../../../styles/variables' as *;
 @use '../../../../styles/mixins' as *;
 
-.page { padding: 32px; max-width: $content-max-w; }
+.page { padding: 0; max-width: $content-max-w; }
 
 .page-header-row {
   @include flex-between;
@@ -96,7 +96,7 @@
   font-weight: 600;
   text-transform: uppercase;
 
-  &.estado-activo    { background: rgba(39,174,96,.1);  color: $accent; }
+  &.estado-activo    { background: rgba(56,116,91,.1);  color: $accent; }
   &.estado-pausado   { background: $warning-light;       color: $warning; }
   &.estado-borrador  { background: $bg-base;             color: $text-secondary; }
   &.estado-agotado   { background: $danger-light;        color: $danger; }
@@ -119,6 +119,6 @@
 
   &:hover { background: $bg-base; color: $text-primary; }
   &.warning:hover { background: $warning-light; color: $warning; }
-  &.success:hover { background: rgba(39,174,96,.1); color: $accent; }
+  &.success:hover { background: rgba(56,116,91,.1); color: $accent; }
   &.danger:hover  { background: $danger-light; color: $danger; }
 }

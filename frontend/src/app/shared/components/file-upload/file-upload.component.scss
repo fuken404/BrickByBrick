@@ -12,7 +12,7 @@
 
   &:hover, &.dragging {
     border-color: $primary;
-    background: rgba(192, 57, 43, 0.03);
+    background: rgba(173, 81, 56, 0.03);
   }
 }
 
@@ -63,7 +63,7 @@
   width: 40px;
   height: 40px;
   border-radius: 6px;
-  background: rgba(192, 57, 43, 0.08);
+  background: rgba(173, 81, 56, 0.08);
   @include flex-center;
   flex-shrink: 0;
   mat-icon { color: $primary; font-size: 20px; }

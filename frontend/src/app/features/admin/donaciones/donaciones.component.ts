@@ -30,10 +30,10 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
       </div>
 
       <div class="kpi-grid">
-        <app-kpi-card label="Pendientes" [value]="stats().pendientes" icon="pending_actions" iconColor="#E67E22" iconBg="rgba(230,126,34,.1)" />
-        <app-kpi-card label="Aprobadas"  [value]="stats().aprobadas"  icon="check_circle"    iconColor="#27AE60" iconBg="rgba(39,174,96,.1)"  />
-        <app-kpi-card label="Entregadas" [value]="stats().entregadas" icon="local_shipping"  iconColor="#2E86AB" iconBg="rgba(46,134,171,.1)" />
-        <app-kpi-card label="Rechazadas" [value]="stats().rechazadas" icon="cancel"          iconColor="#E74C3C" iconBg="rgba(231,76,60,.1)"  />
+        <app-kpi-card label="Pendientes" [value]="stats().pendientes" icon="pending_actions" iconColor="#996923" iconBg="rgba(153,105,35,.1)" />
+        <app-kpi-card label="Aprobadas"  [value]="stats().aprobadas"  icon="check_circle"    iconColor="#38745B" iconBg="rgba(56,116,91,.1)"  />
+        <app-kpi-card label="Entregadas" [value]="stats().entregadas" icon="local_shipping"  iconColor="#48635A" iconBg="rgba(72,99,90,.1)" />
+        <app-kpi-card label="Rechazadas" [value]="stats().rechazadas" icon="cancel"          iconColor="#B53F36" iconBg="rgba(231,76,60,.1)"  />
       </div>
 
       @if (loading()) {

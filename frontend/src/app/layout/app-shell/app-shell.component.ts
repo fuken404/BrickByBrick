@@ -1,6 +1,6 @@
-import { Component, inject, signal, computed, HostListener } from '@angular/core';
+import { Component, inject, signal, computed, HostListener, ElementRef, ViewChild } from '@angular/core';
 import { RouterOutlet, RouterLink, Router } from '@angular/router';
-import { filter } from 'rxjs';
+import { A11yModule } from '@angular/cdk/a11y';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatBadgeModule } from '@angular/material/badge';
@@ -20,17 +20,17 @@ interface NavItem {
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, CommonModule, MatIconModule, MatBadgeModule, MatTooltipModule],
+  imports: [RouterOutlet, RouterLink, CommonModule, MatIconModule, MatBadgeModule, MatTooltipModule, A11yModule],
   template: `
-    <div class="shell" [class.sidebar-collapsed]="sidebarCollapsed()">
+    <a class="skip-link" href="#main-content">Saltar al contenido</a>
+    <div class="shell" [class.sidebar-collapsed]="sidebarCollapsed()" [class.mobile-open]="mobileOpen()">
+      @if (mobileOpen()) { <div class="drawer-backdrop" (click)="closeMenu()" aria-hidden="true"></div> }
       <!-- Sidebar -->
-      <aside class="sidebar" [class.dark]="isDark()" [class.collapsed]="sidebarCollapsed()">
+      <aside id="main-navigation" class="sidebar" [class.collapsed]="sidebarCollapsed()" [cdkTrapFocus]="mobileOpen()" [cdkTrapFocusAutoCapture]="false" aria-label="Menú de la aplicación" [attr.role]="mobileOpen() ? 'dialog' : null" [attr.aria-modal]="mobileOpen() ? true : null">
         <!-- Logo -->
         <div class="sidebar-logo">
-          <div class="logo-icon">
-            <mat-icon>layers</mat-icon>
-          </div>
-          @if (!sidebarCollapsed()) {
+          <img class="logo-icon" src="favicon.svg" width="36" height="36" alt="" />
+          @if (!sidebarCollapsed() || mobileOpen()) {
             <div class="logo-text">
               <span class="brand">BrickByBrick</span>
               <span class="role-label">{{ roleLabel() }}</span>
@@ -38,13 +38,15 @@ interface NavItem {
           }
         </div>
 
+        <button class="drawer-close" (click)="closeMenu()" aria-label="Cerrar menú"><mat-icon>close</mat-icon></button>
+        <div class="nav-caption">TU ESPACIO DE TRABAJO</div>
         <!-- Nav items -->
-        <nav class="sidebar-nav">
+        <nav class="sidebar-nav" aria-label="Secciones">
           @for (item of navItems(); track item.path) {
             <a class="nav-item" [class.active]="isActive(item.path)"
-               [routerLink]="item.path" [matTooltip]="sidebarCollapsed() ? item.label : ''">
+               [attr.aria-label]="item.label" [routerLink]="item.path" (click)="closeMenu()" [attr.aria-current]="isActive(item.path) ? 'page' : null" [matTooltip]="sidebarCollapsed() ? item.label : ''">
               <mat-icon>{{ item.icon }}</mat-icon>
-              @if (!sidebarCollapsed()) {
+              @if (!sidebarCollapsed() || mobileOpen()) {
                 <span>{{ item.label }}</span>
                 @if (item.badge && unreadCount() > 0) {
                   <span class="nav-badge">{{ unreadCount() > 99 ? '99+' : unreadCount() }}</span>
@@ -54,9 +56,10 @@ interface NavItem {
           }
         </nav>
 
+        <div class="sidebar-purpose"><mat-icon>all_inclusive</mat-icon><strong>Cada material cuenta.</strong><span>Construyamos su siguiente historia.</span></div>
         <!-- User section -->
         <div class="sidebar-user">
-          @if (!sidebarCollapsed()) {
+          @if (!sidebarCollapsed() || mobileOpen()) {
             <div class="user-info">
               <div class="user-avatar">{{ initials() }}</div>
               <div class="user-details">
@@ -65,37 +68,37 @@ interface NavItem {
               </div>
             </div>
           }
-          <button class="logout-btn" (click)="logout()" matTooltip="Cerrar sesión">
+          <button class="logout-btn" (click)="logout()" aria-label="Cerrar sesión" matTooltip="Cerrar sesión">
             <mat-icon>logout</mat-icon>
           </button>
         </div>
       </aside>
 
       <!-- Main content -->
-      <div class="main">
+      <div class="main" [attr.inert]="mobileOpen() ? '' : null">
         <!-- Topbar -->
         <header class="topbar">
-          <button class="menu-toggle" (click)="toggleSidebar()">
+          <button #menuToggle class="menu-toggle" (click)="toggleSidebar()" aria-label="Alternar menú de navegación" aria-controls="main-navigation" [attr.aria-expanded]="isMobile() ? mobileOpen() : !sidebarCollapsed()">
             <mat-icon>{{ sidebarCollapsed() ? 'menu_open' : 'menu' }}</mat-icon>
           </button>
 
-          <div class="search-wrapper">
-            <mat-icon class="search-icon">search</mat-icon>
-            <input class="form-input search-input" placeholder="Buscar materiales, eventos..." />
-          </div>
+          <div class="breadcrumb"><span>{{ roleLabel() }}</span><mat-icon>chevron_right</mat-icon><strong>{{ currentSection() }}</strong></div>
 
           <div class="topbar-actions">
-            <button class="icon-btn notif-btn" (click)="goToNotifications()"
+            <span class="workspace-label"><span></span> Mi espacio</span>
+            @if (!isDark()) {
+            <button aria-label="Ver notificaciones" class="icon-btn notif-btn" (click)="goToNotifications()"
                     [matBadge]="unreadCount() > 0 ? unreadCount() : null"
                     matBadgeColor="warn" matBadgeSize="small">
               <mat-icon>notifications</mat-icon>
             </button>
-            <div class="topbar-avatar" (click)="goToProfile()">{{ initials() }}</div>
+            }
+            <button class="topbar-avatar" (click)="goToProfile()" aria-label="Ver mi perfil">{{ initials() }}</button>
           </div>
         </header>
 
         <!-- Page content -->
-        <main class="content">
+        <main id="main-content" class="content" tabindex="-1">
           <div class="content-inner">
             <router-outlet />
           </div>
@@ -104,14 +107,15 @@ interface NavItem {
     </div>
 
     <!-- Mobile bottom nav -->
-    <nav class="mobile-nav">
+    <nav class="mobile-nav" aria-label="Accesos rápidos" [attr.inert]="mobileOpen() ? '' : null">
       @for (item of mobileNavItems(); track item.path) {
-        <a class="mobile-nav-item" [class.active]="isActive(item.path)" [routerLink]="item.path">
+        <a class="mobile-nav-item" [class.active]="isActive(item.path)" [routerLink]="item.path" [attr.aria-current]="isActive(item.path) ? 'page' : null">
           <mat-icon [matBadge]="item.badge && unreadCount() > 0 ? unreadCount() : null"
                     matBadgeColor="warn" matBadgeSize="small">{{ item.icon }}</mat-icon>
           <span>{{ item.label }}</span>
         </a>
       }
+      <button class="mobile-nav-item mobile-more" (click)="toggleSidebar()" aria-label="Abrir todas las secciones" [attr.aria-expanded]="mobileOpen()"><mat-icon>menu</mat-icon><span>Más</span></button>
     </nav>
   `,
   styleUrl: './app-shell.component.scss',
@@ -122,6 +126,9 @@ export class AppShellComponent {
   protected readonly router  = inject(Router);
 
   protected readonly sidebarCollapsed = signal(false);
+  protected readonly mobileOpen = signal(false);
+  protected readonly isMobile = signal(window.innerWidth < 1024);
+  @ViewChild('menuToggle') private menuToggle?: ElementRef<HTMLButtonElement>;
   protected readonly unreadCount = this.notifSvc.unreadCount;
 
   protected readonly isDark = computed(() => this.auth.rol() === 'ADMINISTRADOR');
@@ -184,15 +191,35 @@ export class AppShellComponent {
   };
 
   protected readonly navItems = computed(() => this.NAV_ITEMS[this.auth.rol() ?? 'BENEFICIARIO']);
-  protected readonly mobileNavItems = computed(() => this.navItems().slice(0, 5));
+  protected readonly mobileNavItems = computed(() => this.navItems().slice(0, 4));
 
   isActive(path: string): boolean {
     return this.router.url.startsWith(path);
   }
 
-  toggleSidebar(): void {
-    this.sidebarCollapsed.update(v => !v);
+  currentSection(): string {
+    return this.navItems().find(item => this.isActive(item.path))?.label ?? 'Mi espacio';
   }
+
+  toggleSidebar(): void {
+    if (this.isMobile()) {
+      if (this.mobileOpen()) this.closeMenu();
+      else {
+        this.mobileOpen.set(true);
+        setTimeout(() => document.querySelector<HTMLButtonElement>('.drawer-close')?.focus());
+      }
+    } else this.sidebarCollapsed.update(v => !v);
+  }
+
+  closeMenu(): void {
+    if (this.mobileOpen()) {
+      this.mobileOpen.set(false);
+      this.menuToggle?.nativeElement.focus();
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void { this.closeMenu(); }
 
   logout(): void {
     this.auth.clearAuth();
@@ -215,6 +242,7 @@ export class AppShellComponent {
 
   @HostListener('window:resize')
   onResize(): void {
-    if (window.innerWidth < 1024) this.sidebarCollapsed.set(true);
+    this.isMobile.set(window.innerWidth < 1024);
+    if (!this.isMobile()) this.closeMenu();
   }
 }
