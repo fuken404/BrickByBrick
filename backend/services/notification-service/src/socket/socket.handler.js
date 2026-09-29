@@ -1,76 +1,64 @@
 const { Server } = require('socket.io');
-const { verifyAccessToken, logger } = require('@brickbybrick/shared');
+const { verifyAccessToken, logger, config } = require('@brickbybrick/shared');
+const repo = require('../repositories/notificacion.repository');
 
-let ioInstance;
+let io;
+
+const salaUsuario = (id) => `usuario:${id}`;
 
 /**
- * Inicializa Socket.io en el servidor HTTP.
- * Los clientes se conectan enviando el JWT como query param o en el header.
- *
- * Cada usuario autenticado se une a una sala con su userId.
- * Para emitir: io.to(userId).emit('notification', data)
- *
- * @param {import('http').Server} httpServer
- * @returns {import('socket.io').Server}
+ * Socket.io autenticado con el JWT de acceso (handshake.auth.token).
+ * Cada usuario entra a `usuario:<id>`; los chats de grupo usan `grupo:<id>`
+ * y solo se permite entrar a miembros activos.
  */
 function initSocket(httpServer) {
-  const io = new Server(httpServer, {
-    cors: {
-      origin:      process.env.FRONTEND_URL || 'http://localhost:4200',
-      credentials: true,
-    },
+  io = new Server(httpServer, {
     path: '/ws/notificaciones',
+    cors: { origin: config.FRONTEND_URL, credentials: true },
   });
 
-  // Middleware de autenticación JWT
   io.use((socket, next) => {
-    const token =
-      socket.handshake.auth?.token ||
-      socket.handshake.query?.token;
-
-    if (!token) {
-      return next(new Error('Token de autenticación requerido'));
-    }
-
+    const token = socket.handshake.auth?.token;
+    if (!token) return next(new Error('Token de autenticación requerido'));
     try {
       const decoded = verifyAccessToken(token);
       socket.data.userId = decoded.userId;
-      socket.data.rol    = decoded.rol;
-      next();
+      socket.data.rol = decoded.rol;
+      return next();
     } catch {
-      next(new Error('Token inválido o expirado'));
+      return next(new Error('Token inválido o expirado'));
     }
   });
 
   io.on('connection', (socket) => {
-    const userId = socket.data.userId;
-    socket.join(userId);
-    logger.debug(`Socket conectado: userId=${userId}`);
+    const { userId } = socket.data;
+    socket.join(salaUsuario(userId));
 
-    socket.on('disconnect', () => {
-      logger.debug(`Socket desconectado: userId=${userId}`);
+    socket.on('grupo:entrar', async ({ grupoId } = {}, ack) => {
+      try {
+        const permitido = typeof grupoId === 'string'
+          && (socket.data.rol === 'ADMINISTRADOR' || await repo.esMiembroActivo(grupoId, userId));
+        if (permitido) socket.join(`grupo:${grupoId}`);
+        if (typeof ack === 'function') ack({ ok: permitido });
+      } catch (err) {
+        logger.warn(`Socket grupo:entrar falló: ${err.message}`);
+        if (typeof ack === 'function') ack({ ok: false });
+      }
+    });
+
+    socket.on('grupo:salir', ({ grupoId } = {}) => {
+      if (typeof grupoId === 'string') socket.leave(`grupo:${grupoId}`);
     });
   });
 
-  ioInstance = io;
   return io;
 }
 
-/**
- * Emite una notificación a un usuario específico.
- * @param {string} userId
- * @param {object} notification
- */
-function emitToUser(userId, notification) {
-  if (!ioInstance) return;
-  ioInstance.to(userId).emit('notification', notification);
+/** Emite a usuarios concretos y/o a una sala. */
+function emitir({ usuarioIds = [], room, evento, payload }) {
+  if (!io) return;
+  if (room) io.to(room).emit(evento, payload);
+  if (usuarioIds.length) io.to(usuarioIds.map(salaUsuario)).emit(evento, payload);
 }
 
-/**
- * Devuelve la instancia de Socket.io (disponible tras initSocket).
- */
-function getIO() {
-  return ioInstance;
-}
-
-module.exports = { initSocket, emitToUser, getIO };
+module.exports = { initSocket, emitir };

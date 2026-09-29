@@ -65,7 +65,8 @@ function crearGateway() {
       target: config.services[clave],
       changeOrigin: true,
       xfwd: true,
-      pathFilter: prefijos,
+      // Coincidencia por segmento completo: '/api/v1/public' no debe atrapar '/api/v1/publicaciones'
+      pathFilter: (path) => prefijos.some((p) => path === p || path.startsWith(`${p}/`) || path.startsWith(`${p}?`)),
       on: {
         error: (err, _req, res) => {
           logger.error(`Proxy ${NOMBRES[clave]}: ${err.message}`);
@@ -74,7 +75,7 @@ function crearGateway() {
         },
       },
     });
-    app.use(prefijos, medir(NOMBRES[clave]));
+    app.use(prefijos.map((p) => new RegExp(`^${p.replace(/\//g, '\\/')}(\\/|$)`)), medir(NOMBRES[clave]));
     app.use(proxy);
   }
 

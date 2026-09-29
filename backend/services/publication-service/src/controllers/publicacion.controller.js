@@ -1,37 +1,29 @@
-const svc = require('../services/publicacion.service');
-const { sendSuccess } = require('@brickbybrick/shared');
+const { asyncHandler, sendSuccess } = require('@brickbybrick/shared');
+const pubs = require('../services/publicacion.service');
+const comentarios = require('../services/comentario.service');
 
-const pubController = {
-  async list(req, res, next) {
-    try { sendSuccess(res, await svc.findAll(req.query)); } catch (err) { next(err); }
-  },
-  async getOne(req, res, next) {
-    try { sendSuccess(res, await svc.findById(req.params.id)); } catch (err) { next(err); }
-  },
-  async create(req, res, next) {
-    try { sendSuccess(res, await svc.create(req.user.userId, req.validatedBody), 'Publicación creada', 201); } catch (err) { next(err); }
-  },
-  async update(req, res, next) {
-    try { sendSuccess(res, await svc.update(req.params.id, req.user.userId, req.user.rol, req.validatedBody)); } catch (err) { next(err); }
-  },
-  async remove(req, res, next) {
-    try { await svc.remove(req.params.id, req.user.userId, req.user.rol); sendSuccess(res, null, 'Publicación eliminada'); } catch (err) { next(err); }
-  },
-  async addComentario(req, res, next) {
-    try { sendSuccess(res, await svc.addComentario(req.params.id, req.user.userId, req.validatedBody), 'Comentario agregado', 201); } catch (err) { next(err); }
-  },
-  async removeComentario(req, res, next) {
-    try { await svc.removeComentario(req.params.id, req.user.userId, req.user.rol); sendSuccess(res, null, 'Comentario eliminado'); } catch (err) { next(err); }
-  },
-  async addLike(req, res, next) {
-    try { sendSuccess(res, await svc.addLike(req.params.id, req.user.userId), 'Like registrado', 201); } catch (err) { next(err); }
-  },
-  async removeLike(req, res, next) {
-    try { await svc.removeLike(req.params.id, req.user.userId); sendSuccess(res, null, 'Like eliminado'); } catch (err) { next(err); }
-  },
-  async createReporte(req, res, next) {
-    try { sendSuccess(res, await svc.createReporte(req.user.userId, req.validatedBody), 'Reporte enviado', 201); } catch (err) { next(err); }
-  },
+module.exports = {
+  listar: asyncHandler(async (req, res) => sendSuccess(res, await pubs.listar(req.validatedQuery, req.user))),
+  obtener: asyncHandler(async (req, res) => sendSuccess(res, await pubs.obtener(req.params.id, req.user))),
+  crear: asyncHandler(async (req, res) =>
+    sendSuccess(res, await pubs.crear(req.user.userId, req.validatedBody, req.files), 'Publicación creada', 201)),
+  actualizar: asyncHandler(async (req, res) =>
+    sendSuccess(res, await pubs.actualizar(req.params.id, req.user, req.validatedBody), 'Publicación actualizada')),
+  eliminar: asyncHandler(async (req, res) => {
+    await pubs.eliminar(req.params.id, req.user);
+    sendSuccess(res, null, 'Publicación eliminada');
+  }),
+  moderar: asyncHandler(async (req, res) =>
+    sendSuccess(res, await pubs.moderar(req.params.id, req.user.userId, req.validatedBody), 'Moderación aplicada')),
+  like: asyncHandler(async (req, res) => sendSuccess(res, await pubs.like(req.params.id, req.user.userId))),
+  unlike: asyncHandler(async (req, res) => sendSuccess(res, await pubs.unlike(req.params.id, req.user.userId))),
+  repost: asyncHandler(async (req, res) =>
+    sendSuccess(res, await pubs.repostear(req.params.id, req.user.userId, req.validatedBody), 'Publicación compartida', 201)),
+  quitarRepost: asyncHandler(async (req, res) => {
+    await pubs.quitarRepost(req.params.id, req.user.userId);
+    sendSuccess(res, null, 'Dejaste de compartir la publicación');
+  }),
+  comentarios: asyncHandler(async (req, res) => sendSuccess(res, await comentarios.listar(req.params.id, req.query, req.user))),
+  comentar: asyncHandler(async (req, res) =>
+    sendSuccess(res, await comentarios.crear(req.params.id, req.user.userId, req.validatedBody), 'Comentario publicado', 201)),
 };
-
-module.exports = pubController;

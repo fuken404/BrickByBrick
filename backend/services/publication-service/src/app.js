@@ -1,26 +1,16 @@
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../../.env') });
+const path = require('path');
+const { createApp } = require('@brickbybrick/shared');
 
-const express = require('express');
-const helmet  = require('helmet');
-const cors    = require('cors');
-const morgan  = require('morgan');
-
-const publicacionRoutes = require('./routes/publicacion.routes');
-const grupoRoutes       = require('./routes/grupo.routes');
-const { errorHandler, generalLimiter } = require('@brickbybrick/shared');
-
-const app = express();
-
-app.use(helmet());
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
-app.use(generalLimiter);
-
-app.use('/api/v1/publicaciones', publicacionRoutes);
-app.use('/api/v1/grupos', grupoRoutes);
-app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'publication-service' }));
-app.use(errorHandler);
-
-module.exports = app;
+module.exports = createApp({
+  name: 'publication-service',
+  title: 'Publication Service (comunidad)',
+  serviceDir: path.resolve(__dirname, '..'),
+  routes: [
+    ['/api/v1/publicaciones', require('./routes/publicacion.routes')],
+    ['/api/v1/comentarios', require('./routes/comentario.routes')],
+    ['/api/v1/reportes', require('./routes/reporte.routes')],
+    ['/api/v1/seguidores', require('./routes/seguidor.routes')],
+    ['/api/v1/grupos', require('./routes/grupo.routes')],
+    ['/api/v1/conversaciones', require('./routes/conversacion.routes')],
+  ],
+});

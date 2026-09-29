@@ -1,13 +1,31 @@
-version: "3.9"
+# =============================================================
+# BrickByBrick — Docker Compose
+#   docker compose up -d postgres            → solo la base de datos (desarrollo)
+#   docker compose --profile app up -d       → base de datos + migraciones + todos los servicios
+# =============================================================
 
-# =============================================================
-# BrickByBrick — Docker Compose (desarrollo local)
-# Levanta todos los microservicios + PostgreSQL local
-# Para usar Neon/Supabase en producción, omitir el servicio postgres
-# =============================================================
+x-servicio: &servicio
+  build: .
+  restart: unless-stopped
+  env_file: .env
+  environment: &entorno
+    NODE_ENV: production
+    DATABASE_URL: postgresql://brickbybrick:brickbybrick_dev@postgres:5432/brickbybrick
+    UPLOADS_DIR: /app/uploads
+    AUTH_SERVICE_URL: http://auth-service:3001
+    USER_SERVICE_URL: http://user-service:3002
+    MATERIAL_SERVICE_URL: http://material-service:3003
+    EVENT_SERVICE_URL: http://event-service:3004
+    PUB_SERVICE_URL: http://publication-service:3005
+    NOTIF_SERVICE_URL: http://notification-service:3006
+  volumes:
+    - uploads:/app/uploads
+  depends_on:
+    migraciones:
+      condition: service_completed_successfully
+  profiles: [app]
 
 services:
-  # Base de datos local (alternativa a Neon para dev)
   postgres:
     image: postgres:16-alpine
     container_name: brickbybrick_db
@@ -17,107 +35,63 @@ services:
       POSTGRES_PASSWORD: brickbybrick_dev
       POSTGRES_DB: brickbybrick
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5434}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ../database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
-      - ../database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+      - brickbybrick_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U brickbybrick"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
-  # Auth Service
+  migraciones:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://brickbybrick:brickbybrick_dev@postgres:5432/brickbybrick
+    command: sh -c "npx prisma migrate deploy --schema=prisma/schema.prisma && node prisma/seed.js"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: [app]
+
+  api-gateway:
+    <<: *servicio
+    build: { context: ., args: { SERVICE: api-gateway } }
+    ports: ["${PORT_GATEWAY:-3000}:3000"]
+    environment: { <<: *entorno, SERVICE: api-gateway, PORT_GATEWAY: 3000 }
+
   auth-service:
-    build: ./services/auth-service
-    container_name: brickbybrick_auth
-    restart: unless-stopped
-    ports:
-      - "${PORT_AUTH:-3001}:3001"
-    env_file: .env
-    environment:
-      PORT: 3001
-    depends_on:
-      postgres:
-        condition: service_healthy
-    develop:
-      watch:
-        - action: sync+restart
-          path: ./services/auth-service/src
-          target: /app/src
-        - action: rebuild
-          path: ./services/auth-service/package.json
+    <<: *servicio
+    build: { context: ., args: { SERVICE: auth-service } }
+    environment: { <<: *entorno, SERVICE: auth-service, PORT_AUTH: 3001 }
 
-  # User Service
   user-service:
-    build: ./services/user-service
-    container_name: brickbybrick_users
-    restart: unless-stopped
-    ports:
-      - "${PORT_USERS:-3002}:3002"
-    env_file: .env
-    environment:
-      PORT: 3002
-    depends_on:
-      postgres:
-        condition: service_healthy
+    <<: *servicio
+    build: { context: ., args: { SERVICE: user-service } }
+    environment: { <<: *entorno, SERVICE: user-service, PORT_USERS: 3002 }
 
-  # Material Service
   material-service:
-    build: ./services/material-service
-    container_name: brickbybrick_materials
-    restart: unless-stopped
-    ports:
-      - "${PORT_MATERIALS:-3003}:3003"
-    env_file: .env
-    environment:
-      PORT: 3003
-    depends_on:
-      postgres:
-        condition: service_healthy
+    <<: *servicio
+    build: { context: ., args: { SERVICE: material-service } }
+    environment: { <<: *entorno, SERVICE: material-service, PORT_MATERIALS: 3003 }
 
-  # Event Service
   event-service:
-    build: ./services/event-service
-    container_name: brickbybrick_events
-    restart: unless-stopped
-    ports:
-      - "${PORT_EVENTS:-3004}:3004"
-    env_file: .env
-    environment:
-      PORT: 3004
-    depends_on:
-      postgres:
-        condition: service_healthy
+    <<: *servicio
+    build: { context: ., args: { SERVICE: event-service } }
+    environment: { <<: *entorno, SERVICE: event-service, PORT_EVENTS: 3004 }
 
-  # Publication Service
   publication-service:
-    build: ./services/publication-service
-    container_name: brickbybrick_pubs
-    restart: unless-stopped
-    ports:
-      - "${PORT_PUBS:-3005}:3005"
-    env_file: .env
-    environment:
-      PORT: 3005
-    depends_on:
-      postgres:
-        condition: service_healthy
+    <<: *servicio
+    build: { context: ., args: { SERVICE: publication-service } }
+    environment: { <<: *entorno, SERVICE: publication-service, PORT_PUBS: 3005 }
 
-  # Notification Service (Socket.io)
   notification-service:
-    build: ./services/notification-service
-    container_name: brickbybrick_notif
-    restart: unless-stopped
-    ports:
-      - "${PORT_NOTIF:-3006}:3006"
-    env_file: .env
-    environment:
-      PORT: 3006
-    depends_on:
-      postgres:
-        condition: service_healthy
+    <<: *servicio
+    build: { context: ., args: { SERVICE: notification-service } }
+    environment: { <<: *entorno, SERVICE: notification-service, PORT_NOTIF: 3006 }
 
 volumes:
-  postgres_data:
+  brickbybrick_pgdata:
+    external: false
+  uploads:
