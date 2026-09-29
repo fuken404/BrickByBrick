@@ -13,6 +13,16 @@ const EXTENSIONES = {
 const maxBytes = () => Number(process.env.MAX_UPLOAD_MB || 10) * 1024 * 1024;
 const uploadsRoot = () => process.env.UPLOADS_DIR || path.resolve(__dirname, '../../uploads');
 
+/**
+ * Dónde se guardan los archivos subidos (STORAGE_DRIVER):
+ *   local → carpeta UPLOADS_DIR (por defecto; en la nube requiere un disco persistente)
+ *   db    → tabla archivos_subidos de PostgreSQL (plataformas sin disco, p. ej. Render gratis)
+ * En ambos casos la URL pública es /uploads/<carpeta>/<archivo> y la sirve el gateway.
+ */
+const almacenamientoEnBd = () => (process.env.STORAGE_DRIVER || 'local').toLowerCase() === 'db';
+// Carga diferida: el cliente Prisma solo se necesita con STORAGE_DRIVER=db
+const prisma = () => require('../utils/prisma.client');
+
 function buildMulter(allowed, mensaje) {
   return multer({
     storage: multer.memoryStorage(),
@@ -31,29 +41,37 @@ const upload = buildMulter(ALLOWED_IMAGE_TYPES, 'Tipo de archivo no permitido. S
 const uploadDoc = buildMulter(ALLOWED_DOC_TYPES, 'Tipo de archivo no permitido. Solo PDF, JPEG, PNG o WebP.');
 
 /**
- * Guarda un buffer en disco y devuelve la URL pública relativa
- * (/uploads/<folder>/<archivo>). El gateway sirve la carpeta uploads/.
+ * Guarda un buffer y devuelve la URL pública relativa (/uploads/<folder>/<archivo>).
  * La extensión se deriva del mimetype validado, no del nombre original.
  */
 async function uploadToStorage(buffer, folder, _originalname, mimetype) {
   const safeFolder = String(folder).replace(/[^a-z0-9_-]/gi, '');
-  const dir = path.join(uploadsRoot(), safeFolder);
-  await fs.promises.mkdir(dir, { recursive: true });
-
   const ext = EXTENSIONES[mimetype] || '.bin';
   const filename = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`;
-  await fs.promises.writeFile(path.join(dir, filename), buffer);
+  const ruta = `/uploads/${safeFolder}/${filename}`;
 
-  return `/uploads/${safeFolder}/${filename}`;
+  if (almacenamientoEnBd()) {
+    await prisma().archivoSubido.create({ data: { ruta, mimeType: mimetype, tamano: buffer.length, datos: buffer } });
+    return ruta;
+  }
+
+  const dir = path.join(uploadsRoot(), safeFolder);
+  await fs.promises.mkdir(dir, { recursive: true });
+  await fs.promises.writeFile(path.join(dir, filename), buffer);
+  return ruta;
 }
 
-/** Elimina un archivo local dado su URL pública (/uploads/...). */
+/** Elimina un archivo dado su URL pública (/uploads/...). */
 async function deleteFromStorage(publicUrl) {
   if (!publicUrl || !publicUrl.startsWith('/uploads/')) return;
+  if (almacenamientoEnBd()) {
+    await prisma().archivoSubido.deleteMany({ where: { ruta: publicUrl } }).catch(() => {});
+    return;
+  }
   const root = uploadsRoot();
   const filepath = path.resolve(root, publicUrl.replace('/uploads/', ''));
   if (!filepath.startsWith(root)) return; // evita path traversal
   await fs.promises.unlink(filepath).catch(() => {});
 }
 
-module.exports = { upload, uploadDoc, uploadToStorage, deleteFromStorage, uploadsRoot };
+module.exports = { upload, uploadDoc, uploadToStorage, deleteFromStorage, uploadsRoot, almacenamientoEnBd };

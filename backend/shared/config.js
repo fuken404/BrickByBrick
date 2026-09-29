@@ -8,6 +8,11 @@ const { z } = require('zod');
  */
 const port = (def) => z.coerce.number().int().positive().default(def);
 
+// Render publica la URL del servicio en RENDER_EXTERNAL_URL: se usa si no se definió FRONTEND_URL
+if (!process.env.FRONTEND_URL && process.env.RENDER_EXTERNAL_URL) {
+  process.env.FRONTEND_URL = process.env.RENDER_EXTERNAL_URL;
+}
+
 const schema = z.object({
   NODE_ENV:           z.enum(['development', 'test', 'production']).default('development'),
   DATABASE_URL:       z.string().min(1, 'DATABASE_URL es obligatoria'),

@@ -11,7 +11,7 @@ const requireInternalKey = require('./middleware/internal.middleware');
 const errorHandler       = require('./middleware/error.handler');
 const { generalLimiter, authLimiter, passwordLimiter } = require('./middleware/rate.limiter');
 const { validateBody, validateQuery } = require('./middleware/validate.middleware');
-const { upload, uploadDoc, uploadToStorage, deleteFromStorage, uploadsRoot } = require('./middleware/upload.middleware');
+const { upload, uploadDoc, uploadToStorage, deleteFromStorage, uploadsRoot, almacenamientoEnBd } = require('./middleware/upload.middleware');
 
 // App
 const { createApp, startServer } = require('./app.factory');
@@ -53,6 +53,7 @@ module.exports = {
   uploadToStorage,
   deleteFromStorage,
   uploadsRoot,
+  almacenamientoEnBd,
 
   createApp,
   startServer,

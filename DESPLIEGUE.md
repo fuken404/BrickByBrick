@@ -4,6 +4,8 @@ Esta guía está escrita para seguirla sin experiencia previa en despliegues. Si
 
 **Tiempo estimado:** 30 a 45 minutos la primera vez.
 
+> ¿Prefieres Render (tiene plan gratis)? Mira [`DESPLIEGUE-RENDER.md`](DESPLIEGUE-RENDER.md).
+
 ---
 
 ## Qué vas a tener al final
@@ -174,6 +176,8 @@ Qué hace cada una:
 | `INTERNAL_API_KEY` | Protege la comunicación interna entre microservicios. |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Crean el administrador la primera vez que arranca la app. Después puedes cambiar la contraseña desde *Mi cuenta*. |
 
+> **Para gastar menos en Railway** (cobra por memoria y CPU usadas), puedes agregar `PROCESOS=uno`: los 7 servicios corren en un solo proceso Node y la memoria baja de unos 300 MB a unos 50–120 MB. Pierdes algo de aislamiento entre servicios; para una demostración no se nota.
+
 ---
 
 ## Paso 7 · Publicar la aplicación en internet (dominio)
@@ -195,7 +199,8 @@ Como `FRONTEND_URL` usa `${{RAILWAY_PUBLIC_DOMAIN}}`, se actualiza sola. Si Rail
 2. Deberías ver, en este orden:
 
    ```
-   [arranque] Aplicando migraciones…
+   [arranque] Revisando migraciones…
+   [migraciones] Pendientes: 0_init, 20260929000000_v2_revision_integral, 20260930000000_archivos_subidos
    All migrations have been successfully applied.
    [arranque] Cargando catálogos y datos iniciales…
    Seed completado.
@@ -206,8 +211,11 @@ Como `FRONTEND_URL` usa `${{RAILWAY_PUBLIC_DOMAIN}}`, se actualiza sola. Si Rail
    ... event-service escuchando en puerto 3004
    ... publication-service escuchando en puerto 3005
    ... notification-service (HTTP + WebSocket) escuchando en puerto 3006
+   [iniciar-todo] Microservicios listos; iniciando el gateway
    ... api-gateway escuchando en puerto 3000
    ```
+
+   En los siguientes arranques verás `[migraciones] La base de datos está al día` en lugar de la lista de pendientes.
 
 3. El despliegue debe quedar en estado **Active** / **Success** (en verde). Railway lo marca así cuando `https://tu-app/health` responde bien.
 
@@ -328,8 +336,8 @@ Abre <http://localhost:8080>. Usa la base de datos local de Docker y las variabl
 |---|---|
 | `Dockerfile` | Imagen en tres etapas: compila Angular, instala el backend (solo dependencias de producción) y genera el cliente Prisma, y arma una imagen final `node:20-alpine`. |
 | `railway.json` | Indica a Railway que construya con el `Dockerfile`, que verifique `/health` (hasta 300 s) y que reinicie el servicio si falla. |
-| `backend/scripts/docker-entrypoint.sh` | Al arrancar: `prisma migrate deploy`, seed (catálogos, configuración y administrador) e inicio de los servicios. |
-| `backend/scripts/iniciar-todo.js` | Lanza los 7 procesos Node, prefija sus logs y, si uno se detiene, detiene el contenedor para que Railway lo reinicie. |
+| `backend/scripts/docker-entrypoint.sh` | Al arrancar: migraciones pendientes (`scripts/migrar.js`), seed (catálogos, configuración y administrador) e inicio de los servicios. |
+| `backend/scripts/iniciar-todo.js` | Lanza los 6 microservicios, espera a que respondan y luego el gateway; prefija sus logs y, si uno se detiene, detiene el contenedor para que Railway lo reinicie. Con `PROCESOS=uno` todo corre en un solo proceso. |
 | `.dockerignore` | Evita copiar a la imagen `node_modules`, compilaciones locales, secretos (`.env`) y archivos subidos. |
 
 Variables que define la imagen (no hace falta ponerlas en Railway): `NODE_ENV=production`, `FRONTEND_DIST=/app/public`, `UPLOADS_DIR=/data/uploads`, `MAIL_TRANSPORT=log`, `LOG_LEVEL=info`.

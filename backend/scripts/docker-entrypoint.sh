@@ -6,8 +6,8 @@
 set -e
 cd /app
 
-echo "[arranque] Aplicando migraciones…"
-node node_modules/prisma/build/index.js migrate deploy --schema=prisma/schema.prisma
+echo "[arranque] Revisando migraciones…"
+node scripts/migrar.js
 
 echo "[arranque] Cargando catálogos y datos iniciales…"
 node prisma/seed.js

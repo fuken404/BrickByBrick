@@ -8,7 +8,8 @@ const usuarioRepository = require('../repositories/usuario.repository');
 const tokenRepository = require('../repositories/token.repository');
 const sessionService = require('./session.service');
 
-const BCRYPT_ROUNDS = 12;
+// Costo de bcrypt: 12 por defecto; en instancias con muy poca CPU se puede bajar a 10 (mínimo recomendado por OWASP)
+const BCRYPT_ROUNDS = Math.min(14, Math.max(10, Number(process.env.BCRYPT_ROUNDS) || 12));
 const OTP_TTL_MIN = 10;
 const OTP_MAX_INTENTOS = 5;
 const HORA = 60 * 60 * 1000;
@@ -17,7 +18,9 @@ const HORA = 60 * 60 * 1000;
 const ENLACE_INVALIDO = 'El enlace es inválido, ya se usó o expiró. Solicita uno nuevo.';
 const enmascararEmail = (email) => email.replace(/^(.{2}).*(@.*)$/, '$1•••$2');
 
-const HASH_FICTICIO = bcrypt.hashSync('usuario-inexistente', BCRYPT_ROUNDS);
+// Hash para comparar cuando el usuario no existe (mismo tiempo de respuesta); se calcula al primer uso
+let hashFicticio;
+const HASH_FICTICIO = () => (hashFicticio ??= bcrypt.hashSync('usuario-inexistente', BCRYPT_ROUNDS));
 
 const requiereMfa = (usuario) => usuario.rol === 'ADMINISTRADOR' || usuario.mfaHabilitado;
 
@@ -146,7 +149,7 @@ const authService = {
    */
   async login({ email, password }, ip) {
     const usuario = await usuarioRepository.findByEmail(email);
-    const valida = await bcrypt.compare(password, usuario?.passwordHash ?? HASH_FICTICIO);
+    const valida = await bcrypt.compare(password, usuario?.passwordHash ?? HASH_FICTICIO());
 
     if (!usuario || !valida) {
       usuarioRepository.registrarIntento({ email, usuarioId: usuario?.id ?? null, exito: false, motivo: 'credenciales', ip }).catch(() => {});

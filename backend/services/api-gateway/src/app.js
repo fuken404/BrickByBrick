@@ -7,7 +7,7 @@ const morgan = require('morgan');
 const axios = require('axios');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const {
-  config, logger, generalLimiter, authMiddleware, requireRoles, sendSuccess, sendError, uploadsRoot,
+  config, logger, generalLimiter, authMiddleware, requireRoles, sendSuccess, sendError, uploadsRoot, almacenamientoEnBd, prisma,
 } = require('@brickbybrick/shared');
 const { medir, resumen } = require('./metrics');
 
@@ -52,7 +52,26 @@ function crearGateway() {
   }
 
   // Archivos subidos (fotos, logos, documentos)
-  app.use('/uploads', express.static(uploadsRoot(), { maxAge: '7d', fallthrough: false }));
+  if (almacenamientoEnBd()) {
+    // STORAGE_DRIVER=db: los archivos viven en la tabla archivos_subidos
+    app.get(/^\/uploads\/[a-z0-9_-]+\/[a-z0-9.-]+$/i, async (req, res, next) => {
+      try {
+        const archivo = await prisma.archivoSubido.findUnique({ where: { ruta: req.path } });
+        if (!archivo) return sendError(res, 'Archivo no encontrado', 404);
+        res.set({
+          'Content-Type': archivo.mimeType,
+          'Content-Length': String(archivo.tamano),
+          // Los nombres son únicos e inmutables: se pueden cachear sin límite
+          'Cache-Control': 'public, max-age=31536000, immutable',
+          'X-Content-Type-Options': 'nosniff',
+        });
+        return res.end(Buffer.from(archivo.datos));
+      } catch (err) { return next(err); }
+    });
+    app.use('/uploads', (_req, res) => sendError(res, 'Archivo no encontrado', 404));
+  } else {
+    app.use('/uploads', express.static(uploadsRoot(), { maxAge: '7d', fallthrough: false }));
+  }
 
   // Salud agregada de todos los servicios
   app.get('/health', async (_req, res) => {

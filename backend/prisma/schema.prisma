@@ -781,3 +781,15 @@ model IntentoLogin {
   @@index([email])
   @@map("intentos_login")
 }
+
+/// Archivos subidos guardados en la base de datos (STORAGE_DRIVER=db), para
+/// plataformas sin disco persistente como el plan gratis de Render.
+model ArchivoSubido {
+  ruta      String   @id @db.VarChar(300) // /uploads/<carpeta>/<archivo>
+  mimeType  String   @map("mime_type") @db.VarChar(100)
+  tamano    Int
+  datos     Bytes
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("archivos_subidos")
+}

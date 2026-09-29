@@ -1,0 +1,49 @@
+# =============================================================
+# BrickByBrick — Blueprint de Render (https://render.com/docs/blueprint-spec)
+#
+# Crea un servicio web con la imagen Docker "todo en uno" (Dockerfile de la raíz).
+# Guía paso a paso: DESPLIEGUE-RENDER.md
+#
+# Plan gratis: se apaga tras 15 min sin visitas y no tiene disco persistente;
+# por eso los archivos subidos se guardan en la base de datos (STORAGE_DRIVER=db).
+# La base de datos es externa (Neon recomendado): la de Render gratis expira a los 30 días.
+# =============================================================
+services:
+  - type: web
+    name: brickbybrick
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      # --- Se piden al crear el Blueprint ---
+      - key: DATABASE_URL          # cadena de conexión de Neon (…?sslmode=require)
+        sync: false
+      - key: ADMIN_EMAIL           # correo del administrador inicial
+        sync: false
+      - key: ADMIN_PASSWORD        # mín. 10 caracteres, con mayúscula, minúscula y número
+        sync: false
+
+      # --- Secretos generados por Render ---
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: INTERNAL_API_KEY
+        generateValue: true
+
+      # --- Configuración fija ---
+      - key: STORAGE_DRIVER        # archivos subidos en PostgreSQL (no hay disco en el plan gratis)
+        value: db
+      - key: MAIL_TRANSPORT        # Render bloquea el SMTP en el plan gratis: correos y códigos MFA van a los logs
+        value: log
+      - key: CLIENT_IP_HEADER      # IP real del visitante detrás del proxy de Render
+        value: cf-connecting-ip,true-client-ip,x-forwarded-for
+      - key: PROCESOS              # los 7 servicios en un solo proceso Node: arranque mucho más rápido con 0,1 CPU
+        value: uno
+      - key: BCRYPT_ROUNDS         # costo del cifrado de contraseñas: 10 (mínimo OWASP) para que el login sea rápido con 0,1 CPU
+        value: "10"
+      # FRONTEND_URL no hace falta: se toma de RENDER_EXTERNAL_URL, que Render define solo.

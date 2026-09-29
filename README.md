@@ -142,7 +142,7 @@ cd backend
 docker compose --profile app up --build     # aplicación completa en http://localhost:8080
 ```
 
-**Despliegue en Railway:** guía paso a paso en [`DESPLIEGUE.md`](DESPLIEGUE.md).
+**Despliegue:** guías paso a paso para [Render (plan gratis)](DESPLIEGUE-RENDER.md) y para [Railway](DESPLIEGUE.md).
 
 ---
 
@@ -191,3 +191,6 @@ cd frontend && npm test -- --watch=false
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | En producción | Administrador inicial; sin `ADMIN_PASSWORD` no se crea en producción |
 | `CLIENT_IP_HEADER` | En la nube | Cabecera con la IP real del cliente detrás del proxy (`x-real-ip` en Railway) |
 | `RESEND_API_KEY` | Con `MAIL_TRANSPORT=resend` | Envío de correos por la API de Resend (donde el SMTP está bloqueado) |
+| `STORAGE_DRIVER` | No | `local` (carpeta `UPLOADS_DIR`) o `db` (archivos en PostgreSQL, para hosting sin disco persistente) |
+| `PROCESOS` | No | `varios` (un proceso por servicio) o `uno` (todos en un proceso; para instancias pequeñas) |
+| `BCRYPT_ROUNDS` | No | Costo del cifrado de contraseñas, 10–14 (por defecto 12) |

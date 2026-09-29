@@ -8,14 +8,19 @@ const isProd = () => process.env.NODE_ENV === 'production';
 const isTest = () => process.env.NODE_ENV === 'test';
 
 /**
- * IP del cliente para contar peticiones. Detrás de un proxy de plataforma
- * (Railway envía X-Real-IP) se configura CLIENT_IP_HEADER=x-real-ip; si no,
- * se usa req.ip según la configuración de "trust proxy".
+ * IP del cliente para contar peticiones. Detrás del proxy de una plataforma se
+ * indica en CLIENT_IP_HEADER qué cabecera la trae; admite varias separadas por
+ * coma y usa la primera presente (Railway: x-real-ip; Render:
+ * cf-connecting-ip,true-client-ip,x-forwarded-for). Sin cabecera se usa req.ip.
  */
 function claveCliente(req) {
-  const cabecera = process.env.CLIENT_IP_HEADER;
-  const valor = cabecera && req.headers[cabecera.toLowerCase()];
-  return (Array.isArray(valor) ? valor[0] : valor)?.split(',')[0].trim() || req.ip;
+  const cabeceras = (process.env.CLIENT_IP_HEADER || '').split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
+  for (const cabecera of cabeceras) {
+    const valor = req.headers[cabecera];
+    const ip = (Array.isArray(valor) ? valor[0] : valor)?.split(',')[0].trim();
+    if (ip) return ip;
+  }
+  return req.ip;
 }
 
 const base = {

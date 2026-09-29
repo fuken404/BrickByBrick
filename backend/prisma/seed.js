@@ -57,10 +57,15 @@ const CONFIGURACION = {
 const PASSWORD_ADMIN = 'Admin@BrickByBrick2024';
 const PASSWORD_DEMO = 'Test@1234';
 
-const hash = (plain) => bcrypt.hash(plain, 12);
+const RONDAS = Math.min(14, Math.max(10, Number(process.env.BCRYPT_ROUNDS) || 12));
+const hash = (plain) => bcrypt.hash(plain, RONDAS);
 const dias = (n) => new Date(Date.now() + n * 24 * 60 * 60 * 1000);
 
+/** Marca en configuracion_sistema de que los catálogos iniciales ya se cargaron. */
+const MARCA_CATALOGOS = '_seed_catalogos';
+
 async function catalogos() {
+  if (await prisma.configuracionSistema.findUnique({ where: { clave: MARCA_CATALOGOS } })) return false;
   for (const nombre of LOCALIDADES) {
     await prisma.localidad.upsert({ where: { nombre }, update: {}, create: { nombre } });
   }
@@ -70,6 +75,8 @@ async function catalogos() {
   for (const [clave, valor] of Object.entries(CONFIGURACION)) {
     await prisma.configuracionSistema.upsert({ where: { clave }, update: {}, create: { clave, valor } });
   }
+  await prisma.configuracionSistema.create({ data: { clave: MARCA_CATALOGOS, valor: 1 } });
+  return true;
 }
 
 /**
@@ -88,10 +95,13 @@ async function administrador({ restablecer = false } = {}) {
   if (password.length < 10 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
     throw new Error('ADMIN_PASSWORD debe tener al menos 10 caracteres, con mayúscula, minúscula y número.');
   }
+  // Si ya existe y no hay que restablecerlo, no se calcula el hash (bcrypt es lento en instancias pequeñas)
+  const existe = await prisma.usuario.findUnique({ where: { email }, select: { id: true } });
+  if (existe && !restablecer) return;
   const passwordHash = await hash(password);
   await prisma.usuario.upsert({
     where: { email },
-    update: restablecer ? { passwordHash, estado: 'activo', emailVerificado: true, mfaHabilitado: true } : {},
+    update: { passwordHash, estado: 'activo', emailVerificado: true, mfaHabilitado: true },
     create: {
       email,
       passwordHash,
