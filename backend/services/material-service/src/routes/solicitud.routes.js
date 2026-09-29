@@ -1,38 +1,32 @@
-const router  = require('express').Router();
-const ctrl    = require('../controllers/solicitud.controller');
-const { authMiddleware, requireRoles, validateBody } = require('@brickbybrick/shared');
-const { cambioEstadoSolicitudSchema, calificacionSchema } = require('../validators/solicitud.validators');
+const router = require('express').Router();
+const ctrl = require('../controllers/solicitud.controller');
+const { authMiddleware, requireRoles, validateBody, validateQuery } = require('@brickbybrick/shared');
+const v = require('../validators/solicitud.validators');
 
-// GET /api/v1/solicitudes — admin
-router.get('/',
-  authMiddleware,
-  requireRoles('ADMINISTRADOR'),
-  ctrl.listAll);
+/**
+ * @swagger
+ * tags:
+ *   name: Solicitudes
+ *   description: Flujo de donación pendiente → aprobada → entregada
+ */
 
-// GET /api/v1/solicitudes/recibidas — constructora
-router.get('/recibidas',
-  authMiddleware,
-  requireRoles('CONSTRUCTORA'),
-  ctrl.listByConstructora);
+router.use(authMiddleware);
 
-// GET /api/v1/solicitudes/mis-solicitudes — beneficiario
-router.get('/mis-solicitudes',
-  authMiddleware,
-  requireRoles('BENEFICIARIO'),
-  ctrl.listByBeneficiario);
+router.get('/', requireRoles('ADMINISTRADOR'), validateQuery(v.filtrosSolicitudSchema), ctrl.listarAdmin);
+router.get('/recibidas', requireRoles('CONSTRUCTORA'), validateQuery(v.filtrosSolicitudSchema), ctrl.listarRecibidas);
+router.get('/mis-solicitudes', requireRoles('BENEFICIARIO'), validateQuery(v.filtrosSolicitudSchema), ctrl.listarMias);
+router.get('/:id', ctrl.obtener);
 
-// PATCH /api/v1/solicitudes/:id/estado — constructora o admin
-router.patch('/:id/estado',
-  authMiddleware,
-  requireRoles('CONSTRUCTORA', 'ADMINISTRADOR'),
-  validateBody(cambioEstadoSolicitudSchema),
-  ctrl.cambiarEstado);
-
-// POST /api/v1/solicitudes/:id/calificacion — beneficiario
-router.post('/:id/calificacion',
-  authMiddleware,
-  requireRoles('BENEFICIARIO'),
-  validateBody(calificacionSchema),
-  ctrl.calificar);
+/**
+ * @swagger
+ * /api/v1/solicitudes/{id}/estado:
+ *   patch:
+ *     tags: [Solicitudes]
+ *     summary: Aprobar, rechazar, registrar entrega o cancelar (constructora/admin)
+ */
+router.patch('/:id/estado', requireRoles('CONSTRUCTORA', 'ADMINISTRADOR'), validateBody(v.cambioEstadoSolicitudSchema), ctrl.cambiarEstado);
+router.post('/:id/cancelar', requireRoles('BENEFICIARIO'), validateBody(v.cancelarSchema), ctrl.cancelar);
+router.post('/:id/confirmar-recepcion', requireRoles('BENEFICIARIO'), validateBody(v.confirmarRecepcionSchema), ctrl.confirmarRecepcion);
+router.post('/:id/calificacion', requireRoles('BENEFICIARIO'), validateBody(v.calificacionSchema), ctrl.calificar);
 
 module.exports = router;

@@ -1,245 +1,307 @@
-const { prisma, createNotification, sendEmail } = require('@brickbybrick/shared');
+const {
+  prisma, parsePaginacion, pagina, createNotification, registrarAuditoria, configSistema, escapeHtml,
+  NotFoundError, ForbiddenError, BadRequestError, ConflictError,
+} = require('@brickbybrick/shared');
+const solicitudRepository = require('../repositories/solicitud.repository');
+const materialRepository = require('../repositories/material.repository');
+const constructoraRepository = require('../repositories/constructora.repository');
+const beneficiarioRepository = require('../repositories/beneficiario.repository');
 
-class SolicitudService {
-  async findByBeneficiario(callerId, { estado, page = 1, limit = 20 } = {}) {
-    const beneficiario = await prisma.beneficiario.findUnique({ where: { usuarioId: callerId } });
-    if (!beneficiario) throw { status: 403, message: 'Solo beneficiarios pueden ver sus solicitudes' };
+/**
+ * Máquina de estados de una solicitud de material.
+ *
+ *   pendiente ──aprobar──▶ aprobada ──entregar──▶ entregada ──(beneficiario confirma recepción)
+ *       │                      │
+ *       ├──rechazar──▶ rechazada
+ *       └──cancelar──▶ cancelada ◀──cancelar── (repone stock)
+ *
+ * El stock se descuenta al APROBAR (reserva) y se repone si una aprobada se cancela.
+ */
+const TRANSICIONES_CONSTRUCTORA = {
+  pendiente: ['aprobada', 'rechazada'],
+  aprobada: ['entregada', 'cancelada'],
+};
 
-    const where = { beneficiarioId: beneficiario.id };
-    if (estado) where.estado = estado;
+const cantidadTexto = (s) => `${Number(s.cantidadSolicitada)} ${s.material.unidadMedida}`;
 
-    const [total, items] = await Promise.all([
-      prisma.solicitudMaterial.count({ where }),
-      prisma.solicitudMaterial.findMany({
-        where,
-        include: {
-          material: {
-            include: {
-              categoria:    { select: { id: true, nombre: true, colorHex: true, icono: true } },
-              constructora: { select: { id: true, razonSocial: true, logoUrl: true } },
-              fotos:        { orderBy: { orden: 'asc' }, take: 1 },
-            },
-          },
-        },
-        orderBy: { fechaSolicitud: 'desc' },
-        skip:    (Number(page) - 1) * Number(limit),
-        take:    Number(limit),
-      }),
-    ]);
-    return { total, page: Number(page), limit: Number(limit), items };
-  }
+async function beneficiarioDelUsuario(usuarioId) {
+  const b = await beneficiarioRepository.findByUsuarioId(usuarioId);
+  if (!b) throw new ForbiddenError('Solo los beneficiarios pueden realizar esta acción');
+  return b;
+}
 
-  async findByConstructora(callerId, { estado, page = 1, limit = 20 } = {}) {
-    const constructora = await prisma.constructora.findUnique({ where: { usuarioId: callerId } });
-    if (!constructora) throw { status: 403, message: 'Sin perfil de constructora' };
+async function cargar(id) {
+  const s = await solicitudRepository.findById(id);
+  if (!s) throw new NotFoundError('Solicitud no encontrada');
+  return s;
+}
 
-    const where = { material: { constructoraId: constructora.id } };
-    if (estado) where.estado = estado;
-
-    const [total, items] = await Promise.all([
-      prisma.solicitudMaterial.count({ where }),
-      prisma.solicitudMaterial.findMany({
-        where,
-        include: {
-          material:     { select: { id: true, nombre: true, unidadMedida: true } },
-          beneficiario: { select: { id: true, nombreCompleto: true, cedula: true } },
-        },
-        orderBy: { fechaSolicitud: 'desc' },
-        skip:    (Number(page) - 1) * Number(limit),
-        take:    Number(limit),
-      }),
-    ]);
-    return { total, page: Number(page), limit: Number(limit), items };
-  }
-
-  async findAll({ estado, page = 1, limit = 20 } = {}) {
-    const where = {};
-    if (estado) where.estado = estado;
-
-    const [total, items, pendientes, aprobadas, entregadas, rechazadas] = await Promise.all([
-      prisma.solicitudMaterial.count({ where }),
-      prisma.solicitudMaterial.findMany({
-        where,
-        include: {
-          material:     { select: { id: true, nombre: true, unidadMedida: true, constructora: { select: { razonSocial: true } } } },
-          beneficiario: { select: { id: true, nombreCompleto: true, cedula: true } },
-        },
-        orderBy: { fechaSolicitud: 'desc' },
-        skip:    (Number(page) - 1) * Number(limit),
-        take:    Number(limit),
-      }),
-      prisma.solicitudMaterial.count({ where: { estado: 'pendiente' } }),
-      prisma.solicitudMaterial.count({ where: { estado: 'aprobada' } }),
-      prisma.solicitudMaterial.count({ where: { estado: 'entregada' } }),
-      prisma.solicitudMaterial.count({ where: { estado: 'rechazada' } }),
-    ]);
-
-    return { total, page: Number(page), limit: Number(limit), items, stats: { pendientes, aprobadas, entregadas, rechazadas } };
-  }
-
-  async findByMaterial(materialId, callerId, callerRol) {
-    // Verificar que el caller es dueño del material o admin
-    const material = await prisma.material.findUnique({
-      where:   { id: materialId },
-      include: { constructora: { select: { usuarioId: true } } },
-    });
-    if (!material) throw { status: 404, message: 'Material no encontrado' };
-    if (callerRol !== 'ADMINISTRADOR' && material.constructora.usuarioId !== callerId) {
-      throw { status: 403, message: 'Sin permiso' };
-    }
-
-    return prisma.solicitudMaterial.findMany({
-      where:   { materialId },
-      include: {
-        beneficiario: { select: { id: true, nombreCompleto: true, cedula: true, usuario: { select: { email: true } } } },
-      },
-      orderBy: { fechaSolicitud: 'desc' },
-    });
-  }
-
-  async create(materialId, callerId, data) {
-    // Verificar que el caller es un beneficiario
-    const beneficiario = await prisma.beneficiario.findUnique({ where: { usuarioId: callerId } });
-    if (!beneficiario) throw { status: 403, message: 'Solo los beneficiarios pueden solicitar materiales' };
-
-    const material = await prisma.material.findUnique({
-      where:   { id: materialId },
-      include: { constructora: { select: { usuarioId: true } } },
-    });
-    if (!material) throw { status: 404, message: 'Material no encontrado' };
-    if (material.estadoPublicacion !== 'activo') {
-      throw { status: 400, message: 'El material no está disponible para solicitudes' };
-    }
-    if (data.cantidadSolicitada > Number(material.cantidad)) {
-      throw { status: 400, message: 'La cantidad solicitada supera la disponible' };
-    }
-
-    // Verificar cupo si hay maxSolicitudes
-    if (material.maxSolicitudes) {
-      const count = await prisma.solicitudMaterial.count({
-        where: { materialId, estado: { in: ['pendiente', 'aprobada'] } },
-      });
-      if (count >= material.maxSolicitudes) {
-        throw { status: 409, message: 'No hay cupos disponibles para este material' };
-      }
-    }
-
-    // Verificar que no haya ya una solicitud del mismo beneficiario
-    const existing = await prisma.solicitudMaterial.findUnique({
-      where: { materialId_beneficiarioId: { materialId, beneficiarioId: beneficiario.id } },
-    });
-    if (existing) throw { status: 409, message: 'Ya tienes una solicitud para este material' };
-
-    const solicitud = await prisma.solicitudMaterial.create({
-      data: {
-        materialId,
-        beneficiarioId:      beneficiario.id,
-        cantidadSolicitada:  data.cantidadSolicitada,
-        propositoUso:        data.propositoUso || null,
-        descripcionProyecto: data.descripcionProyecto || null,
-        estado:              'pendiente',
-      },
-    });
-
-    // Notificar a la constructora
-    await createNotification({
-      usuarioId:  material.constructora.usuarioId,
-      tipo:       'material_nuevo',
-      titulo:     'Nueva solicitud de material',
-      mensaje:    `${beneficiario.nombreCompleto} solicitó "${material.nombre}".`,
-      urlDestino: `/mis-materiales/${materialId}/solicitudes`,
-    }).catch(() => {});
-
-    return solicitud;
-  }
-
-  async cambiarEstado(solicitudId, callerId, callerRol, { estado, instruccionesRetiro }) {
-    const solicitud = await prisma.solicitudMaterial.findUnique({
-      where:   { id: solicitudId },
-      include: {
-        material: { include: { constructora: { select: { usuarioId: true } } } },
-        beneficiario: { include: { usuario: { select: { email: true, id: true } } } },
-      },
-    });
-    if (!solicitud) throw { status: 404, message: 'Solicitud no encontrada' };
-
-    // Solo la constructora dueña o admin puede cambiar el estado
-    if (callerRol !== 'ADMINISTRADOR' && solicitud.material.constructora.usuarioId !== callerId) {
-      throw { status: 403, message: 'Sin permiso' };
-    }
-    if (solicitud.estado === 'entregada' || solicitud.estado === 'cancelada') {
-      throw { status: 400, message: `No se puede cambiar el estado desde "${solicitud.estado}"` };
-    }
-
-    const updated = await prisma.solicitudMaterial.update({
-      where: { id: solicitudId },
-      data:  {
-        estado,
-        instruccionesRetiro: instruccionesRetiro || null,
-        fechaRespuesta: ['aprobada', 'rechazada'].includes(estado) ? new Date() : undefined,
-        fechaEntrega:   estado === 'entregada' ? new Date() : undefined,
-      },
-    });
-
-    // Descontar cantidad del material al aprobar; restaurar si se rechaza desde aprobada
-    if (estado === 'aprobada') {
-      await prisma.material.update({
-        where: { id: solicitud.materialId },
-        data:  { cantidad: { decrement: solicitud.cantidadSolicitada } },
-      });
-    } else if (estado === 'rechazada' && solicitud.estado === 'aprobada') {
-      await prisma.material.update({
-        where: { id: solicitud.materialId },
-        data:  { cantidad: { increment: solicitud.cantidadSolicitada } },
-      });
-    }
-
-    // Notificar al beneficiario
-    const tipoNotif = {
-      aprobada:  'solicitud_aprobada',
-      rechazada: 'solicitud_rechazada',
-      entregada: 'solicitud_entregada',
-    }[estado];
-
-    if (tipoNotif) {
-      await createNotification({
-        usuarioId:  solicitud.beneficiario.usuario.id,
-        tipo:       tipoNotif,
-        titulo:     `Solicitud ${estado}`,
-        mensaje:    `Tu solicitud para "${solicitud.material.nombre}" fue ${estado}.`,
-        urlDestino: `/mis-solicitudes/${solicitudId}`,
-      }).catch(() => {});
-
-      // Email de notificación
-      sendEmail({
-        to:      solicitud.beneficiario.usuario.email,
-        subject: `Tu solicitud fue ${estado} — BrickByBrick`,
-        html:    `<p>Tu solicitud para <strong>${solicitud.material.nombre}</strong> fue <strong>${estado}</strong>.</p>
-                  ${instruccionesRetiro ? `<p>Instrucciones de retiro: ${instruccionesRetiro}</p>` : ''}`,
-      }).catch(() => {});
-    }
-
-    return updated;
-  }
-
-  async calificar(solicitudId, callerId, data) {
-    const beneficiario = await prisma.beneficiario.findUnique({ where: { usuarioId: callerId } });
-    if (!beneficiario) throw { status: 403, message: 'Solo beneficiarios pueden calificar' };
-
-    const solicitud = await prisma.solicitudMaterial.findUnique({ where: { id: solicitudId } });
-    if (!solicitud) throw { status: 404, message: 'Solicitud no encontrada' };
-    if (solicitud.beneficiarioId !== beneficiario.id) throw { status: 403, message: 'Sin permiso' };
-    if (solicitud.estado !== 'entregada') throw { status: 400, message: 'Solo se pueden calificar entregas completadas' };
-    if (solicitud.calificacion) throw { status: 409, message: 'Ya has calificado esta entrega' };
-
-    return prisma.solicitudMaterial.update({
-      where: { id: solicitudId },
-      data:  {
-        calificacion:           data.calificacion,
-        comentarioCalificacion: data.comentarioCalificacion || null,
-      },
-    });
+/** Reserva stock de forma atómica; falla si no alcanza (evita sobre-asignación). */
+async function reservarStock(tx, materialId, cantidad) {
+  const { count } = await tx.material.updateMany({
+    where: { id: materialId, cantidad: { gte: cantidad } },
+    data: { cantidad: { decrement: cantidad } },
+  });
+  if (!count) throw new ConflictError('No hay suficiente cantidad disponible para aprobar esta solicitud');
+  const m = await tx.material.findUnique({ where: { id: materialId }, select: { cantidad: true, estadoPublicacion: true } });
+  if (Number(m.cantidad) <= 0 && m.estadoPublicacion === 'activo') {
+    await tx.material.update({ where: { id: materialId }, data: { estadoPublicacion: 'agotado' } });
   }
 }
 
-module.exports = new SolicitudService();
+async function liberarStock(tx, materialId, cantidad) {
+  const m = await tx.material.update({
+    where: { id: materialId },
+    data: { cantidad: { increment: cantidad } },
+    select: { estadoPublicacion: true },
+  });
+  if (m.estadoPublicacion === 'agotado') {
+    await tx.material.update({ where: { id: materialId }, data: { estadoPublicacion: 'activo' } });
+  }
+}
+
+async function siguienteConstancia(tx) {
+  const [{ n }] = await tx.$queryRaw`SELECT nextval('constancia_donacion_seq') AS n`;
+  return `BBB-${new Date().getFullYear()}-${String(n).padStart(6, '0')}`;
+}
+
+const solicitudService = {
+  TRANSICIONES_CONSTRUCTORA,
+
+  async listarMias(usuarioId, filtros) {
+    const b = await beneficiarioDelUsuario(usuarioId);
+    const pag = parsePaginacion(filtros);
+    const [{ total, items }, resumen] = await Promise.all([
+      solicitudRepository.listarBeneficiario(b.id, filtros, pag),
+      solicitudRepository.contarPorEstado({ beneficiarioId: b.id }),
+    ]);
+    return { ...pagina(items, total, pag), resumen };
+  },
+
+  async listarRecibidas(usuarioId, filtros) {
+    const c = await constructoraRepository.findByUsuarioId(usuarioId);
+    if (!c) throw new ForbiddenError('Tu cuenta no tiene una empresa asociada');
+    const pag = parsePaginacion(filtros);
+    const [{ total, items }, resumen] = await Promise.all([
+      solicitudRepository.listarConstructora(c.id, filtros, pag),
+      solicitudRepository.contarPorEstado({ material: { constructoraId: c.id } }),
+    ]);
+    // El contacto del beneficiario solo se comparte cuando la solicitud fue aprobada
+    const protegidos = items.map((s) => (['aprobada', 'entregada'].includes(s.estado)
+      ? s
+      : { ...s, beneficiario: { ...s.beneficiario, cedula: null, usuario: null } }));
+    return { ...pagina(protegidos, total, pag), resumen };
+  },
+
+  async listarAdmin(filtros) {
+    const pag = parsePaginacion(filtros);
+    const [{ total, items }, resumen] = await Promise.all([
+      solicitudRepository.listarAdmin(filtros, pag),
+      solicitudRepository.contarPorEstado({}),
+    ]);
+    return { ...pagina(items, total, pag), resumen };
+  },
+
+  async listarPorMaterial(materialId, caller, filtros) {
+    const m = await materialRepository.findById(materialId);
+    if (!m) throw new NotFoundError('Material no encontrado');
+    if (caller.rol !== 'ADMINISTRADOR' && m.constructora.usuarioId !== caller.userId) {
+      throw new ForbiddenError('No tienes permiso sobre este material');
+    }
+    return this.listarRecibidas(m.constructora.usuarioId, { ...filtros, materialId });
+  },
+
+  async crear(materialId, usuarioId, data) {
+    const b = await beneficiarioDelUsuario(usuarioId);
+    const m = await materialRepository.findById(materialId);
+    if (!m || m.eliminadoEn || m.estadoPublicacion !== 'activo' || !m.constructora.verificada) {
+      throw new BadRequestError('El material no está disponible para solicitudes');
+    }
+    if (m.fechaLimite && new Date(m.fechaLimite) < materialRepository.inicioHoyBogota()) {
+      throw new BadRequestError('El plazo para solicitar este material ya terminó');
+    }
+    if (data.cantidadSolicitada > Number(m.cantidad)) {
+      throw new BadRequestError(`Solo hay ${Number(m.cantidad)} ${m.unidadMedida} disponibles`);
+    }
+    if (await solicitudRepository.activaDeBeneficiario(materialId, b.id)) {
+      throw new ConflictError('Ya tienes una solicitud activa para este material');
+    }
+    const limite = Number(await configSistema.obtenerParametro('maxSolicitudesActivasBeneficiario'));
+    if ((await solicitudRepository.contarActivasBeneficiario(b.id)) >= limite) {
+      throw new ConflictError(`Puedes tener máximo ${limite} solicitudes activas. Espera respuesta o cancela alguna.`);
+    }
+    if (m.maxSolicitudes && (await materialRepository.contarSolicitudesActivas(materialId)) >= m.maxSolicitudes) {
+      throw new ConflictError('Este material ya alcanzó el máximo de solicitudes que la empresa puede atender');
+    }
+
+    const solicitud = await solicitudRepository.create({
+      materialId,
+      beneficiarioId: b.id,
+      cantidadSolicitada: data.cantidadSolicitada,
+      propositoUso: data.propositoUso,
+      descripcionProyecto: data.descripcionProyecto ?? null,
+    });
+
+    createNotification({
+      usuarioId: m.constructora.usuarioId,
+      tipo: 'solicitud_nueva',
+      titulo: 'Nueva solicitud de material',
+      mensaje: `${b.nombreCompleto} solicitó ${data.cantidadSolicitada} ${m.unidadMedida} de "${m.nombre}".`,
+      recurso: 'solicitud',
+      recursoId: solicitud.id,
+    });
+    return solicitud;
+  },
+
+  /** Transiciones que ejecuta la constructora (o el administrador). */
+  async cambiarEstado(id, caller, { estado, instruccionesRetiro, motivo }) {
+    const s = await cargar(id);
+    const esDueno = s.material.constructora.usuarioId === caller.userId;
+    if (caller.rol !== 'ADMINISTRADOR' && !esDueno) throw new ForbiddenError('No tienes permiso sobre esta solicitud');
+
+    const permitidas = TRANSICIONES_CONSTRUCTORA[s.estado] || [];
+    if (!permitidas.includes(estado)) {
+      throw new BadRequestError(`No se puede pasar de "${s.estado}" a "${estado}"`);
+    }
+
+    const cantidad = Number(s.cantidadSolicitada);
+    const ahora = new Date();
+
+    const actualizada = await prisma.$transaction(async (tx) => {
+      const data = { estado };
+      if (estado === 'aprobada') {
+        await reservarStock(tx, s.materialId, cantidad);
+        Object.assign(data, { fechaRespuesta: ahora, instruccionesRetiro });
+      }
+      if (estado === 'rechazada') Object.assign(data, { fechaRespuesta: ahora, motivoRechazo: motivo });
+      if (estado === 'cancelada') {
+        await liberarStock(tx, s.materialId, cantidad);
+        Object.assign(data, { fechaCancelacion: ahora, motivoRechazo: motivo });
+      }
+      if (estado === 'entregada') {
+        const valorUnitario = s.material.valorUnitarioCop ? Number(s.material.valorUnitarioCop) : 0;
+        Object.assign(data, {
+          fechaEntrega: ahora,
+          valorDonadoCop: Math.round(cantidad * valorUnitario * 100) / 100,
+          numeroConstancia: await siguienteConstancia(tx),
+        });
+      }
+      // Guarda optimista: el estado no cambió entre la lectura y la escritura
+      const { count } = await tx.solicitudMaterial.updateMany({ where: { id, estado: s.estado }, data });
+      if (!count) throw new ConflictError('La solicitud cambió mientras la procesabas. Recarga e inténtalo de nuevo.');
+      return tx.solicitudMaterial.findUnique({ where: { id }, include: solicitudRepository.INCLUDE_CONSTRUCTORA });
+    });
+
+    const mensajes = {
+      aprobada: {
+        tipo: 'solicitud_aprobada', titulo: '¡Tu solicitud fue aprobada!',
+        mensaje: `${s.material.constructora.razonSocial} aprobó ${cantidadTexto(s)} de "${s.material.nombre}". Revisa las instrucciones de retiro.`,
+        cuerpo: `<p>${escapeHtml(s.material.constructora.razonSocial)} aprobó tu solicitud de <strong>${escapeHtml(cantidadTexto(s))}</strong> de <strong>${escapeHtml(s.material.nombre)}</strong>.</p><p><strong>Instrucciones de retiro:</strong><br>${escapeHtml(instruccionesRetiro)}</p>`,
+      },
+      rechazada: {
+        tipo: 'solicitud_rechazada', titulo: 'Tu solicitud no fue aprobada',
+        mensaje: `La solicitud de "${s.material.nombre}" fue rechazada. Motivo: ${motivo}`,
+      },
+      cancelada: {
+        tipo: 'solicitud_cancelada', titulo: 'La constructora canceló tu solicitud',
+        mensaje: `La solicitud aprobada de "${s.material.nombre}" fue cancelada. Motivo: ${motivo}`,
+      },
+      entregada: {
+        tipo: 'solicitud_entregada', titulo: 'Material entregado',
+        mensaje: `Se registró la entrega de "${s.material.nombre}". Confirma la recepción y califica la donación.`,
+      },
+    }[estado];
+
+    createNotification({
+      usuarioId: s.beneficiario.usuarioId,
+      tipo: mensajes.tipo,
+      titulo: mensajes.titulo,
+      mensaje: mensajes.mensaje,
+      recurso: 'solicitud',
+      recursoId: id,
+      email: estado === 'entregada' ? false : { cuerpoHtml: mensajes.cuerpo, cta: 'Ver mi solicitud' },
+    });
+    if (caller.rol === 'ADMINISTRADOR') {
+      registrarAuditoria({ usuarioId: caller.userId, accion: `solicitud_${estado}`, entidad: 'solicitud', entidadId: id, detalle: { motivo } });
+    }
+    return actualizada;
+  },
+
+  /** El beneficiario cancela su propia solicitud (pendiente o aprobada). */
+  async cancelarPropia(id, usuarioId, { motivo }) {
+    const b = await beneficiarioDelUsuario(usuarioId);
+    const s = await cargar(id);
+    if (s.beneficiarioId !== b.id) throw new ForbiddenError('No tienes permiso sobre esta solicitud');
+    if (!['pendiente', 'aprobada'].includes(s.estado)) {
+      throw new BadRequestError(`No se puede cancelar una solicitud ${s.estado}`);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (s.estado === 'aprobada') await liberarStock(tx, s.materialId, Number(s.cantidadSolicitada));
+      const { count } = await tx.solicitudMaterial.updateMany({
+        where: { id, estado: s.estado },
+        data: { estado: 'cancelada', fechaCancelacion: new Date(), motivoRechazo: motivo || 'Cancelada por el beneficiario' },
+      });
+      if (!count) throw new ConflictError('La solicitud cambió. Recarga e inténtalo de nuevo.');
+    });
+
+    createNotification({
+      usuarioId: s.material.constructora.usuarioId,
+      tipo: 'solicitud_cancelada',
+      titulo: 'Un beneficiario canceló su solicitud',
+      mensaje: `${s.beneficiario.nombreCompleto} canceló la solicitud de "${s.material.nombre}".`,
+      recurso: 'solicitud',
+      recursoId: id,
+    });
+    return solicitudRepository.findDetalle(id, solicitudRepository.INCLUDE_BENEFICIARIO);
+  },
+
+  async confirmarRecepcion(id, usuarioId, data) {
+    const b = await beneficiarioDelUsuario(usuarioId);
+    const s = await cargar(id);
+    if (s.beneficiarioId !== b.id) throw new ForbiddenError('No tienes permiso sobre esta solicitud');
+    if (s.estado !== 'entregada') throw new BadRequestError('Solo puedes confirmar solicitudes entregadas');
+    if (s.fechaConfirmacion) throw new ConflictError('Ya confirmaste la recepción');
+
+    await solicitudRepository.update(id, {
+      fechaConfirmacion: new Date(),
+      ...(data.calificacion ? { calificacion: data.calificacion, comentarioCalificacion: data.comentarioCalificacion ?? null } : {}),
+    });
+    createNotification({
+      usuarioId: s.material.constructora.usuarioId,
+      tipo: 'recepcion_confirmada',
+      titulo: 'Recepción confirmada',
+      mensaje: `${b.nombreCompleto} confirmó que recibió "${s.material.nombre}"${data.calificacion ? ` y calificó la donación con ${data.calificacion}/5` : ''}.`,
+      recurso: 'solicitud',
+      recursoId: id,
+    });
+    return solicitudRepository.findDetalle(id, solicitudRepository.INCLUDE_BENEFICIARIO);
+  },
+
+  async calificar(id, usuarioId, data) {
+    const b = await beneficiarioDelUsuario(usuarioId);
+    const s = await cargar(id);
+    if (s.beneficiarioId !== b.id) throw new ForbiddenError('No tienes permiso sobre esta solicitud');
+    if (s.estado !== 'entregada') throw new BadRequestError('Solo se pueden calificar entregas completadas');
+    if (s.calificacion) throw new ConflictError('Ya calificaste esta entrega');
+    await solicitudRepository.update(id, {
+      calificacion: data.calificacion,
+      comentarioCalificacion: data.comentarioCalificacion ?? null,
+      fechaConfirmacion: s.fechaConfirmacion ?? new Date(),
+    });
+    return solicitudRepository.findDetalle(id, solicitudRepository.INCLUDE_BENEFICIARIO);
+  },
+
+  /** Detalle para cualquiera de las partes o el administrador. */
+  async obtener(id, caller) {
+    const s = await cargar(id);
+    const esBeneficiario = s.beneficiario.usuarioId === caller.userId;
+    const esConstructora = s.material.constructora.usuarioId === caller.userId;
+    if (!esBeneficiario && !esConstructora && caller.rol !== 'ADMINISTRADOR') {
+      throw new ForbiddenError('No tienes permiso sobre esta solicitud');
+    }
+    return solicitudRepository.findDetalle(id, esBeneficiario ? solicitudRepository.INCLUDE_BENEFICIARIO : solicitudRepository.INCLUDE_CONSTRUCTORA);
+  },
+};
+
+module.exports = solicitudService;

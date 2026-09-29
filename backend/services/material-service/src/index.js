@@ -1,14 +1,8 @@
-const app  = require('./app');
-const cron = require('./jobs/material.jobs');
-const { logger } = require('@brickbybrick/shared');
+const { config, startServer } = require('@brickbybrick/shared');
+const app = require('./app');
+const jobs = require('./jobs/material.jobs');
 
-const PORT   = process.env.PORT_MATERIALS || process.env.PORT || 3003;
-const server = app.listen(PORT, () => {
-  logger.info(`material-service en puerto ${PORT}`);
-  cron.start();
+module.exports = startServer(app, config.PORT_MATERIALS, 'material-service', {
+  onStart: jobs.start,
+  onStop: jobs.stop,
 });
-
-const shutdown = () => { cron.stop(); server.close(() => process.exit(0)); };
-process.on('SIGTERM', shutdown);
-process.on('SIGINT',  shutdown);
-module.exports = server;

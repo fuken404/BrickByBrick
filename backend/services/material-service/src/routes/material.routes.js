@@ -1,53 +1,55 @@
 const router = require('express').Router();
-const ctrl   = require('../controllers/material.controller');
+const ctrl = require('../controllers/material.controller');
 const solCtrl = require('../controllers/solicitud.controller');
-const { authMiddleware, requireRoles, validateBody, upload } = require('@brickbybrick/shared');
-const { createMaterialSchema, updateMaterialSchema, cambioEstadoSchema } = require('../validators/material.validators');
-const { createSolicitudSchema } = require('../validators/solicitud.validators');
+const {
+  authMiddleware, optionalAuth, requireRoles, validateBody, validateQuery, upload,
+} = require('@brickbybrick/shared');
+const v = require('../validators/material.validators');
+const sv = require('../validators/solicitud.validators');
 
-// Público
-router.get('/',    ctrl.list);
+/**
+ * @swagger
+ * tags:
+ *   name: Materiales
+ *   description: Catálogo y gestión de materiales donados
+ */
 
-// Constructora — mis materiales (debe ir antes de /:id)
-router.get('/mis-materiales',
-  authMiddleware, requireRoles('CONSTRUCTORA'),
-  ctrl.listMios);
+/**
+ * @swagger
+ * /api/v1/materiales:
+ *   get:
+ *     tags: [Materiales]
+ *     summary: Catálogo público (activos, vigentes y de constructoras verificadas)
+ *     security: []
+ *   post:
+ *     tags: [Materiales]
+ *     summary: Crea un material (borrador o publicado)
+ */
+router.get('/', validateQuery(v.filtrosMaterialSchema), ctrl.listar);
+router.get('/mis-materiales', authMiddleware, requireRoles('CONSTRUCTORA'), validateQuery(v.filtrosMaterialSchema), ctrl.listarMios);
+router.get('/admin', authMiddleware, requireRoles('ADMINISTRADOR'), validateQuery(v.filtrosMaterialSchema), ctrl.listarAdmin);
+router.get('/:id', optionalAuth, ctrl.obtener);
 
-router.get('/:id', ctrl.getOne);
+router.post('/', authMiddleware, requireRoles('CONSTRUCTORA'), validateBody(v.createMaterialSchema), ctrl.crear);
+router.put('/:id', authMiddleware, requireRoles('CONSTRUCTORA', 'ADMINISTRADOR'), validateBody(v.updateMaterialSchema), ctrl.actualizar);
+router.patch('/:id/estado', authMiddleware, requireRoles('CONSTRUCTORA', 'ADMINISTRADOR'), validateBody(v.cambioEstadoSchema), ctrl.cambiarEstado);
+router.delete('/:id', authMiddleware, requireRoles('CONSTRUCTORA', 'ADMINISTRADOR'), ctrl.eliminar);
 
-// Constructora
-router.post('/',
-  authMiddleware, requireRoles('CONSTRUCTORA'),
-  validateBody(createMaterialSchema),
-  ctrl.create);
+router.post('/:id/fotos', authMiddleware, requireRoles('CONSTRUCTORA', 'ADMINISTRADOR'), upload.array('fotos', 10), ctrl.agregarFotos);
+router.delete('/:id/fotos/:fotoId', authMiddleware, requireRoles('CONSTRUCTORA', 'ADMINISTRADOR'), ctrl.eliminarFoto);
 
-router.put('/:id',
-  authMiddleware, requireRoles('CONSTRUCTORA', 'ADMINISTRADOR'),
-  validateBody(updateMaterialSchema),
-  ctrl.update);
-
-router.delete('/:id',
-  authMiddleware, requireRoles('CONSTRUCTORA', 'ADMINISTRADOR'),
-  ctrl.remove);
-
-router.patch('/:id/estado',
-  authMiddleware, requireRoles('CONSTRUCTORA', 'ADMINISTRADOR'),
-  validateBody(cambioEstadoSchema),
-  ctrl.cambiarEstado);
-
-router.post('/:id/fotos',
-  authMiddleware, requireRoles('CONSTRUCTORA', 'ADMINISTRADOR'),
-  upload.array('fotos', 5),
-  ctrl.agregarFotos);
-
-// Solicitudes — nested bajo material
-router.get('/:id/solicitudes',
-  authMiddleware, requireRoles('CONSTRUCTORA', 'ADMINISTRADOR'),
-  solCtrl.listByMaterial);
-
-router.post('/:id/solicitudes',
-  authMiddleware, requireRoles('BENEFICIARIO'),
-  validateBody(createSolicitudSchema),
-  solCtrl.create);
+/**
+ * @swagger
+ * /api/v1/materiales/{id}/solicitudes:
+ *   get:
+ *     tags: [Solicitudes]
+ *     summary: Solicitudes de un material (constructora dueña o admin)
+ *   post:
+ *     tags: [Solicitudes]
+ *     summary: El beneficiario solicita el material
+ */
+router.get('/:id/solicitudes', authMiddleware, requireRoles('CONSTRUCTORA', 'ADMINISTRADOR'),
+  validateQuery(sv.filtrosSolicitudSchema), solCtrl.listarPorMaterial);
+router.post('/:id/solicitudes', authMiddleware, requireRoles('BENEFICIARIO'), validateBody(sv.createSolicitudSchema), solCtrl.crear);
 
 module.exports = router;

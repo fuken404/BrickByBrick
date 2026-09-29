@@ -1,154 +1,188 @@
-const { prisma, uploadToStorage, deleteFromStorage } = require('@brickbybrick/shared');
+const {
+  uploadToStorage, deleteFromStorage, parsePaginacion, pagina, notificar, registrarAuditoria, configSistema,
+  NotFoundError, ForbiddenError, BadRequestError, ConflictError,
+} = require('@brickbybrick/shared');
+const materialRepository = require('../repositories/material.repository');
+const constructoraRepository = require('../repositories/constructora.repository');
+const beneficiarioRepository = require('../repositories/beneficiario.repository');
+const solicitudRepository = require('../repositories/solicitud.repository');
 
-const MATERIAL_INCLUDE = {
-  categoria:    { select: { id: true, nombre: true, colorHex: true, icono: true } },
-  constructora: {
-    select: {
-      id: true, razonSocial: true, logoUrl: true, verificada: true,
-      localidad: { select: { id: true, nombre: true } },
-    },
-  },
-  fotos: { orderBy: { orden: 'asc' } },
-  _count: { select: { solicitudes: true } },
-};
+const aFecha = (v) => (v ? new Date(`${v.slice(0, 10)}T00:00:00.000Z`) : null);
 
-class MaterialService {
-  async findAll({ page = 1, limit = 20, categoriaId, localidadId, estado, q } = {}) {
-    const where = {
-      estadoPublicacion: 'activo',
-      OR: [{ fechaLimite: null }, { fechaLimite: { gte: new Date() } }],
-    };
+async function constructoraDelUsuario(usuarioId) {
+  const c = await constructoraRepository.findByUsuarioId(usuarioId);
+  if (!c) throw new ForbiddenError('Tu cuenta no tiene una empresa asociada');
+  return c;
+}
 
-    if (categoriaId)  where.categoriaId = Number(categoriaId);
-    if (estado)       where.estadoMaterial = estado;
-    if (localidadId)  where.constructora = { localidadId: Number(localidadId) };
-    if (q)            where.OR = [
-      { nombre:      { contains: q, mode: 'insensitive' } },
-      { descripcion: { contains: q, mode: 'insensitive' } },
-    ];
-
-    const [total, items] = await Promise.all([
-      prisma.material.count({ where }),
-      prisma.material.findMany({
-        where,
-        include: MATERIAL_INCLUDE,
-        skip:  (Number(page) - 1) * Number(limit),
-        take:  Number(limit),
-        orderBy: { createdAt: 'desc' },
-      }),
-    ]);
-    return { total, page: Number(page), limit: Number(limit), items };
+async function propioOAdmin(materialId, caller) {
+  const m = await materialRepository.findById(materialId);
+  if (!m || m.eliminadoEn) throw new NotFoundError('Material no encontrado');
+  if (caller.rol !== 'ADMINISTRADOR' && m.constructora.usuarioId !== caller.userId) {
+    throw new ForbiddenError('No tienes permiso sobre este material');
   }
+  return m;
+}
 
-  async findById(id) {
-    const m = await prisma.material.findUnique({ where: { id }, include: MATERIAL_INCLUDE });
-    if (!m) throw { status: 404, message: 'Material no encontrado' };
-    return m;
+/** Reglas para que un material pueda estar visible en el catálogo. */
+function validarPublicable(m, constructora) {
+  if (!constructora.verificada) {
+    throw new ForbiddenError('Tu empresa debe estar verificada para publicar materiales. Puedes guardarlo como borrador.');
   }
-
-  async findByConstructora(constructoraId, { page = 1, limit = 50, estadoPublicacion } = {}) {
-    const where = { constructoraId };
-    if (estadoPublicacion) where.estadoPublicacion = estadoPublicacion;
-
-    const [total, items] = await Promise.all([
-      prisma.material.count({ where }),
-      prisma.material.findMany({
-        where,
-        include: MATERIAL_INCLUDE,
-        skip:  (Number(page) - 1) * Number(limit),
-        take:  Number(limit),
-        orderBy: { createdAt: 'desc' },
-      }),
-    ]);
-    return { total, page: Number(page), limit: Number(limit), items };
+  if (m.valorUnitarioCop === null || m.valorUnitarioCop === undefined) {
+    throw new BadRequestError('Indica el valor unitario de referencia (COP) para poder generar la constancia tributaria');
   }
-
-  async create(constructoraId, data) {
-    return prisma.material.create({
-      data: {
-        constructoraId,
-        categoriaId:       data.categoriaId,
-        nombre:            data.nombre,
-        descripcion:       data.descripcion  || null,
-        estadoMaterial:    data.estadoMaterial,
-        cantidad:          data.cantidad,
-        unidadMedida:      data.unidadMedida,
-        condicionesRetiro: data.condicionesRetiro || null,
-        fechaLimite:       data.fechaLimite ? new Date(data.fechaLimite) : null,
-        maxSolicitudes:    data.maxSolicitudes || null,
-        estadoPublicacion: data.estadoPublicacion || 'borrador',
-      },
-      include: MATERIAL_INCLUDE,
-    });
-  }
-
-  async update(id, callerId, callerRol, data) {
-    const m = await this._ownOrAdmin(id, callerId, callerRol);
-
-    return prisma.material.update({
-      where:   { id },
-      data:    {
-        ...data,
-        fechaLimite: data.fechaLimite ? new Date(data.fechaLimite) : undefined,
-      },
-      include: MATERIAL_INCLUDE,
-    });
-  }
-
-  async remove(id, callerId, callerRol) {
-    await this._ownOrAdmin(id, callerId, callerRol);
-    await prisma.material.delete({ where: { id } });
-  }
-
-  async cambiarEstado(id, callerId, callerRol, estado) {
-    await this._ownOrAdmin(id, callerId, callerRol);
-
-    return prisma.material.update({
-      where:  { id },
-      data:   { estadoPublicacion: estado },
-      select: { id: true, estadoPublicacion: true },
-    });
-  }
-
-  async agregarFotos(id, callerId, callerRol, files) {
-    await this._ownOrAdmin(id, callerId, callerRol);
-
-    const existingCount = await prisma.fotoMaterial.count({ where: { materialId: id } });
-
-    const uploads = await Promise.all(
-      files.map((f, i) =>
-        uploadToStorage(f.buffer, 'materiales', f.originalname).then((url) => ({
-          materialId: id,
-          url,
-          orden: existingCount + i,
-        }))
-      )
-    );
-
-    await prisma.fotoMaterial.createMany({ data: uploads });
-    return prisma.fotoMaterial.findMany({ where: { materialId: id }, orderBy: { orden: 'asc' } });
-  }
-
-  async eliminarFoto(fotoId, callerId, callerRol) {
-    const foto = await prisma.fotoMaterial.findUnique({ where: { id: fotoId } });
-    if (!foto) throw { status: 404, message: 'Foto no encontrada' };
-    await this._ownOrAdmin(foto.materialId, callerId, callerRol);
-    await deleteFromStorage(foto.url);
-    await prisma.fotoMaterial.delete({ where: { id: fotoId } });
-  }
-
-  // ------------------------------------------------------------------
-  async _ownOrAdmin(materialId, callerId, callerRol) {
-    const m = await prisma.material.findUnique({
-      where:   { id: materialId },
-      include: { constructora: { select: { usuarioId: true } } },
-    });
-    if (!m) throw { status: 404, message: 'Material no encontrado' };
-    if (callerRol !== 'ADMINISTRADOR' && m.constructora.usuarioId !== callerId) {
-      throw { status: 403, message: 'Sin permiso para modificar este material' };
-    }
-    return m;
+  if (!m.fechaLimite) throw new BadRequestError('Indica la fecha límite de disponibilidad');
+  if (Number(m.cantidad) <= 0) throw new BadRequestError('No hay cantidad disponible para publicar');
+  if (new Date(m.fechaLimite) < materialRepository.inicioHoyBogota()) {
+    throw new BadRequestError('La fecha límite ya pasó; actualízala antes de publicar');
   }
 }
 
-module.exports = new MaterialService();
+async function avisarMaterialNuevo(material) {
+  const destinatarios = await materialRepository.destinatariosMaterialNuevo(material.constructora);
+  notificar({
+    usuarioIds: destinatarios,
+    tipo: 'material_nuevo',
+    titulo: 'Nuevo material disponible',
+    mensaje: `${material.constructora.razonSocial} publicó "${material.nombre}" (${Number(material.cantidad)} ${material.unidadMedida}).`,
+    recurso: 'material',
+    recursoId: material.id,
+  });
+}
+
+const materialService = {
+  async listarPublico(filtros) {
+    const pag = parsePaginacion(filtros, { defaultLimit: 12 });
+    const { total, items } = await materialRepository.listarPublico(filtros, pag);
+    return pagina(items, total, pag);
+  },
+
+  async listarMios(usuarioId, filtros) {
+    const c = await constructoraDelUsuario(usuarioId);
+    const pag = parsePaginacion(filtros);
+    const { total, items } = await materialRepository.listarDeConstructora(c.id, filtros, pag);
+    return pagina(items, total, pag);
+  },
+
+  async listarAdmin(filtros) {
+    const pag = parsePaginacion(filtros);
+    const { total, items } = await materialRepository.listarAdmin(filtros, pag);
+    return pagina(items, total, pag);
+  },
+
+  /** Detalle. Borradores/pausados solo para la dueña y el admin. */
+  async obtener(id, caller) {
+    const m = await materialRepository.findById(id);
+    if (!m || m.eliminadoEn) throw new NotFoundError('Material no encontrado');
+    const esDueno = caller && m.constructora.usuarioId === caller.userId;
+    const esAdmin = caller?.rol === 'ADMINISTRADOR';
+    if (!esDueno && !esAdmin && (m.estadoPublicacion === 'borrador' || !m.constructora.verificada)) {
+      throw new NotFoundError('Material no encontrado');
+    }
+    const resultado = { ...m, esPropio: Boolean(esDueno) };
+    if (caller?.rol === 'BENEFICIARIO') {
+      const b = await beneficiarioRepository.findByUsuarioId(caller.userId);
+      resultado.miSolicitudActiva = b ? await solicitudRepository.activaDeBeneficiario(id, b.id) : null;
+    }
+    return resultado;
+  },
+
+  async crear(usuarioId, data) {
+    const c = await constructoraDelUsuario(usuarioId);
+    const { estadoPublicacion, ...campos } = data;
+    const datos = {
+      ...campos,
+      fechaLimite: aFecha(data.fechaLimite),
+      constructoraId: c.id,
+      cantidadInicial: data.cantidad,
+      estadoPublicacion,
+    };
+    if (estadoPublicacion === 'activo') {
+      validarPublicable(datos, c);
+      datos.publicadoEn = new Date();
+    }
+    const m = await materialRepository.create(datos);
+    if (m.estadoPublicacion === 'activo') avisarMaterialNuevo(m);
+    return m;
+  },
+
+  async actualizar(id, caller, data) {
+    const m = await propioOAdmin(id, caller);
+    const cambios = { ...data };
+    if (data.fechaLimite !== undefined) cambios.fechaLimite = aFecha(data.fechaLimite);
+
+    if (data.cantidad !== undefined) {
+      // La cantidad editable es la disponible; se ajusta la inicial para no perder la trazabilidad
+      const delta = Number(data.cantidad) - Number(m.cantidad);
+      cambios.cantidadInicial = Number(m.cantidadInicial ?? m.cantidad) + delta;
+      if (m.estadoPublicacion === 'agotado' && Number(data.cantidad) > 0) cambios.estadoPublicacion = 'activo';
+    }
+
+    const fusion = { ...m, ...cambios };
+    if (fusion.estadoPublicacion === 'activo') {
+      validarPublicable(fusion, await constructoraRepository.findById(m.constructoraId));
+    }
+    const actualizado = await materialRepository.update(id, cambios);
+    if (caller.rol === 'ADMINISTRADOR') {
+      registrarAuditoria({ usuarioId: caller.userId, accion: 'material_editado', entidad: 'material', entidadId: id, detalle: Object.keys(data) });
+    }
+    return actualizado;
+  },
+
+  async cambiarEstado(id, caller, estado) {
+    const m = await propioOAdmin(id, caller);
+    if (m.estadoPublicacion === estado) return m;
+    const cambios = { estadoPublicacion: estado };
+    if (estado === 'activo') {
+      validarPublicable(m, await constructoraRepository.findById(m.constructoraId));
+      if (!m.publicadoEn) cambios.publicadoEn = new Date();
+    }
+    if (estado === 'borrador' && (await materialRepository.contarSolicitudesActivas(id))) {
+      throw new ConflictError('Tiene solicitudes activas; puedes pausarlo pero no volverlo borrador');
+    }
+    const actualizado = await materialRepository.update(id, cambios);
+    if (estado === 'activo' && !m.publicadoEn) avisarMaterialNuevo(actualizado);
+    if (caller.rol === 'ADMINISTRADOR') {
+      registrarAuditoria({ usuarioId: caller.userId, accion: `material_${estado}`, entidad: 'material', entidadId: id });
+    }
+    return actualizado;
+  },
+
+  async eliminar(id, caller) {
+    const m = await propioOAdmin(id, caller);
+    const activas = await materialRepository.contarSolicitudesActivas(id);
+    if (activas) {
+      throw new ConflictError(`Tiene ${activas} solicitud(es) pendiente(s) o aprobada(s). Resuélvelas antes de eliminarlo.`);
+    }
+    await materialRepository.update(id, { eliminadoEn: new Date(), estadoPublicacion: 'pausado' });
+    registrarAuditoria({ usuarioId: caller.userId, accion: 'material_eliminado', entidad: 'material', entidadId: id, detalle: { nombre: m.nombre } });
+  },
+
+  async agregarFotos(id, caller, files) {
+    await propioOAdmin(id, caller);
+    const max = Number(await configSistema.obtenerParametro('maxFotosMaterial'));
+    const existentes = await materialRepository.contarFotos(id);
+    if (existentes + files.length > max) {
+      throw new BadRequestError(`Máximo ${max} fotos por material (ya tiene ${existentes})`);
+    }
+    const nuevas = await Promise.all(files.map(async (f, i) => ({
+      materialId: id,
+      url: await uploadToStorage(f.buffer, 'materiales', f.originalname, f.mimetype),
+      orden: existentes + i,
+    })));
+    await materialRepository.crearFotos(nuevas);
+    return materialRepository.fotos(id);
+  },
+
+  async eliminarFoto(materialId, fotoId, caller) {
+    await propioOAdmin(materialId, caller);
+    const foto = await materialRepository.findFoto(fotoId);
+    if (!foto || foto.materialId !== materialId) throw new NotFoundError('Foto no encontrada');
+    await materialRepository.eliminarFoto(fotoId);
+    deleteFromStorage(foto.url);
+    return materialRepository.fotos(materialId);
+  },
+};
+
+module.exports = materialService;
