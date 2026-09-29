@@ -38,7 +38,11 @@
     "setupFiles": [
       "<rootDir>/test/setup-env.js"
     ],
-    "testTimeout": 20000
+    "testTimeout": 20000,
+    "globalSetup": "<rootDir>/test/global-setup.js",
+    "testPathIgnorePatterns": [
+      "/node_modules/"
+    ]
   },
   "prisma": {
     "seed": "node prisma/seed.js"

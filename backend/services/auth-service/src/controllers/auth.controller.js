@@ -10,9 +10,9 @@ const COOKIE_OPTS = {
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
-function responderSesion(res, sesion, mensaje) {
+function responderSesion(res, sesion, mensaje, extra = {}) {
   res.cookie(COOKIE, sesion.refreshToken, COOKIE_OPTS);
-  return sendSuccess(res, { accessToken: sesion.accessToken, user: sesion.user }, mensaje);
+  return sendSuccess(res, { ...extra, accessToken: sesion.accessToken, user: sesion.user }, mensaje);
 }
 
 const authController = {
@@ -37,7 +37,7 @@ const authController = {
         const { mfaRequerido, desafioId, emailParcial } = resultado;
         return sendSuccess(res, { mfaRequerido, desafioId, emailParcial }, 'Te enviamos un código de verificación');
       }
-      return responderSesion(res, resultado, 'Inicio de sesión exitoso');
+      return responderSesion(res, resultado, 'Inicio de sesión exitoso', { mfaRequerido: false });
     } catch (err) { return next(err); }
   },
 

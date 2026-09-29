@@ -19,7 +19,7 @@ const prodFormat = combine(
 );
 
 const logger = createLogger({
-  level: process.env.NODE_ENV === 'production' ? 'warn' : 'debug',
+  level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'warn' : process.env.NODE_ENV === 'test' ? 'error' : 'debug'),
   format: process.env.NODE_ENV === 'production' ? prodFormat : devFormat,
   defaultMeta: { service: process.env.SERVICE_NAME || 'brickbybrick' },
   transports: [new transports.Console()],
