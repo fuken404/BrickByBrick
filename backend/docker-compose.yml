@@ -93,5 +93,6 @@ services:
 
 volumes:
   brickbybrick_pgdata:
-    external: false
+    name: brickbybrick_pgdata
   uploads:
+    name: brickbybrick_uploads
