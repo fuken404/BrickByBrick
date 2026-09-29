@@ -1,116 +1,81 @@
 const router = require('express').Router();
-const authController = require('../controllers/auth.controller');
-const { validateBody, authMiddleware, prisma, sendSuccess, sendError } = require('@brickbybrick/shared');
-const { authLimiter, passwordLimiter } = require('@brickbybrick/shared');
-const bcrypt = require('bcryptjs');
+const ctrl = require('../controllers/auth.controller');
 const {
-  registerBeneficiarioSchema,
-  registerConstructoraSchema,
-  loginSchema,
-  forgotPasswordSchema,
-  resetPasswordSchema,
-} = require('../validators/auth.validators');
+  validateBody, authMiddleware, authLimiter, passwordLimiter, uploadDoc,
+} = require('@brickbybrick/shared');
+const v = require('../validators/auth.validators');
 
 /**
  * @swagger
  * tags:
  *   name: Auth
- *   description: Autenticación y gestión de cuentas
+ *   description: Registro, inicio de sesión (con MFA), sesiones y contraseñas
  */
 
 /**
  * @swagger
  * /api/v1/auth/register/beneficiario:
  *   post:
- *     summary: Registra un nuevo beneficiario
  *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/RegisterBeneficiario'
- *     responses:
- *       201: { description: Registro exitoso }
- *       409: { description: Email o cédula ya en uso }
+ *     summary: Registra un beneficiario (mayor de edad)
+ *     security: []
  */
-router.post(
-  '/register/beneficiario',
-  authLimiter,
-  validateBody(registerBeneficiarioSchema),
-  authController.registerBeneficiario
-);
+router.post('/register/beneficiario', authLimiter, validateBody(v.registerBeneficiarioSchema), ctrl.registerBeneficiario);
 
 /**
  * @swagger
  * /api/v1/auth/register/constructora:
  *   post:
- *     summary: Registra una nueva constructora
  *     tags: [Auth]
+ *     summary: Registra una constructora (multipart con archivos `rut` y `camaraComercio`)
+ *     security: []
  */
 router.post(
   '/register/constructora',
   authLimiter,
-  validateBody(registerConstructoraSchema),
-  authController.registerConstructora
+  uploadDoc.fields([{ name: 'rut', maxCount: 1 }, { name: 'camaraComercio', maxCount: 1 }]),
+  validateBody(v.registerConstructoraSchema),
+  ctrl.registerConstructora,
 );
 
 /**
  * @swagger
  * /api/v1/auth/login:
  *   post:
- *     summary: Inicia sesión y devuelve access token
  *     tags: [Auth]
+ *     summary: Inicia sesión. Si el usuario tiene MFA responde `mfaRequerido` y un `desafioId`
+ *     security: []
  */
-router.post(
-  '/login',
-  authLimiter,
-  validateBody(loginSchema),
-  authController.login
-);
+router.post('/login', authLimiter, validateBody(v.loginSchema), ctrl.login);
 
-/** POST /logout */
-router.post('/logout', authController.logout);
+/**
+ * @swagger
+ * /api/v1/auth/mfa/verificar:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Completa el inicio de sesión con el código OTP enviado al correo
+ *     security: []
+ */
+router.post('/mfa/verificar', authLimiter, validateBody(v.mfaVerifySchema), ctrl.verificarMfa);
+router.post('/mfa/reenviar', passwordLimiter, validateBody(v.mfaResendSchema), ctrl.reenviarMfa);
+router.patch('/mfa', authMiddleware, validateBody(v.mfaToggleSchema), ctrl.configurarMfa);
 
-/** POST /refresh-token */
-router.post('/refresh-token', authController.refreshToken);
+/**
+ * @swagger
+ * /api/v1/auth/refresh-token:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Rota el refresh token (cookie httpOnly) y devuelve un nuevo access token
+ *     security: []
+ */
+router.post('/refresh-token', ctrl.refreshToken);
+router.post('/logout', ctrl.logout);
 
-/** POST /forgot-password */
-router.post(
-  '/forgot-password',
-  passwordLimiter,
-  validateBody(forgotPasswordSchema),
-  authController.forgotPassword
-);
+router.post('/forgot-password', passwordLimiter, validateBody(v.forgotPasswordSchema), ctrl.forgotPassword);
+router.post('/reset-password/:token', passwordLimiter, validateBody(v.resetPasswordSchema), ctrl.resetPassword);
+router.patch('/password', authMiddleware, validateBody(v.cambiarPasswordSchema), ctrl.cambiarPassword);
 
-/** POST /reset-password/:token */
-router.post(
-  '/reset-password/:token',
-  passwordLimiter,
-  validateBody(resetPasswordSchema),
-  authController.resetPassword
-);
-
-/** GET /verify-email/:token */
-router.get('/verify-email/:token', authController.verifyEmail);
-
-/** PATCH /cambiar-password — usuario autenticado */
-router.patch('/cambiar-password', authMiddleware, async (req, res, next) => {
-  try {
-    const { passwordActual, passwordNueva } = req.body;
-    if (!passwordActual || !passwordNueva || passwordNueva.length < 8) {
-      return sendError(res, 'La nueva contraseña debe tener al menos 8 caracteres', 400);
-    }
-    const usuario = await prisma.usuario.findUnique({ where: { id: req.user.userId } });
-    if (!usuario) return sendError(res, 'Usuario no encontrado', 404);
-
-    const valida = await bcrypt.compare(passwordActual, usuario.passwordHash);
-    if (!valida) return sendError(res, 'La contraseña actual es incorrecta', 400);
-
-    const hash = await bcrypt.hash(passwordNueva, 10);
-    await prisma.usuario.update({ where: { id: req.user.userId }, data: { passwordHash: hash } });
-    sendSuccess(res, null, 'Contraseña actualizada');
-  } catch (err) { next(err); }
-});
+router.get('/verify-email/:token', ctrl.verifyEmail);
+router.post('/verify-email/reenviar', authMiddleware, passwordLimiter, ctrl.reenviarVerificacion);
 
 module.exports = router;

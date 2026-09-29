@@ -1,122 +1,68 @@
-const { prisma, uploadToStorage, createNotification } = require('@brickbybrick/shared');
+const {
+  uploadToStorage, deleteFromStorage, parsePaginacion, pagina, notificarAdmins, registrarAuditoria,
+  NotFoundError, ForbiddenError,
+} = require('@brickbybrick/shared');
+const constructoraRepository = require('../repositories/constructora.repository');
 
-const CONSTRUCTORA_SELECT = {
-  id:                 true,
-  razonSocial:        true,
-  nit:                true,
-  representanteLegal: true,
-  cargoRepresentante: true,
-  numEmpleados:       true,
-  direccion:          true,
-  descripcion:        true,
-  logoUrl:            true,
-  sitioWeb:           true,
-  verificada:         true,
-  fechaVerificacion:  true,
-  localidad:          { select: { id: true, nombre: true } },
-  usuario:            { select: { id: true, email: true, estado: true, createdAt: true } },
-  documentosEmpresa:  { orderBy: { fechaSubida: 'desc' } },
-};
-
-class ConstructoraService {
-  async findAll({ page = 1, limit = 20, verificada, localidadId, q } = {}) {
-    const p = Number(page);
-    const l = Number(limit);
-    const where = {};
-    if (verificada !== undefined) where.verificada = verificada === 'true';
-    if (localidadId) where.localidadId = Number(localidadId);
-    if (q) where.razonSocial = { contains: q, mode: 'insensitive' };
-
-    const [total, items] = await Promise.all([
-      prisma.constructora.count({ where }),
-      prisma.constructora.findMany({
-        where,
-        select: CONSTRUCTORA_SELECT,
-        skip: (p - 1) * l,
-        take: l,
-        orderBy: { razonSocial: 'asc' },
-      }),
-    ]);
-    return { total, page: p, limit: l, items };
+async function propiaOAdmin(id, caller) {
+  const c = await constructoraRepository.findRaw(id);
+  if (!c) throw new NotFoundError('Constructora no encontrada');
+  if (caller.rol !== 'ADMINISTRADOR' && c.usuarioId !== caller.userId) {
+    throw new ForbiddenError('No tienes permiso sobre esta empresa');
   }
-
-  async findById(id) {
-    const c = await prisma.constructora.findUnique({
-      where: { id },
-      select: CONSTRUCTORA_SELECT,
-    });
-    if (!c) throw { status: 404, message: 'Constructora no encontrada' };
-    return c;
-  }
-
-  async update(id, callerId, callerRol, data) {
-    const c = await prisma.constructora.findUnique({ where: { id } });
-    if (!c) throw { status: 404, message: 'Constructora no encontrada' };
-    if (callerRol !== 'ADMINISTRADOR' && c.usuarioId !== callerId) {
-      throw { status: 403, message: 'Sin permiso para modificar este perfil' };
-    }
-
-    return prisma.constructora.update({
-      where:  { id },
-      data,
-      select: CONSTRUCTORA_SELECT,
-    });
-  }
-
-  async verificar(id) {
-    const c = await prisma.constructora.findUnique({ where: { id } });
-    if (!c) throw { status: 404, message: 'Constructora no encontrada' };
-
-    const updated = await prisma.constructora.update({
-      where: { id },
-      data:  { verificada: true, fechaVerificacion: new Date() },
-      select: CONSTRUCTORA_SELECT,
-    });
-
-    // Notificar a la constructora
-    await createNotification({
-      usuarioId:  c.usuarioId,
-      tipo:       'verificacion',
-      titulo:     '¡Tu empresa ha sido verificada!',
-      mensaje:    'Tu empresa está verificada y ya puedes publicar materiales y eventos.',
-      urlDestino: '/mi-empresa',
-    }).catch(() => {});
-
-    return updated;
-  }
-
-  async subirDocumento(constructoraId, callerId, callerRol, file, tipo) {
-    const c = await prisma.constructora.findUnique({ where: { id: constructoraId } });
-    if (!c) throw { status: 404, message: 'Constructora no encontrada' };
-    if (callerRol !== 'ADMINISTRADOR' && c.usuarioId !== callerId) {
-      throw { status: 403, message: 'Sin permiso' };
-    }
-    if (!['rut', 'camara_comercio'].includes(tipo)) {
-      throw { status: 400, message: 'Tipo de documento inválido (rut | camara_comercio)' };
-    }
-
-    const url = await uploadToStorage(file.buffer, 'documentos', file.originalname);
-
-    return prisma.documentoEmpresa.create({
-      data: { constructoraId, tipo, url, estado: 'pendiente' },
-    });
-  }
-
-  async actualizarLogo(constructoraId, callerId, callerRol, file) {
-    const c = await prisma.constructora.findUnique({ where: { id: constructoraId } });
-    if (!c) throw { status: 404, message: 'Constructora no encontrada' };
-    if (callerRol !== 'ADMINISTRADOR' && c.usuarioId !== callerId) {
-      throw { status: 403, message: 'Sin permiso' };
-    }
-
-    const logoUrl = await uploadToStorage(file.buffer, 'logos', file.originalname, file.mimetype);
-
-    return prisma.constructora.update({
-      where:  { id: constructoraId },
-      data:   { logoUrl },
-      select: { id: true, logoUrl: true },
-    });
-  }
+  return c;
 }
 
-module.exports = new ConstructoraService();
+const constructoraService = {
+  async listar(query, caller) {
+    const pag = parsePaginacion(query);
+    const completo = caller?.rol === 'ADMINISTRADOR';
+    const { total, items } = await constructoraRepository.list(query, pag, { completo });
+    return pagina(items, total, pag);
+  },
+
+  async obtener(id, caller) {
+    const raw = await constructoraRepository.findRaw(id);
+    if (!raw) throw new NotFoundError('Constructora no encontrada');
+    const completo = caller && (caller.rol === 'ADMINISTRADOR' || caller.userId === raw.usuarioId);
+    return constructoraRepository.findById(id, { completo });
+  },
+
+  async actualizar(id, caller, data) {
+    await propiaOAdmin(id, caller);
+    const actualizado = await constructoraRepository.update(id, data);
+    if (caller.rol === 'ADMINISTRADOR') {
+      registrarAuditoria({ usuarioId: caller.userId, accion: 'constructora_editada', entidad: 'constructora', entidadId: id, detalle: Object.keys(data) });
+    }
+    return actualizado;
+  },
+
+  async subirDocumento(id, caller, file, { tipo, fechaVencimiento }) {
+    const c = await propiaOAdmin(id, caller);
+    const url = await uploadToStorage(file.buffer, 'documentos', file.originalname, file.mimetype);
+    const doc = await constructoraRepository.crearDocumento({
+      constructoraId: id, tipo, url, estado: 'pendiente',
+      fechaVencimiento: fechaVencimiento ? new Date(fechaVencimiento) : null,
+    });
+    if (!c.verificada) {
+      // Un nuevo documento reabre la verificación si había sido rechazada
+      if (c.motivoRechazo) await constructoraRepository.update(id, { motivoRechazo: null });
+      notificarAdmins({
+        tipo: 'verificacion', titulo: 'Documento nuevo por revisar',
+        mensaje: `${c.razonSocial} subió ${tipo === 'rut' ? 'su RUT' : 'su Cámara de Comercio'}.`,
+        recurso: 'constructora', recursoId: id,
+      });
+    }
+    return doc;
+  },
+
+  async actualizarLogo(id, caller, file) {
+    const c = await propiaOAdmin(id, caller);
+    const logoUrl = await uploadToStorage(file.buffer, 'logos', file.originalname, file.mimetype);
+    const actualizado = await constructoraRepository.update(id, { logoUrl });
+    if (c.logoUrl) deleteFromStorage(c.logoUrl);
+    return { id: actualizado.id, logoUrl: actualizado.logoUrl };
+  },
+};
+
+module.exports = constructoraService;

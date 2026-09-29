@@ -1,44 +1,82 @@
 const prisma = require('./prisma.client');
-const axios = require('axios');
 const logger = require('./logger');
+const { rutaPara } = require('./rutas');
+const { sendEmail } = require('./email.utils');
+const { plantillaCorreo, escapeHtml } = require('./html');
+const { emitirTiempoReal } = require('./realtime.utils');
 
-const NOTIF_SERVICE_URL = () =>
-  `http://localhost:${process.env.PORT_NOTIF || 3006}`;
+const frontendUrl = () => process.env.FRONTEND_URL || 'http://localhost:4200';
 
 /**
- * Crea una notificación en DB y dispara el evento WebSocket.
+ * Crea notificaciones in-app (y opcionalmente correo) para uno o varios usuarios.
+ * La URL de destino se calcula según el rol de cada destinatario.
  *
  * @param {{
- *   usuarioId: string,
+ *   usuarioIds: string[],
  *   tipo: string,
  *   titulo: string,
  *   mensaje: string,
- *   urlDestino?: string
+ *   recurso?: string,
+ *   recursoId?: string,
+ *   email?: boolean | { asunto?: string, cuerpoHtml?: string, cta?: string },
  * }} data
  */
-async function createNotification(data) {
+async function notificar(data) {
+  const ids = [...new Set((data.usuarioIds || []).filter(Boolean))];
+  if (!ids.length) return [];
+
   try {
-    const notification = await prisma.notificacion.create({ data });
+    const usuarios = await prisma.usuario.findMany({
+      where: { id: { in: ids }, estado: { not: 'suspendido' } },
+      select: { id: true, rol: true, email: true, preferenciasNotif: true },
+    });
 
-    // Intentar emitir en tiempo real (no bloquear si falla)
-    axios
-      .post(
-        `${NOTIF_SERVICE_URL()}/internal/emit`,
-        { usuarioId: data.usuarioId, notification },
-        {
-          headers: { 'x-internal-key': process.env.INTERNAL_API_KEY },
-          timeout: 3000,
-        }
-      )
-      .catch((err) =>
-        logger.warn('No se pudo emitir notificación en tiempo real:', err.message)
-      );
+    const creadas = [];
+    for (const u of usuarios) {
+      const urlDestino = data.recurso ? rutaPara(u.rol, data.recurso, data.recursoId) : null;
+      const prefs = u.preferenciasNotif || {};
 
-    return notification;
+      if (prefs.inApp !== false) {
+        const notificacion = await prisma.notificacion.create({
+          data: { usuarioId: u.id, tipo: data.tipo, titulo: data.titulo, mensaje: data.mensaje, urlDestino },
+        });
+        creadas.push(notificacion);
+        emitirTiempoReal({ usuarioIds: [u.id], evento: 'notification', payload: notificacion });
+      }
+
+      if (data.email && prefs.email !== false) {
+        const opts = typeof data.email === 'object' ? data.email : {};
+        sendEmail({
+          to: u.email,
+          subject: `${opts.asunto || data.titulo} — BrickByBrick`,
+          html: plantillaCorreo({
+            titulo: data.titulo,
+            cuerpoHtml: opts.cuerpoHtml || `<p>${escapeHtml(data.mensaje)}</p>`,
+            ctaTexto: opts.cta,
+            ctaUrl: urlDestino ? `${frontendUrl()}${urlDestino}` : frontendUrl(),
+          }),
+        }).catch(() => {});
+      }
+    }
+    return creadas;
   } catch (err) {
-    logger.error('Error creando notificación:', err);
-    throw err;
+    logger.error(`Error creando notificaciones (${data.tipo}): ${err.message}`);
+    return [];
   }
 }
 
-module.exports = { createNotification };
+/** Atajo para un solo destinatario. */
+function createNotification({ usuarioId, ...rest }) {
+  return notificar({ usuarioIds: [usuarioId], ...rest });
+}
+
+/** Notifica a todos los administradores activos. */
+async function notificarAdmins(data) {
+  const admins = await prisma.usuario.findMany({
+    where: { rol: 'ADMINISTRADOR', estado: 'activo' },
+    select: { id: true },
+  });
+  return notificar({ ...data, usuarioIds: admins.map((a) => a.id) });
+}
+
+module.exports = { notificar, createNotification, notificarAdmins };

@@ -1,34 +1,21 @@
 const rateLimit = require('express-rate-limit');
 const { sendError } = require('../utils/response.utils');
 
-const handler = (req, res) =>
+const handler = (_req, res) =>
   sendError(res, 'Demasiadas solicitudes. Intenta de nuevo más tarde.', 429);
 
-/** 100 peticiones cada 15 minutos — límite general */
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler,
-});
+const isProd = () => process.env.NODE_ENV === 'production';
+const isTest = () => process.env.NODE_ENV === 'test';
 
-/** 10 intentos cada 15 minutos — rutas de autenticación (100 en desarrollo) */
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === 'production' ? 10 : 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler,
-});
+const base = { standardHeaders: true, legacyHeaders: false, handler, skip: isTest };
 
-/** 5 intentos cada hora — restablecimiento de contraseña (50 en desarrollo) */
-const passwordLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: process.env.NODE_ENV === 'production' ? 5 : 50,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler,
-});
+/** Límite general por IP (la SPA hace varias peticiones por vista). */
+const generalLimiter = rateLimit({ ...base, windowMs: 15 * 60 * 1000, max: () => (isProd() ? 600 : 5000) });
+
+/** Rutas de autenticación: login, registro, MFA. */
+const authLimiter = rateLimit({ ...base, windowMs: 15 * 60 * 1000, max: () => (isProd() ? 20 : 200) });
+
+/** Restablecimiento de contraseña y reenvío de correos. */
+const passwordLimiter = rateLimit({ ...base, windowMs: 60 * 60 * 1000, max: () => (isProd() ? 5 : 50) });
 
 module.exports = { generalLimiter, authLimiter, passwordLimiter };

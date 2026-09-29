@@ -1,24 +1,28 @@
 {
   "name": "@brickbybrick/backend",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "workspaces": [
     "shared",
     "services/*"
   ],
   "scripts": {
-    "dev": "concurrently --names \"AUTH,USER,MAT,EVT,PUB,NOTIF\" --prefix-colors \"cyan,green,yellow,magenta,blue,red\" \"npm run dev -w services/auth-service\" \"npm run dev -w services/user-service\" \"npm run dev -w services/material-service\" \"npm run dev -w services/event-service\" \"npm run dev -w services/publication-service\" \"npm run dev -w services/notification-service\"",
-    "start": "concurrently \"npm run start -w services/auth-service\" \"npm run start -w services/user-service\" \"npm run start -w services/material-service\" \"npm run start -w services/event-service\" \"npm run start -w services/publication-service\" \"npm run start -w services/notification-service\"",
+    "dev": "concurrently --names \"GATEWAY,AUTH,USER,MAT,EVT,PUB,NOTIF\" --prefix-colors \"white,cyan,green,yellow,magenta,blue,red\" \"npm run dev -w services/api-gateway\" \"npm run dev -w services/auth-service\" \"npm run dev -w services/user-service\" \"npm run dev -w services/material-service\" \"npm run dev -w services/event-service\" \"npm run dev -w services/publication-service\" \"npm run dev -w services/notification-service\"",
+    "start": "concurrently --names \"GATEWAY,AUTH,USER,MAT,EVT,PUB,NOTIF\" \"npm run start -w services/api-gateway\" \"npm run start -w services/auth-service\" \"npm run start -w services/user-service\" \"npm run start -w services/material-service\" \"npm run start -w services/event-service\" \"npm run start -w services/publication-service\" \"npm run start -w services/notification-service\"",
     "db:generate": "prisma generate --schema=prisma/schema.prisma",
-    "db:push": "prisma db push --schema=prisma/schema.prisma",
-    "db:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "db:migrate": "prisma migrate deploy --schema=prisma/schema.prisma",
+    "db:migrate:dev": "prisma migrate dev --schema=prisma/schema.prisma",
+    "db:seed": "node prisma/seed.js",
+    "db:reset": "prisma migrate reset --force --schema=prisma/schema.prisma",
+    "db:sql": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > ../database/schema.sql",
     "db:studio": "prisma studio --schema=prisma/schema.prisma",
-    "test": "jest --passWithNoTests",
-    "test:coverage": "jest --coverage --passWithNoTests"
+    "test": "jest --runInBand",
+    "test:coverage": "jest --runInBand --coverage"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "prisma": "^5.22.0"
+    "prisma": "^5.22.0",
+    "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
@@ -30,6 +34,13 @@
     "testMatch": [
       "**/__tests__/**/*.test.js"
     ],
-    "coverageDirectory": "coverage"
+    "coverageDirectory": "coverage",
+    "setupFiles": [
+      "<rootDir>/test/setup-env.js"
+    ],
+    "testTimeout": 20000
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
   }
 }

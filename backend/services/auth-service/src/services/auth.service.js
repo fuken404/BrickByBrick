@@ -1,257 +1,284 @@
-const bcrypt    = require('bcryptjs');
+const bcrypt = require('bcryptjs');
 const {
-  prisma,
-  generateAccessToken,
-  generateRefreshToken,
-  verifyRefreshToken,
-  generateToken,
-  hashToken,
-  sendEmail,
-  createNotification,
-  logger,
+  generateToken, hashToken, generateOtp, sendEmail, plantillaCorreo, notificarAdmins,
+  uploadToStorage, registrarAuditoria, config,
+  BadRequestError, UnauthorizedError, ForbiddenError, ConflictError, NotFoundError,
 } = require('@brickbybrick/shared');
+const usuarioRepository = require('../repositories/usuario.repository');
+const tokenRepository = require('../repositories/token.repository');
+const sessionService = require('./session.service');
 
 const BCRYPT_ROUNDS = 12;
+const OTP_TTL_MIN = 10;
+const OTP_MAX_INTENTOS = 5;
+const HORA = 60 * 60 * 1000;
 
-class AuthService {
-  // ------------------------------------------------------------------
-  // Registro de beneficiario
-  // ------------------------------------------------------------------
+// Hash de referencia para igualar tiempos cuando el email no existe
+const HASH_FICTICIO = bcrypt.hashSync('usuario-inexistente', BCRYPT_ROUNDS);
+
+const requiereMfa = (usuario) => usuario.rol === 'ADMINISTRADOR' || usuario.mfaHabilitado;
+
+async function enviarVerificacion(usuario, nombre) {
+  const raw = generateToken();
+  await tokenRepository.invalidarTodos(usuario.id, 'verify_email');
+  await tokenRepository.crear({
+    usuarioId: usuario.id, tipo: 'verify_email', tokenHash: hashToken(raw), expiresAt: new Date(Date.now() + 24 * HORA),
+  });
+  sendEmail({
+    to: usuario.email,
+    subject: 'Verifica tu correo — BrickByBrick',
+    html: plantillaCorreo({
+      titulo: `Hola ${nombre}, confirma tu correo`,
+      cuerpoHtml: '<p>Para activar todas las funciones de tu cuenta confirma tu correo electrónico. El enlace es válido por 24 horas.</p>',
+      ctaTexto: 'Verificar correo',
+      ctaUrl: `${config.FRONTEND_URL}/verificar-email/${raw}`,
+    }),
+  }).catch(() => {});
+}
+
+async function crearDesafioMfa(usuario) {
+  await tokenRepository.invalidarTodos(usuario.id, 'mfa_otp');
+  const codigo = generateOtp();
+  const desafio = await tokenRepository.crear({
+    usuarioId: usuario.id, tipo: 'mfa_otp', tokenHash: hashToken(codigo), expiresAt: new Date(Date.now() + OTP_TTL_MIN * 60 * 1000),
+  });
+  await sendEmail({
+    to: usuario.email,
+    subject: `Tu código de acceso: ${codigo} — BrickByBrick`,
+    html: plantillaCorreo({
+      titulo: 'Código de verificación',
+      cuerpoHtml: `<p>Usa este código para completar tu inicio de sesión. Vence en ${OTP_TTL_MIN} minutos.</p>
+        <p style="font-size:30px;letter-spacing:8px;font-weight:700;color:#2C2C2C">${codigo}</p>
+        <p style="color:#6B6B6B;font-size:13px">Si no intentaste ingresar, cambia tu contraseña de inmediato.</p>`,
+    }),
+  }).catch(() => {});
+  return desafio.id;
+}
+
+const authService = {
   async registerBeneficiario(data) {
-    const [emailExists, cedulaExists] = await Promise.all([
-      prisma.usuario.findUnique({ where: { email: data.email } }),
-      prisma.beneficiario.findUnique({ where: { cedula: data.cedula } }),
+    const [emailExiste, cedulaExiste] = await Promise.all([
+      usuarioRepository.existeEmail(data.email),
+      usuarioRepository.existeCedula(data.cedula),
     ]);
-    if (emailExists) throw { status: 409, message: 'El email ya está en uso' };
-    if (cedulaExists) throw { status: 409, message: 'La cédula ya está registrada' };
+    if (emailExiste) throw new ConflictError('El correo ya está registrado');
+    if (cedulaExiste) throw new ConflictError('La cédula ya está registrada');
 
-    const passwordHash = await bcrypt.hash(data.password, BCRYPT_ROUNDS);
-    const rawToken     = generateToken();
-    const tokenHash    = hashToken(rawToken);
-
-    const { usuario, beneficiario } = await prisma.$transaction(async (tx) => {
-      const usuario = await tx.usuario.create({
-        data: { email: data.email, passwordHash, rol: 'BENEFICIARIO', estado: 'activo' },
-      });
-
-      const beneficiario = await tx.beneficiario.create({
-        data: {
-          usuarioId:       usuario.id,
-          nombreCompleto:  data.nombreCompleto,
-          cedula:          data.cedula,
-          fechaNacimiento: data.fechaNacimiento ? new Date(data.fechaNacimiento) : null,
-          genero:          data.genero  || null,
-          estrato:         data.estrato || null,
-          localidadId:     data.localidadId || null,
-        },
-      });
-
-      await tx.tokenUsuario.create({
-        data: {
-          usuarioId: usuario.id,
-          tipo:      'verify_email',
-          tokenHash,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        },
-      });
-
-      return { usuario, beneficiario };
-    });
-
-    // Email (non-blocking)
-    sendEmail({
-      to:      data.email,
-      subject: 'Verifica tu correo — BrickByBrick',
-      html:    `<p>Hola ${data.nombreCompleto},</p>
-                <p>Haz clic en el enlace para verificar tu correo (válido 24 h):</p>
-                <a href="${process.env.FRONTEND_URL}/verificar-email/${rawToken}">Verificar correo</a>`,
-    }).catch((e) => logger.warn('Email verificación no enviado:', e.message));
-
-    return {
-      id:             usuario.id,
-      email:          usuario.email,
-      rol:            usuario.rol,
-      nombreCompleto: beneficiario.nombreCompleto,
-    };
-  }
-
-  // ------------------------------------------------------------------
-  // Registro de constructora
-  // ------------------------------------------------------------------
-  async registerConstructora(data) {
-    const [emailExists, nitExists] = await Promise.all([
-      prisma.usuario.findUnique({ where: { email: data.email } }),
-      prisma.constructora.findUnique({ where: { nit: data.nit } }),
-    ]);
-    if (emailExists) throw { status: 409, message: 'El email ya está en uso' };
-    if (nitExists)   throw { status: 409, message: 'El NIT ya está registrado' };
-
-    const passwordHash = await bcrypt.hash(data.password, BCRYPT_ROUNDS);
-
-    const { usuario, constructora } = await prisma.$transaction(async (tx) => {
-      const usuario = await tx.usuario.create({
-        data: { email: data.email, passwordHash, rol: 'CONSTRUCTORA', estado: 'activo' },
-      });
-
-      const constructora = await tx.constructora.create({
-        data: {
-          usuarioId:          usuario.id,
-          razonSocial:        data.razonSocial,
-          nit:                data.nit,
-          representanteLegal: data.representanteLegal || null,
-          cargoRepresentante: data.cargoRepresentante || null,
-          numEmpleados:       data.numEmpleados || null,
-          direccion:          data.direccion    || null,
-          localidadId:        data.localidadId  || null,
-          descripcion:        data.descripcion  || null,
-          verificada:         false,
-        },
-      });
-
-      return { usuario, constructora };
-    });
-
-    // Notificar al admin
-    const admin = await prisma.usuario.findFirst({ where: { rol: 'ADMINISTRADOR' } });
-    if (admin) {
-      createNotification({
-        usuarioId:  admin.id,
-        tipo:       'verificacion',
-        titulo:     'Nueva constructora pendiente de verificación',
-        mensaje:    `${constructora.razonSocial} (NIT: ${constructora.nit}) requiere verificación.`,
-        urlDestino: `/admin/constructoras/${constructora.id}`,
-      }).catch(() => {});
-    }
-
-    return {
-      id:          usuario.id,
-      email:       usuario.email,
-      rol:         usuario.rol,
-      razonSocial: constructora.razonSocial,
-      verificada:  false,
-    };
-  }
-
-  // ------------------------------------------------------------------
-  // Login
-  // ------------------------------------------------------------------
-  async login(data) {
-    const usuario = await prisma.usuario.findUnique({
-      where:   { email: data.email },
-      include: {
-        beneficiario: { select: { id: true, nombreCompleto: true, esAlimentadorWeb: true } },
-        constructora: { select: { id: true, razonSocial: true, verificada: true } },
+    const usuario = await usuarioRepository.crearBeneficiario({
+      usuario: {
+        email: data.email,
+        passwordHash: await bcrypt.hash(data.password, BCRYPT_ROUNDS),
+        telefono: data.telefono,
+      },
+      beneficiario: {
+        nombreCompleto: data.nombreCompleto,
+        cedula: data.cedula,
+        fechaNacimiento: new Date(data.fechaNacimiento),
+        genero: data.genero ?? null,
+        estrato: data.estrato ?? null,
+        localidadId: data.localidadId,
       },
     });
 
-    if (!usuario) throw { status: 401, message: 'Credenciales inválidas' };
-    if (usuario.estado !== 'activo') throw { status: 403, message: 'Cuenta suspendida o inactiva' };
+    await enviarVerificacion(usuario, data.nombreCompleto.split(' ')[0]);
+    registrarAuditoria({ usuarioId: usuario.id, accion: 'registro', entidad: 'usuario', entidadId: usuario.id });
+    return sessionService.toSessionUser(usuario);
+  },
 
-    const valid = await bcrypt.compare(data.password, usuario.passwordHash);
-    if (!valid) throw { status: 401, message: 'Credenciales inválidas' };
+  async registerConstructora(data, archivos) {
+    const rut = archivos?.rut?.[0];
+    const camara = archivos?.camaraComercio?.[0];
+    if (!rut || !camara) throw new BadRequestError('Debes adjuntar el RUT y el certificado de Cámara de Comercio');
 
-    const accessToken  = generateAccessToken(usuario);
-    const refreshToken = generateRefreshToken(usuario);
+    const [emailExiste, nitExiste] = await Promise.all([
+      usuarioRepository.existeEmail(data.email),
+      usuarioRepository.existeNit(data.nit),
+    ]);
+    if (emailExiste) throw new ConflictError('El correo ya está registrado');
+    if (nitExiste) throw new ConflictError('El NIT ya está registrado');
 
-    return {
-      accessToken,
-      refreshToken,
-      user: {
-        id:             usuario.id,
-        email:          usuario.email,
-        rol:            usuario.rol,
-        emailVerificado: usuario.emailVerificado,
-        perfil:         usuario.beneficiario || usuario.constructora,
+    const [rutUrl, camaraUrl] = await Promise.all([
+      uploadToStorage(rut.buffer, 'documentos', rut.originalname, rut.mimetype),
+      uploadToStorage(camara.buffer, 'documentos', camara.originalname, camara.mimetype),
+    ]);
+
+    const usuario = await usuarioRepository.crearConstructora({
+      usuario: {
+        email: data.email,
+        passwordHash: await bcrypt.hash(data.password, BCRYPT_ROUNDS),
+        telefono: data.telefono,
       },
-    };
-  }
+      constructora: {
+        razonSocial: data.razonSocial,
+        nit: data.nit,
+        representanteLegal: data.representanteLegal,
+        cargoRepresentante: data.cargoRepresentante,
+        numEmpleados: data.numEmpleados ?? null,
+        direccion: data.direccion,
+        localidadId: data.localidadId,
+        sitioWeb: data.sitioWeb ?? null,
+        descripcion: data.descripcion ?? null,
+      },
+      documentos: [
+        { tipo: 'rut', url: rutUrl },
+        { tipo: 'camara_comercio', url: camaraUrl },
+      ],
+    });
 
-  // ------------------------------------------------------------------
-  // Refresh token
-  // ------------------------------------------------------------------
-  async refresh(token) {
-    let decoded;
-    try {
-      decoded = verifyRefreshToken(token);
-    } catch {
-      throw { status: 401, message: 'Refresh token inválido o expirado' };
+    await enviarVerificacion(usuario, data.razonSocial);
+    notificarAdmins({
+      tipo: 'verificacion',
+      titulo: 'Nueva constructora por verificar',
+      mensaje: `${data.razonSocial} (NIT ${data.nit}) cargó sus documentos y espera verificación.`,
+      recurso: 'constructora',
+      recursoId: usuario.constructora.id,
+    });
+    registrarAuditoria({ usuarioId: usuario.id, accion: 'registro', entidad: 'usuario', entidadId: usuario.id });
+    return sessionService.toSessionUser(usuario);
+  },
+
+  /**
+   * Paso 1 del login. Devuelve la sesión o, si el usuario tiene MFA,
+   * un desafío que se completa con verificarMfa().
+   */
+  async login({ email, password }, ip) {
+    const usuario = await usuarioRepository.findByEmail(email);
+    const valida = await bcrypt.compare(password, usuario?.passwordHash ?? HASH_FICTICIO);
+
+    if (!usuario || !valida) {
+      usuarioRepository.registrarIntento({ email, usuarioId: usuario?.id ?? null, exito: false, motivo: 'credenciales', ip }).catch(() => {});
+      throw new UnauthorizedError('Correo o contraseña incorrectos');
+    }
+    if (usuario.estado !== 'activo') {
+      usuarioRepository.registrarIntento({ email, usuarioId: usuario.id, exito: false, motivo: usuario.estado, ip }).catch(() => {});
+      throw new ForbiddenError(usuario.estado === 'suspendido'
+        ? 'Tu cuenta está suspendida. Contacta a soporte para más información.'
+        : 'Tu cuenta está inactiva.');
     }
 
-    const usuario = await prisma.usuario.findUnique({ where: { id: decoded.userId } });
-    if (!usuario || usuario.estado !== 'activo') {
-      throw { status: 401, message: 'Usuario no encontrado o inactivo' };
+    if (requiereMfa(usuario)) {
+      const desafioId = await crearDesafioMfa(usuario);
+      usuarioRepository.registrarIntento({ email, usuarioId: usuario.id, exito: true, motivo: 'mfa_pendiente', ip }).catch(() => {});
+      return { mfaRequerido: true, desafioId, emailParcial: email.replace(/^(.{2}).*(@.*)$/, '$1•••$2') };
     }
 
-    return { accessToken: generateAccessToken(usuario) };
-  }
+    usuarioRepository.registrarIntento({ email, usuarioId: usuario.id, exito: true, motivo: 'ok', ip }).catch(() => {});
+    return { mfaRequerido: false, ...(await sessionService.emitir(usuario)) };
+  },
 
-  // ------------------------------------------------------------------
-  // Forgot password
-  // ------------------------------------------------------------------
+  async verificarMfa({ desafioId, codigo }, ip) {
+    const desafio = await tokenRepository.findById(desafioId);
+    if (!desafio || desafio.tipo !== 'mfa_otp' || desafio.usado || desafio.expiresAt < new Date()) {
+      throw new UnauthorizedError('El código expiró. Inicia sesión nuevamente.');
+    }
+    if (desafio.intentos >= OTP_MAX_INTENTOS) {
+      await tokenRepository.marcarUsado(desafio.id);
+      throw new UnauthorizedError('Demasiados intentos. Inicia sesión nuevamente.');
+    }
+
+    const usuario = await usuarioRepository.findById(desafio.usuarioId);
+    if (!sessionService.hashesIguales(hashToken(codigo), desafio.tokenHash)) {
+      await tokenRepository.incrementarIntentos(desafio.id);
+      usuarioRepository.registrarIntento({ email: usuario.email, usuarioId: usuario.id, exito: false, motivo: 'mfa_fallido', ip }).catch(() => {});
+      throw new UnauthorizedError('Código incorrecto');
+    }
+
+    await tokenRepository.marcarUsado(desafio.id);
+    usuarioRepository.registrarIntento({ email: usuario.email, usuarioId: usuario.id, exito: true, motivo: 'mfa_ok', ip }).catch(() => {});
+    return sessionService.emitir(usuario);
+  },
+
+  async reenviarMfa({ desafioId }) {
+    const desafio = await tokenRepository.findById(desafioId);
+    if (!desafio || desafio.tipo !== 'mfa_otp' || desafio.usado) {
+      throw new UnauthorizedError('La verificación expiró. Inicia sesión nuevamente.');
+    }
+    const usuario = await usuarioRepository.findById(desafio.usuarioId);
+    return { desafioId: await crearDesafioMfa(usuario) };
+  },
+
+  async configurarMfa(usuarioId, { habilitar, password }) {
+    const usuario = await usuarioRepository.findById(usuarioId);
+    if (!usuario) throw new NotFoundError('Usuario no encontrado');
+    if (!(await bcrypt.compare(password, usuario.passwordHash))) throw new BadRequestError('La contraseña es incorrecta');
+    if (!habilitar && usuario.rol === 'ADMINISTRADOR') {
+      throw new ForbiddenError('La verificación en dos pasos es obligatoria para administradores');
+    }
+    const actualizado = await usuarioRepository.update(usuarioId, { mfaHabilitado: habilitar });
+    registrarAuditoria({ usuarioId, accion: habilitar ? 'mfa_activado' : 'mfa_desactivado', entidad: 'usuario', entidadId: usuarioId });
+    return sessionService.toSessionUser(actualizado);
+  },
+
+  refresh(refreshToken) {
+    return sessionService.rotar(refreshToken);
+  },
+
+  logout(refreshToken) {
+    if (refreshToken) return sessionService.revocar(refreshToken);
+    return Promise.resolve();
+  },
+
   async forgotPassword(email) {
-    const usuario = await prisma.usuario.findUnique({ where: { email } });
-    if (!usuario) return; // No revelar si el email existe
+    const usuario = await usuarioRepository.findByEmail(email);
+    if (!usuario || usuario.estado === 'suspendido') return; // no revelar si existe
 
-    // Invalidar tokens anteriores
-    await prisma.tokenUsuario.updateMany({
-      where: { usuarioId: usuario.id, tipo: 'reset_password', usado: false },
-      data:  { usado: true },
-    });
-
-    const rawToken  = generateToken();
-    const tokenHash = hashToken(rawToken);
-
-    await prisma.tokenUsuario.create({
-      data: {
-        usuarioId: usuario.id,
-        tipo:      'reset_password',
-        tokenHash,
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1h
-      },
+    await tokenRepository.invalidarTodos(usuario.id, 'reset_password');
+    const raw = generateToken();
+    await tokenRepository.crear({
+      usuarioId: usuario.id, tipo: 'reset_password', tokenHash: hashToken(raw), expiresAt: new Date(Date.now() + HORA),
     });
 
     await sendEmail({
-      to:      email,
+      to: email,
       subject: 'Restablecer contraseña — BrickByBrick',
-      html:    `<p>Para restablecer tu contraseña (válido 1 hora):</p>
-                <a href="${process.env.FRONTEND_URL}/restablecer-password/${rawToken}">Restablecer contraseña</a>
-                <p>Si no solicitaste esto, ignora este mensaje.</p>`,
-    });
-  }
+      html: plantillaCorreo({
+        titulo: 'Restablece tu contraseña',
+        cuerpoHtml: '<p>Recibimos una solicitud para restablecer tu contraseña. El enlace es válido por 1 hora.</p><p style="color:#6B6B6B;font-size:13px">Si no la solicitaste, ignora este mensaje.</p>',
+        ctaTexto: 'Crear nueva contraseña',
+        ctaUrl: `${config.FRONTEND_URL}/restablecer-password/${raw}`,
+      }),
+    }).catch(() => {});
+  },
 
-  // ------------------------------------------------------------------
-  // Reset password
-  // ------------------------------------------------------------------
   async resetPassword(token, newPassword) {
-    const tokenHash   = hashToken(token);
-    const tokenRecord = await prisma.tokenUsuario.findFirst({
-      where: { tokenHash, tipo: 'reset_password', usado: false, expiresAt: { gt: new Date() } },
+    const registro = await tokenRepository.findVigente({ tokenHash: hashToken(token), tipo: 'reset_password' });
+    if (!registro) throw new BadRequestError('El enlace es inválido o expiró. Solicita uno nuevo.');
+
+    await usuarioRepository.update(registro.usuarioId, { passwordHash: await bcrypt.hash(newPassword, BCRYPT_ROUNDS) });
+    await tokenRepository.marcarUsado(registro.id);
+    await sessionService.revocarTodas(registro.usuarioId);
+    registrarAuditoria({ usuarioId: registro.usuarioId, accion: 'password_restablecida', entidad: 'usuario', entidadId: registro.usuarioId });
+  },
+
+  async cambiarPassword(usuarioId, { passwordActual, passwordNueva }) {
+    const usuario = await usuarioRepository.findById(usuarioId);
+    if (!usuario) throw new NotFoundError('Usuario no encontrado');
+    if (!(await bcrypt.compare(passwordActual, usuario.passwordHash))) {
+      throw new BadRequestError('La contraseña actual es incorrecta');
+    }
+    const actualizado = await usuarioRepository.update(usuarioId, {
+      passwordHash: await bcrypt.hash(passwordNueva, BCRYPT_ROUNDS),
     });
-    if (!tokenRecord) throw { status: 400, message: 'Token inválido o expirado' };
+    await sessionService.revocarTodas(usuarioId);
+    registrarAuditoria({ usuarioId, accion: 'password_cambiada', entidad: 'usuario', entidadId: usuarioId });
+    // Nueva sesión para el dispositivo actual; las demás quedan cerradas
+    return sessionService.emitir(actualizado);
+  },
 
-    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
-
-    await prisma.$transaction([
-      prisma.usuario.update({ where: { id: tokenRecord.usuarioId }, data: { passwordHash } }),
-      prisma.tokenUsuario.update({ where: { id: tokenRecord.id },    data: { usado: true } }),
-    ]);
-  }
-
-  // ------------------------------------------------------------------
-  // Verify email
-  // ------------------------------------------------------------------
   async verifyEmail(token) {
-    const tokenHash   = hashToken(token);
-    const tokenRecord = await prisma.tokenUsuario.findFirst({
-      where: { tokenHash, tipo: 'verify_email', usado: false, expiresAt: { gt: new Date() } },
-    });
-    if (!tokenRecord) throw { status: 400, message: 'Token inválido o expirado' };
+    const registro = await tokenRepository.findVigente({ tokenHash: hashToken(token), tipo: 'verify_email' });
+    if (!registro) throw new BadRequestError('El enlace de verificación es inválido o expiró');
+    await usuarioRepository.update(registro.usuarioId, { emailVerificado: true });
+    await tokenRepository.marcarUsado(registro.id);
+  },
 
-    await prisma.$transaction([
-      prisma.usuario.update({ where: { id: tokenRecord.usuarioId }, data: { emailVerificado: true } }),
-      prisma.tokenUsuario.update({ where: { id: tokenRecord.id },    data: { usado: true } }),
-    ]);
-  }
-}
+  async reenviarVerificacion(usuarioId) {
+    const usuario = await usuarioRepository.findById(usuarioId);
+    if (!usuario) throw new NotFoundError('Usuario no encontrado');
+    if (usuario.emailVerificado) throw new BadRequestError('Tu correo ya está verificado');
+    const nombre = usuario.beneficiario?.nombreCompleto?.split(' ')[0] || usuario.constructora?.razonSocial || '';
+    await enviarVerificacion(usuario, nombre);
+  },
+};
 
-module.exports = new AuthService();
+module.exports = authService;

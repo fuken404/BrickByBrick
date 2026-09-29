@@ -1,41 +1,13 @@
+const { asyncHandler, sendSuccess } = require('@brickbybrick/shared');
 const svc = require('../services/beneficiario.service');
-const { sendSuccess } = require('@brickbybrick/shared');
 
-const beneficiarioController = {
-  async list(req, res, next) {
-    try {
-      const result = await svc.findAll(req.query);
-      sendSuccess(res, result);
-    } catch (err) { next(err); }
-  },
-
-  async getOne(req, res, next) {
-    try {
-      const data = await svc.findById(req.params.id);
-      sendSuccess(res, data);
-    } catch (err) { next(err); }
-  },
-
-  async update(req, res, next) {
-    try {
-      const data = await svc.update(req.params.id, req.user.userId, req.user.rol, req.validatedBody);
-      sendSuccess(res, data, 'Perfil actualizado');
-    } catch (err) { next(err); }
-  },
-
-  async remove(req, res, next) {
-    try {
-      await svc.remove(req.params.id);
-      sendSuccess(res, null, 'Beneficiario eliminado');
-    } catch (err) { next(err); }
-  },
-
-  async toggleAlimentador(req, res, next) {
-    try {
-      const data = await svc.toggleAlimentadorWeb(req.params.id);
-      sendSuccess(res, data, 'Rol de alimentador web actualizado');
-    } catch (err) { next(err); }
-  },
+module.exports = {
+  listar: asyncHandler(async (req, res) => sendSuccess(res, await svc.listar(req.query))),
+  obtener: asyncHandler(async (req, res) => sendSuccess(res, await svc.obtener(req.params.id, req.user))),
+  actualizar: asyncHandler(async (req, res) =>
+    sendSuccess(res, await svc.actualizar(req.params.id, req.user, req.validatedBody), 'Perfil actualizado')),
+  portafolio: asyncHandler(async (req, res) =>
+    sendSuccess(res, await svc.actualizarPortafolio(req.params.id, req.user, req.validatedBody), 'Portafolio actualizado')),
+  toggleAlimentador: asyncHandler(async (req, res) =>
+    sendSuccess(res, await svc.toggleAlimentador(req.params.id, req.user), 'Distintivo de Alimentador Web actualizado')),
 };
-
-module.exports = beneficiarioController;

@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 
-const ACCESS_SECRET  = () => process.env.JWT_SECRET;
-const REFRESH_SECRET = () => process.env.JWT_REFRESH_SECRET;
+const ACCESS_TTL  = '15m';
+const REFRESH_TTL_DAYS = 7;
 
 /**
  * @param {{ id: string, email: string, rol: string }} user
@@ -10,33 +10,36 @@ const REFRESH_SECRET = () => process.env.JWT_REFRESH_SECRET;
 function generateAccessToken(user) {
   return jwt.sign(
     { userId: user.id, email: user.email, rol: user.rol },
-    ACCESS_SECRET(),
-    { expiresIn: '15m' }
+    process.env.JWT_SECRET,
+    { expiresIn: ACCESS_TTL },
   );
 }
 
 /**
+ * El refresh token lleva un `jti` aleatorio que se guarda hasheado en BD
+ * para poder rotarlo y revocarlo.
  * @param {{ id: string }} user
- * @returns {string}
+ * @param {string} jti
  */
-function generateRefreshToken(user) {
-  return jwt.sign({ userId: user.id }, REFRESH_SECRET(), { expiresIn: '7d' });
+function generateRefreshToken(user, jti) {
+  return jwt.sign({ userId: user.id, jti }, process.env.JWT_REFRESH_SECRET, { expiresIn: `${REFRESH_TTL_DAYS}d` });
 }
 
-/**
- * @param {string} token
- * @returns {{ userId: string, email: string, rol: string }}
- */
+/** @returns {{ userId: string, email: string, rol: string }} */
 function verifyAccessToken(token) {
-  return jwt.verify(token, ACCESS_SECRET());
+  return jwt.verify(token, process.env.JWT_SECRET);
 }
 
-/**
- * @param {string} token
- * @returns {{ userId: string }}
- */
+/** @returns {{ userId: string, jti: string }} */
 function verifyRefreshToken(token) {
-  return jwt.verify(token, REFRESH_SECRET());
+  return jwt.verify(token, process.env.JWT_REFRESH_SECRET);
 }
 
-module.exports = { generateAccessToken, generateRefreshToken, verifyAccessToken, verifyRefreshToken };
+module.exports = {
+  ACCESS_TTL,
+  REFRESH_TTL_DAYS,
+  generateAccessToken,
+  generateRefreshToken,
+  verifyAccessToken,
+  verifyRefreshToken,
+};

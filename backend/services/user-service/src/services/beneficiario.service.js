@@ -1,84 +1,61 @@
-const { prisma } = require('@brickbybrick/shared');
+const {
+  parsePaginacion, pagina, registrarAuditoria, createNotification,
+  NotFoundError, ForbiddenError,
+} = require('@brickbybrick/shared');
+const beneficiarioRepository = require('../repositories/beneficiario.repository');
 
-const BENEFICIARIO_SELECT = {
-  id:              true,
-  nombreCompleto:  true,
-  cedula:          true,
-  fechaNacimiento: true,
-  genero:          true,
-  estrato:         true,
-  esAlimentadorWeb: true,
-  localidad:       { select: { id: true, nombre: true } },
-  usuario:         { select: { id: true, email: true, estado: true, createdAt: true } },
-};
-
-class BeneficiarioService {
-  async findAll({ page = 1, limit = 20, localidadId, q } = {}) {
-    const p = Number(page);
-    const l = Number(limit);
-    const where = {};
-    if (localidadId) where.localidadId = Number(localidadId);
-    if (q) where.nombreCompleto = { contains: q, mode: 'insensitive' };
-    const [total, items] = await Promise.all([
-      prisma.beneficiario.count({ where }),
-      prisma.beneficiario.findMany({
-        where,
-        select: BENEFICIARIO_SELECT,
-        skip:  (p - 1) * l,
-        take:  l,
-        orderBy: { usuario: { createdAt: 'desc' } },
-      }),
-    ]);
-    return { total, page: p, limit: l, items };
+async function obtenerPropio(id, caller) {
+  const b = await beneficiarioRepository.findById(id);
+  if (!b) throw new NotFoundError('Beneficiario no encontrado');
+  if (caller.rol !== 'ADMINISTRADOR' && b.usuarioId !== caller.userId) {
+    throw new ForbiddenError('No tienes permiso para ver este perfil');
   }
-
-  async findById(id) {
-    const b = await prisma.beneficiario.findUnique({
-      where: { id },
-      select: BENEFICIARIO_SELECT,
-    });
-    if (!b) throw { status: 404, message: 'Beneficiario no encontrado' };
-    return b;
-  }
-
-  async update(id, callerId, callerRol, data) {
-    const b = await prisma.beneficiario.findUnique({ where: { id } });
-    if (!b) throw { status: 404, message: 'Beneficiario no encontrado' };
-
-    // Solo el propio usuario o admin puede actualizar
-    if (callerRol !== 'ADMINISTRADOR' && b.usuarioId !== callerId) {
-      throw { status: 403, message: 'Sin permiso para modificar este perfil' };
-    }
-
-    return prisma.beneficiario.update({
-      where: { id },
-      data:  {
-        nombreCompleto:  data.nombreCompleto,
-        fechaNacimiento: data.fechaNacimiento ? new Date(data.fechaNacimiento) : undefined,
-        genero:          data.genero,
-        estrato:         data.estrato,
-        localidadId:     data.localidadId,
-      },
-      select: BENEFICIARIO_SELECT,
-    });
-  }
-
-  async remove(id) {
-    const b = await prisma.beneficiario.findUnique({ where: { id } });
-    if (!b) throw { status: 404, message: 'Beneficiario no encontrado' };
-    // Eliminar usuario en cascada (relación ON DELETE CASCADE)
-    await prisma.usuario.delete({ where: { id: b.usuarioId } });
-  }
-
-  async toggleAlimentadorWeb(id) {
-    const b = await prisma.beneficiario.findUnique({ where: { id } });
-    if (!b) throw { status: 404, message: 'Beneficiario no encontrado' };
-    return prisma.beneficiario.update({
-      where: { id },
-      data:  { esAlimentadorWeb: !b.esAlimentadorWeb },
-      select: { id: true, nombreCompleto: true, esAlimentadorWeb: true },
-    });
-  }
+  return b;
 }
 
-module.exports = new BeneficiarioService();
+const beneficiarioService = {
+  async listar(query) {
+    const pag = parsePaginacion(query);
+    const { total, items } = await beneficiarioRepository.list(query, pag);
+    return pagina(items, total, pag);
+  },
+
+  obtener: obtenerPropio,
+
+  async actualizar(id, caller, data) {
+    await obtenerPropio(id, caller);
+    const cambios = { ...data };
+    if (data.fechaNacimiento !== undefined) cambios.fechaNacimiento = data.fechaNacimiento ? new Date(data.fechaNacimiento) : null;
+    const actualizado = await beneficiarioRepository.update(id, cambios);
+    if (caller.rol === 'ADMINISTRADOR') {
+      registrarAuditoria({ usuarioId: caller.userId, accion: 'beneficiario_editado', entidad: 'beneficiario', entidadId: id, detalle: Object.keys(data) });
+    }
+    return actualizado;
+  },
+
+  async actualizarPortafolio(id, caller, data) {
+    const b = await obtenerPropio(id, caller);
+    if (b.usuarioId !== caller.userId) throw new ForbiddenError('Solo el titular puede editar su portafolio');
+    return beneficiarioRepository.update(id, data);
+  },
+
+  async toggleAlimentador(id, caller) {
+    const b = await beneficiarioRepository.findById(id);
+    if (!b) throw new NotFoundError('Beneficiario no encontrado');
+    const actualizado = await beneficiarioRepository.update(id, { esAlimentadorWeb: !b.esAlimentadorWeb });
+    registrarAuditoria({
+      usuarioId: caller.userId, accion: actualizado.esAlimentadorWeb ? 'alimentador_asignado' : 'alimentador_retirado',
+      entidad: 'beneficiario', entidadId: id,
+    });
+    if (actualizado.esAlimentadorWeb) {
+      createNotification({
+        usuarioId: b.usuarioId, tipo: 'cuenta', titulo: '¡Ahora eres Alimentador Web!',
+        mensaje: 'Tus publicaciones aparecerán destacadas como creador de contenido de la comunidad.',
+        recurso: 'perfil',
+      });
+    }
+    return actualizado;
+  },
+};
+
+module.exports = beneficiarioService;

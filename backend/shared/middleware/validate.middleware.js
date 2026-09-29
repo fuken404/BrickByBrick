@@ -1,43 +1,29 @@
 const { sendError } = require('../utils/response.utils');
 
+const toErrors = (zodError) =>
+  zodError.errors.map((e) => ({ field: e.path.join('.'), message: e.message }));
+
 /**
- * Factory que valida req.body con un schema Zod.
- * Si la validación falla, responde 400 con los errores por campo.
- * Si pasa, adjunta req.validatedBody con los datos parseados.
- *
+ * Valida req.body con un schema Zod. Si pasa, deja los datos parseados
+ * (y sin campos desconocidos) en req.validatedBody.
  * @param {import('zod').ZodSchema} schema
- * @returns {import('express').RequestHandler}
  */
 function validateBody(schema) {
   return (req, res, next) => {
-    const result = schema.safeParse(req.body);
-    if (!result.success) {
-      const errors = result.error.errors.map((e) => ({
-        field: e.path.join('.'),
-        message: e.message,
-      }));
-      return sendError(res, 'Datos de entrada inválidos', 400, errors);
-    }
+    const result = schema.safeParse(req.body ?? {});
+    if (!result.success) return sendError(res, 'Datos de entrada inválidos', 400, toErrors(result.error));
     req.validatedBody = result.data;
-    next();
+    return next();
   };
 }
 
-/**
- * Factory que valida req.query con un schema Zod.
- */
+/** Valida req.query con un schema Zod → req.validatedQuery. */
 function validateQuery(schema) {
   return (req, res, next) => {
-    const result = schema.safeParse(req.query);
-    if (!result.success) {
-      const errors = result.error.errors.map((e) => ({
-        field: e.path.join('.'),
-        message: e.message,
-      }));
-      return sendError(res, 'Parámetros de búsqueda inválidos', 400, errors);
-    }
+    const result = schema.safeParse(req.query ?? {});
+    if (!result.success) return sendError(res, 'Parámetros de búsqueda inválidos', 400, toErrors(result.error));
     req.validatedQuery = result.data;
-    next();
+    return next();
   };
 }
 

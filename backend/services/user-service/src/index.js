@@ -1,8 +1,4 @@
-const app    = require('./app');
-const { logger } = require('@brickbybrick/shared');
-const PORT   = process.env.PORT_USERS || process.env.PORT || 3002;
-const server = app.listen(PORT, () => logger.info(`user-service en puerto ${PORT}`));
-const shutdown = (s) => { server.close(() => process.exit(0)); };
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT',  () => shutdown('SIGINT'));
-module.exports = server;
+const { config, startServer } = require('@brickbybrick/shared');
+const app = require('./app');
+
+module.exports = startServer(app, config.PORT_USERS, 'user-service');

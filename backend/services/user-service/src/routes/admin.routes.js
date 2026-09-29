@@ -1,101 +1,42 @@
 const router = require('express').Router();
-const { prisma, authMiddleware, requireRoles, sendSuccess } = require('@brickbybrick/shared');
+const ctrl = require('../controllers/admin.controller');
+const { authMiddleware, requireRoles, validateBody, validateQuery } = require('@brickbybrick/shared');
+const v = require('../validators/usuario.validators');
 
-router.get('/dashboard',
-  authMiddleware, requireRoles('ADMINISTRADOR'),
-  async (_req, res, next) => {
-    try {
-      const [
-        totalBeneficiarios,
-        totalConstructoras,
-        constructorasVerificadas,
-        materialesActivos,
-        totalMateriales,
-        totalSolicitudes,
-        solicitudesCompletadas,
-        eventosActivos,
-        totalEventos,
-        publicacionesActivas,
-      ] = await Promise.all([
-        prisma.beneficiario.count(),
-        prisma.constructora.count(),
-        prisma.constructora.count({ where: { verificada: true } }),
-        prisma.material.count({ where: { estadoPublicacion: 'activo' } }),
-        prisma.material.count(),
-        prisma.solicitudMaterial.count(),
-        prisma.solicitudMaterial.count({ where: { estado: 'entregada' } }),
-        prisma.evento.count({ where: { estado: 'publicado' } }),
-        prisma.evento.count(),
-        prisma.publicacion.count({ where: { estado: 'publicada' } }),
-      ]);
+router.use(authMiddleware, requireRoles('ADMINISTRADOR'));
 
-      sendSuccess(res, {
-        totalBeneficiarios,
-        totalConstructoras,
-        constructorasVerificadas,
-        materialesActivos,
-        totalMateriales,
-        totalSolicitudes,
-        solicitudesCompletadas,
-        eventosActivos,
-        totalEventos,
-        publicacionesActivas,
-        reportesPendientes: 0,
-        valorTotalDonacionesCop: 0,
-      });
-    } catch (err) { next(err); }
-  }
-);
+/**
+ * @swagger
+ * /api/v1/admin/dashboard:
+ *   get:
+ *     tags: [Administración]
+ *     summary: Conteos generales, impacto y series mensuales
+ * /api/v1/admin/metricas:
+ *   get:
+ *     tags: [Administración]
+ *     summary: Indicadores de la investigación (IPE, TPA, TEA, impacto)
+ */
+router.get('/dashboard', ctrl.dashboard);
+router.get('/metricas', ctrl.metricas);
 
-router.get('/reportes',
-  authMiddleware, requireRoles('ADMINISTRADOR'),
-  async (_req, res, next) => {
-    try {
-      const inicioMes = new Date();
-      inicioMes.setDate(1); inicioMes.setHours(0, 0, 0, 0);
+router.get('/usuarios', validateQuery(v.listarUsuariosSchema), ctrl.usuarios);
+router.patch('/usuarios/:id/estado', validateBody(v.cambiarEstadoUsuarioSchema), ctrl.estadoUsuario);
 
-      const [
-        solicitudesEntregadas,
-        totalSolicitudes,
-        solicitudesAprobadas,
-        familiasRaw,
-        constructorasActivasMes,
-      ] = await Promise.all([
-        // Suma de cantidades entregadas
-        prisma.solicitudMaterial.aggregate({
-          _sum: { cantidadSolicitada: true },
-          where: { estado: 'entregada' },
-        }),
-        prisma.solicitudMaterial.count(),
-        prisma.solicitudMaterial.count({ where: { estado: { in: ['aprobada', 'entregada'] } } }),
-        // Beneficiarios únicos con al menos una solicitud entregada
-        prisma.solicitudMaterial.findMany({
-          where:  { estado: 'entregada' },
-          select: { beneficiarioId: true },
-          distinct: ['beneficiarioId'],
-        }),
-        // Constructoras con al menos un material publicado este mes
-        prisma.constructora.count({
-          where: { materiales: { some: { estadoPublicacion: 'activo', createdAt: { gte: inicioMes } } } },
-        }),
-      ]);
+router.patch('/constructoras/:id/verificacion', validateBody(v.verificacionSchema), ctrl.verificacion);
+router.patch('/documentos/:id', validateBody(v.revisarDocumentoSchema), ctrl.documento);
 
-      const totalDonado    = Number(solicitudesEntregadas._sum.cantidadSolicitada ?? 0);
-      const familias       = familiasRaw.length;
-      const tasaAprobacion = totalSolicitudes > 0
-        ? Math.round((solicitudesAprobadas / totalSolicitudes) * 100)
-        : 0;
+router.get('/configuracion', ctrl.configuracion);
+router.put('/configuracion', validateBody(v.configuracionSchema), ctrl.guardarConfiguracion);
 
-      sendSuccess(res, {
-        totalMaterialesDonados: totalDonado,
-        familiasBeneficiadas:   familias,
-        tasaAprobacion,
-        constructorasActivasMes,
-        valorTotalCop:      0,
-        impactoTributario:  0,
-      });
-    } catch (err) { next(err); }
-  }
-);
+router.get('/auditoria', ctrl.auditoria);
+
+/**
+ * @swagger
+ * /api/v1/admin/exportar/{tipo}:
+ *   get:
+ *     tags: [Administración]
+ *     summary: Exporta CSV (solicitudes | usuarios | eventos)
+ */
+router.get('/exportar/:tipo', ctrl.exportar);
 
 module.exports = router;
