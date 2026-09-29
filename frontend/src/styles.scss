@@ -321,13 +321,7 @@ h1, h2, h3 { letter-spacing: -.6px; }
 .badge { font-weight: 500; font-size: 10px; padding: 4px 9px; }
 .skip-link { position: fixed; top: -100px; left: 20px; z-index: 3000; padding: 12px 20px; background: $bg-card; color: $primary; border: 1px solid $primary; border-radius: 6px; }
 .skip-link:focus { top: 12px; }
-.register-page .register-card { border-radius: 16px; box-shadow: 0 10px 40px #262c2805; }
-.register-page .register-container { max-width: 680px; }
 @media (max-width: 767px) {
-  .register-page .register-card { padding: 24px 20px; }
-  .register-page .step-label { font-size: 10px; white-space: normal; }
-  .register-page .step-nav { gap: 10px; }
-  .register-page .step-nav .btn { padding: 0 14px; }
   .form-input, .form-select, .form-textarea { font-size: 16px; }
 }
 @media (prefers-reduced-motion: reduce) {

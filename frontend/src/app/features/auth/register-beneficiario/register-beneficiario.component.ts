@@ -1,3 +1,4 @@
+import { AuthHeaderComponent } from '../auth-header/auth-header.component';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -18,7 +19,7 @@ const PASOS = ['Datos personales', 'Cuenta y contacto', 'Confirmación'];
 @Component({
   selector: 'app-register-beneficiario',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, MatIconModule, CampoErrorComponent, EtiquetaPipe],
+  imports: [AuthHeaderComponent, ReactiveFormsModule, RouterLink, MatIconModule, CampoErrorComponent, EtiquetaPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './register-beneficiario.component.html',
 })

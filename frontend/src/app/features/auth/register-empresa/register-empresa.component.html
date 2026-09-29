@@ -1,6 +1,8 @@
-<div class="register-page">
+<app-auth-header />
+<main class="register-page">
   <div class="register-container">
-    <a class="register-brand" routerLink="/"><div class="brand-icon secondary"><mat-icon>business</mat-icon></div><span>BrickByBrick · Constructoras</span></a>
+    <a routerLink="/registro" class="register-back"><mat-icon>arrow_back</mat-icon> Tipo de cuenta</a>
+    <div class="register-heading"><p class="auth-eyebrow">EMPECEMOS A CONSTRUIR</p><h1>Registra tu constructora</h1><p>Dale un nuevo propósito a tus excedentes de obra.</p></div>
 
     <ol class="stepper" aria-label="Pasos del registro">
       @for (s of pasos; track s; let i = $index) {
@@ -137,9 +139,9 @@
       <div class="step-nav">
         <button type="button" class="btn btn-ghost" (click)="anterior()"><mat-icon>chevron_left</mat-icon>{{ paso() > 0 ? 'Anterior' : 'Volver' }}</button>
         @if (paso() < 2) {
-          <button type="button" class="btn btn-secondary" (click)="siguiente()">Siguiente <mat-icon>chevron_right</mat-icon></button>
+          <button type="button" class="btn btn-primary" (click)="siguiente()">Siguiente <mat-icon>chevron_right</mat-icon></button>
         } @else {
-          <button type="button" class="btn btn-secondary" (click)="registrar()" [disabled]="enviando()">
+          <button type="button" class="btn btn-primary" (click)="registrar()" [disabled]="enviando()">
             @if (enviando()) { <mat-icon class="spin">sync</mat-icon> } @else { <mat-icon>check</mat-icon> } Registrar empresa
           </button>
         }
@@ -147,4 +149,4 @@
     </div>
     <p class="login-link">¿Ya tienes cuenta? <a routerLink="/login">Ingresa aquí</a></p>
   </div>
-</div>
+</main>

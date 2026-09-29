@@ -1,6 +1,8 @@
-<div class="register-page">
+<app-auth-header />
+<main class="register-page">
   <div class="register-container">
-    <a class="register-brand" routerLink="/"><div class="brand-icon"><mat-icon>layers</mat-icon></div><span>BrickByBrick</span></a>
+    <a routerLink="/registro" class="register-back"><mat-icon>arrow_back</mat-icon> Tipo de cuenta</a>
+    <div class="register-heading"><p class="auth-eyebrow">EMPECEMOS A CONSTRUIR</p><h1>Crea tu cuenta de beneficiario</h1><p>Un paso más cerca de tu próximo proyecto.</p></div>
 
     <ol class="stepper" aria-label="Pasos del registro">
       @for (s of pasos; track s; let i = $index) {
@@ -133,4 +135,4 @@
     </div>
     <p class="login-link">¿Ya tienes cuenta? <a routerLink="/login">Ingresa aquí</a></p>
   </div>
-</div>
+</main>

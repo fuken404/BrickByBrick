@@ -1,16 +1,17 @@
+<app-auth-header [login]="true" />
 <div class="auth-layout">
   <app-auth-panel [variante]="rol() === 'empresa' ? 'empresa' : 'beneficiario'" />
 
-  <div class="auth-right">
+  <main class="auth-right">
     <div class="auth-form-container">
       @if (!desafio()) {
-        <h2>Bienvenido de nuevo</h2>
+        <h1>Bienvenido de nuevo</h1>
         <p class="auth-subtitle">Ingresa a tu cuenta para continuar</p>
 
-        <div class="role-tabs" role="tablist" aria-label="Tipo de cuenta">
+        <div class="role-tabs" role="group" aria-label="Tipo de cuenta">
           @for (r of roles; track r.id) {
-            <button type="button" role="tab" [attr.aria-selected]="rol() === r.id" [class.active]="rol() === r.id"
-                    [style.background]="rol() === r.id ? r.color : 'transparent'" (click)="rol.set(r.id)">{{ r.label }}</button>
+            <button type="button" [attr.aria-pressed]="rol() === r.id" [class.active]="rol() === r.id"
+                    (click)="rol.set(r.id)">{{ r.label }}</button>
           }
         </div>
 
@@ -39,16 +40,16 @@
 
           <div class="forgot-link"><a routerLink="/recuperar-password">¿Olvidaste tu contraseña?</a></div>
 
-          <button type="submit" class="btn btn-lg btn-block" [style.background]="rolActual().color" style="color:#fff" [disabled]="cargando()">
+          <button type="submit" class="btn btn-primary btn-lg btn-block" [disabled]="cargando()">
             @if (cargando()) { <mat-icon class="spin">sync</mat-icon> }
             Ingresar como {{ rolActual().label }}
           </button>
         </form>
 
-        <div class="divider">o</div>
+        <div class="divider" aria-hidden="true"></div>
         <p class="auth-switch">¿No tienes cuenta? <a routerLink="/registro">Regístrate aquí</a></p>
       } @else {
-        <h2>Verificación en dos pasos</h2>
+        <h1>Verificación en dos pasos</h1>
         <p class="auth-subtitle">Enviamos un código de 6 dígitos a <strong>{{ desafio()!.email }}</strong>. Vence en 10 minutos.</p>
 
         <form class="auth-form" (submit)="$event.preventDefault(); verificar()" novalidate>
@@ -73,5 +74,5 @@
 
       <a routerLink="/" class="back-link"><mat-icon>chevron_left</mat-icon> Volver al inicio</a>
     </div>
-  </div>
+  </main>
 </div>

@@ -1,3 +1,4 @@
+import { AuthHeaderComponent } from '../auth-header/auth-header.component';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -18,7 +19,7 @@ const DOCS = 'application/pdf,image/jpeg,image/png,image/webp';
 @Component({
   selector: 'app-register-empresa',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, MatIconModule, CampoErrorComponent, FileUploadComponent],
+  imports: [AuthHeaderComponent, ReactiveFormsModule, RouterLink, MatIconModule, CampoErrorComponent, FileUploadComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './register-empresa.component.html',
 })

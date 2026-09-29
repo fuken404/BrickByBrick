@@ -1,70 +1,114 @@
-// =============================================================
-// Pantallas de autenticación (login, registro, recuperación)
-// =============================================================
 @use 'variables' as *;
 @use 'mixins' as *;
 
-.auth-layout { min-height: 100vh; display: grid; grid-template-columns: 40% 60%; background: #fff; }
-.auth-left {
-  background: linear-gradient(160deg, $primary 0%, $primary-dark 100%);
-  display: flex; align-items: center; justify-content: center; padding: 48px; position: relative; overflow: hidden;
-  &::before {
-    content: ''; position: absolute; inset: 0; opacity: .07;
-    background-image: repeating-linear-gradient(0deg, #fff 0, #fff 1px, transparent 1px, transparent 32px),
-                      repeating-linear-gradient(90deg, #fff 0, #fff 1px, transparent 1px, transparent 64px);
-  }
-  &.empresa { background: linear-gradient(160deg, $secondary 0%, $secondary-dark 100%); }
-}
-.auth-left-inner { position: relative; text-align: center; color: #fff; max-width: 320px; }
-.auth-brand {
-  .brand-icon { width: 64px; height: 64px; background: rgba(255,255,255,.15); border-radius: 16px; @include flex-center; margin: 0 auto 20px;
-    mat-icon { color: #fff; font-size: 32px; width: 32px; height: 32px; } }
-  h1 { color: #fff; font-size: 32px; margin-bottom: 8px; }
-}
-.auth-tagline { color: rgba(255,255,255,.8); font-size: 15px; line-height: 1.7; margin-bottom: 36px; }
-.auth-stats { display: flex; flex-direction: column; gap: 12px; }
-.stat-item { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.1); border-radius: 8px; padding: 10px 16px; text-align: left;
-  mat-icon { color: rgba(255,255,255,.85); font-size: 18px; width: 18px; height: 18px; }
-  span { font-size: 14px; color: rgba(255,255,255,.9); } }
-.auth-right { display: flex; align-items: center; justify-content: center; padding: 48px 24px; }
+// One composition and one brand across sign-in and both registration journeys.
+app-login, app-register-select, app-register-beneficiario, app-register-empresa { display: block; min-height: 100dvh; background: #faf9f6; }
+app-auth-header { display: block; }
+.auth-header { min-height: 88px; padding: 24px 48px; display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid $border; background: #faf9f6; }
+.auth-wordmark { display: inline-flex; align-items: center; gap: 10px; color: $text-primary; text-decoration: none; font-size: 21px; font-weight: 800; letter-spacing: -.9px; white-space: nowrap; }
+.auth-wordmark img { flex-shrink: 0; }
+.wordmark-dot { color: $primary; }
+.auth-header-link { display: inline-flex; align-items: center; gap: 12px; color: $text-primary; font-size: 12px; font-weight: 600; text-decoration: none; }
+.auth-header-link:hover { color: $primary; }
+.auth-header-link > span { font-size: 18px; }
+.auth-layout { min-height: calc(100dvh - 88px); max-width: 1440px; margin: auto; padding: 28px 48px 40px; display: grid; grid-template-columns: 1fr 1fr; gap: clamp(32px, 5vw, 80px); align-items: stretch; }
+.auth-layout > app-auth-panel { display: flex; min-width: 0; }
+.auth-left { width: 100%; background: #e9ebdf; padding: 40px; display: flex; align-items: center; border: 1px solid #dfe3d4; border-radius: 4px; }
+.auth-left-inner { width: 100%; max-width: 440px; margin: auto; }
+.auth-eyebrow { color: #607056; font-size: 9px; font-weight: 600; letter-spacing: 1.6px; margin-bottom: 20px; }
+.auth-panel-title { font-size: clamp(32px, 3.1vw, 44px); font-weight: 500; letter-spacing: -1.8px; line-height: 1.12; }
+.auth-panel-title span { color: $primary; }
+.auth-illustration { display: block; width: min(100%, 310px); height: auto; margin: 18px auto; }
+.auth-tagline { color: $secondary; font-size: 13px; line-height: 1.8; max-width: 360px; }
+.auth-stats { display: flex; flex-wrap: wrap; gap: 12px; border-top: 1px solid #cdd5c2; padding-top: 20px; margin-top: 24px; }
+.stat-item { flex: 1 1 100px; display: flex; gap: 7px; align-items: flex-start; color: $secondary; }
+.stat-item mat-icon { font-size: 16px; width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
+.stat-item span { font-size: 10px; line-height: 1.7; }
+.auth-right { display: flex; align-items: center; justify-content: center; padding: 40px 0; min-width: 0; }
 .auth-form-container { width: 100%; max-width: 420px; }
-.auth-form-container h2 { margin-bottom: 8px; }
-.auth-subtitle { color: $text-secondary; font-size: 14px; margin-bottom: 28px; }
-.auth-form { display: flex; flex-direction: column; gap: 18px; }
-.role-tabs { display: flex; gap: 6px; padding: 4px; background: $bg-base; border-radius: 10px; margin-bottom: 24px;
-  button { flex: 1; height: 36px; border-radius: 8px; border: none; cursor: pointer; background: transparent; color: $text-secondary;
-    font: 600 13px $font-body; transition: all 200ms; @include focus-ring;
-    &.active { color: #fff; } } }
-.divider { display: flex; align-items: center; gap: 16px; margin: 24px 0; color: $text-secondary; font-size: 13px;
-  &::before, &::after { content: ''; flex: 1; height: 1px; background: $border; } }
-.auth-switch { text-align: center; font-size: 14px; color: $text-secondary; a { color: $primary; font-weight: 600; text-decoration: none; } }
-.back-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 28px; font-size: 13px; color: $text-secondary; text-decoration: none;
-  mat-icon { font-size: 16px; width: 16px; height: 16px; } &:hover { color: $primary; } }
+.auth-select .auth-form-container { max-width: 470px; }
+.auth-form-container h1 { font-size: clamp(28px, 2.5vw, 34px); font-weight: 500; letter-spacing: -1.2px; line-height: 1.2; margin-bottom: 10px; }
+.auth-subtitle { color: $text-secondary; font-size: 13px; line-height: 1.7; margin-bottom: 30px; }
+.auth-form { display: flex; flex-direction: column; gap: 20px; }
+.auth-layout .form-input { height: 48px; }
+.auth-layout .input-group .form-input { padding-right: 48px; }
+.role-tabs { display: flex; gap: 4px; padding: 4px; border: 1px solid $border; background: #efefe8; border-radius: 8px; margin-bottom: 28px; }
+.role-tabs button { flex: 1; min-width: 0; height: 36px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: $text-secondary; font: 500 11px $font-body; cursor: pointer; transition: background .2s, color .2s; @include focus-ring; }
+.role-tabs button.active { color: $primary; background: #fff; border-color: #e4dfd4; box-shadow: 0 1px 3px #262c2808; }
+.divider { height: 1px; background: $border; margin: 28px 0 22px; }
+.auth-switch { text-align: center; font-size: 12px; color: $text-secondary; }
+.auth-switch a, .login-link a { color: $primary; font-weight: 600; text-decoration: none; }
+.auth-switch a:hover, .login-link a:hover { text-decoration: underline; }
+.back-link, .register-back { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: $text-secondary; text-decoration: none; }
+.back-link { margin-top: 28px; }
+.back-link mat-icon, .register-back mat-icon { font-size: 16px; width: 16px; height: 16px; }
+.back-link:hover, .register-back:hover { color: $primary; }
 .pass-toggle { background: none; border: none; cursor: pointer; padding: 4px; display: flex; mat-icon { color: $text-secondary; font-size: 18px; } }
 .otp-input { letter-spacing: 12px; font-size: 24px !important; text-align: center; height: 56px !important; font-weight: 700; }
-.forgot-link { text-align: right; margin-top: -8px; a { font-size: 13px; color: $secondary; font-weight: 500; text-decoration: none; } }
+.forgot-link { text-align: right; margin-top: -6px; }
+.forgot-link a { font-size: 12px; color: $text-secondary; font-weight: 500; text-decoration: none; }
+.forgot-link a:hover { color: $primary; }
 
-// Registro por pasos
-.register-page { min-height: 100vh; background: $bg-base; padding: 40px 20px; display: flex; justify-content: center; }
-.register-container { width: 100%; max-width: 640px; }
-.register-brand { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 28px; text-decoration: none; color: inherit;
-  .brand-icon { width: 36px; height: 36px; border-radius: 8px; background: $primary; @include flex-center; mat-icon { color: #fff; } &.secondary { background: $secondary; } }
-  span { font-family: $font-display; font-weight: 700; font-size: 20px; } }
-.stepper { display: flex; align-items: center; margin-bottom: 24px; }
-.step-item { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 90px; }
-.step-circle { width: 34px; height: 34px; border-radius: 50%; border: 2px solid $border; background: #fff; @include flex-center;
-  font-weight: 700; font-size: 14px; color: $text-secondary;
-  &.active { border-color: $primary; color: $primary; } &.done { background: $accent; border-color: $accent; color: #fff; }
-  mat-icon { font-size: 18px; width: 18px; height: 18px; } }
-.step-label { font-size: 12px; color: $text-secondary; text-align: center; &.active { color: $text-primary; font-weight: 600; } }
-.step-line { flex: 1; height: 2px; background: $border; margin-bottom: 22px; &.done { background: $accent; } }
-.register-card { padding: 32px; }
-.register-card h2 { font-size: 22px; margin-bottom: 4px; }
-.step-subtitle { color: $text-secondary; font-size: 14px; margin-bottom: 24px; }
-.step-nav { @include flex-between; margin-top: 28px; gap: 12px; }
-.summary-box { background: $bg-base; border-radius: $radius-card; padding: 16px 18px; margin-bottom: 20px; }
-.login-link { text-align: center; margin-top: 20px; font-size: 14px; color: $text-secondary; a { color: $primary; font-weight: 600; text-decoration: none; } }
+// The account type changes the destination, while the brand stays consistent.
+.auth-select .type-card { display: flex; gap: 14px; padding: 22px; text-decoration: none; color: $text-primary; align-items: flex-start; border-radius: 10px; box-shadow: none; transition: border-color .2s, background .2s; }
+.auth-select .type-card:hover { border-color: $primary; background: #fdfbf7; }
+.auth-select .type-icon { width: 38px; height: 38px; border-radius: 8px; background: #eee7dc; color: $primary; display: grid; place-items: center; flex-shrink: 0; }
+.auth-select .type-icon.azul { background: #e9eddf; color: $secondary; }
+.auth-select .type-title { font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+.auth-select .type-desc { font-size: 12px; color: $text-secondary; line-height: 1.7; margin-bottom: 12px; }
+.auth-select .type-perks { list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: $text-secondary; }
+.auth-select .type-perks li { display: flex; align-items: flex-start; gap: 7px; }
+.auth-select .type-perks mat-icon { font-size: 14px; width: 14px; height: 14px; color: $secondary; flex-shrink: 0; margin-top: 2px; }
+.auth-select .type-arrow { color: $primary; align-self: center; font-size: 18px; width: 18px; height: 18px; flex-shrink: 0; }
 
+// Registration steps share the public header, form rhythm and terracotta CTA.
+.register-page { padding: 32px 24px 56px; display: flex; justify-content: center; }
+.register-container { width: 100%; max-width: 680px; }
+.register-heading { margin: 28px 0 32px; }
+.register-heading .auth-eyebrow { margin-bottom: 12px; }
+.register-heading h1 { font-size: 32px; line-height: 1.2; letter-spacing: -1.2px; font-weight: 500; margin-bottom: 10px; }
+.register-heading > p:last-child { font-size: 13px; color: $text-secondary; }
+.stepper { display: flex; align-items: flex-start; margin-bottom: 28px; list-style: none; }
+.step-item { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 90px; }
+.step-circle { width: 32px; height: 32px; border-radius: 50%; border: 1px solid $border; background: #f0f0e9; @include flex-center; font-weight: 600; font-size: 12px; color: $text-secondary; }
+.step-circle.active { border-color: $primary; color: #fff; background: $primary; }
+.step-circle.done { background: #e7eddf; color: $secondary; border-color: #d3dcc9; }
+.step-circle mat-icon { font-size: 16px; width: 16px; height: 16px; }
+.step-label { font-size: 11px; color: $text-secondary; text-align: center; }
+.step-label.active { color: $primary; font-weight: 600; }
+.step-line { flex: 1; height: 1px; background: $border; margin: 16px 12px 0; }
+.step-line.done { background: #a2b195; }
+.register-card { padding: 32px; border-radius: 12px; box-shadow: none; }
+.register-card h2 { font-size: 22px; font-weight: 500; letter-spacing: -.6px; margin-bottom: 8px; }
+.step-subtitle { color: $text-secondary; font-size: 13px; margin-bottom: 28px; line-height: 1.7; }
+.step-nav { @include flex-between; margin-top: 28px; padding-top: 24px; border-top: 1px solid $border; gap: 12px; }
+.summary-box { background: $bg-base; border-radius: 8px; padding: 16px 18px; margin-bottom: 20px; }
+.login-link { text-align: center; margin-top: 24px; font-size: 12px; color: $text-secondary; }
+
+@media (max-width: 1023px) {
+  .auth-layout { grid-template-columns: 1fr; padding: 40px 24px; min-height: calc(100dvh - 88px); }
+  .auth-layout > app-auth-panel { display: none; }
+  .auth-right { padding: 16px 0; align-items: flex-start; }
+}
+@media (max-width: 767px) {
+  .auth-header { min-height: 76px; padding: 20px; gap: 12px; }
+  .auth-wordmark { font-size: 18px; gap: 8px; }
+  .auth-wordmark img { width: 30px; height: 30px; }
+  .auth-header-link { font-size: 11px; gap: 6px; }
+  .auth-header-link > span { display: none; }
+  .auth-layout { min-height: calc(100dvh - 76px); padding: 30px 24px 40px; }
+  .auth-right { padding: 8px 0; }
+  .auth-select .type-card { padding: 18px; gap: 12px; }
+  .auth-select .type-arrow { display: none !important; }
+  .register-page { padding: 24px 20px 40px; }
+  .register-heading { margin: 24px 0 28px; }
+  .register-heading h1 { font-size: 27px; }
+  .register-card { padding: 24px 20px; }
+  .step-item { min-width: 0; flex: 1; }
+  .step-label { font-size: 10px; }
+  .step-line { flex: .5; margin-left: 0; margin-right: 0; }
+  .step-nav .btn { padding: 0 14px; }
+}
 // Tarjetas simples (recuperar, verificar)
 .simple-page { min-height: 100vh; background: $bg-base; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .simple-card { max-width: 440px; width: 100%; padding: 40px; }
@@ -78,51 +122,3 @@
   span { flex: 1; height: 4px; border-radius: 2px; background: $border; }
   &.n1 span:nth-child(-n+1) { background: $danger; } &.n2 span:nth-child(-n+2) { background: $warning; }
   &.n3 span:nth-child(-n+3) { background: #d4ac0d; } &.n4 span { background: $accent; } }
-
-@include tablet-down {
-  .auth-layout { grid-template-columns: 1fr; }
-  .auth-left { display: none; }
-  .register-card { padding: 22px; }
-  .step-item { min-width: 70px; }
-}
-
-// =============================================================
-// Capa editorial del rediseño (ver frontend/docs/REDESIGN.md):
-// fondos cálidos, panel en piedra/salvia y tipografía más ligera.
-// =============================================================
-.auth-layout { grid-template-columns: 46% 54%; background: #faf9f6; }
-.auth-left, .auth-left.empresa { background: #e9ebdf; padding: 64px; align-items: center; }
-.auth-left::before {
-  opacity: .25;
-  background-image: linear-gradient(#bac2af 1px, transparent 1px), linear-gradient(90deg, #bac2af 1px, transparent 1px);
-  background-size: 64px 64px;
-}
-.auth-left::after { content: ''; position: absolute; width: 210px; height: 120px; bottom: -28px; right: -28px; border: 24px solid #c3a38b; transform: rotate(-25deg); }
-.auth-left-inner { max-width: 400px; text-align: left; color: $text-primary; }
-.auth-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 22px;
-  .brand-icon { width: 48px; height: 48px; background: $primary; border-radius: 12px; margin: 0; }
-  h1 { color: $text-primary; font-size: clamp(30px, 3vw, 44px); font-weight: 600; letter-spacing: -1.7px; margin: 0; } }
-.auth-tagline { font-size: 22px; line-height: 1.6; color: $secondary; max-width: 330px; margin-bottom: 48px; }
-.stat-item { background: transparent; padding: 14px 0; border-top: 1px solid #cbd2c1; border-radius: 0;
-  span, mat-icon { color: $secondary; }
-  span { font-size: 12px; } }
-.auth-right { background: #faf9f6; padding: 64px 40px; }
-.auth-form-container h2 { font-size: 32px; font-weight: 500; letter-spacing: -1px; }
-.auth-subtitle { font-size: 13px; margin-top: 10px; }
-.role-tabs { background: #eeeee7; border: 1px solid $border; border-radius: 8px; padding: 4px; gap: 3px;
-  button { font-size: 11px; border-radius: 5px; height: 36px; } }
-.auth-form { gap: 22px; }
-.auth-layout .form-input { height: 48px; }
-.auth-layout .input-group .form-input { padding-right: 48px; }
-.back-link { font-size: 12px; }
-.type-card { background: #fff; border-width: 1px; padding: 24px;
-  &:hover { transform: none; box-shadow: 0 4px 20px #262c2808; } }
-
-@media (max-width: 1023px) { .auth-layout { grid-template-columns: 1fr; } }
-@media (max-width: 767px) {
-  .auth-right { padding: 42px 24px; align-items: flex-start; min-height: 100dvh; }
-  .auth-form-container::before { content: 'BrickByBrick.'; display: block; color: $primary; font-size: 18px; font-weight: 800; letter-spacing: -.5px; margin-bottom: 48px; }
-  .auth-form-container h2 { font-size: 28px; }
-  .type-card { padding: 18px; gap: 12px; }
-  .type-icon { width: 38px; height: 38px; }
-}

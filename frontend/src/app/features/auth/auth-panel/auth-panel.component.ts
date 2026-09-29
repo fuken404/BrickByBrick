@@ -13,10 +13,9 @@ import { EstadisticasPublicas } from '../../../core/models';
   template: `
     <div class="auth-left" [class.empresa]="variante() === 'empresa'">
       <div class="auth-left-inner">
-        <div class="auth-brand">
-          <div class="brand-icon"><mat-icon>layers</mat-icon></div>
-          <h1>BrickByBrick</h1>
-        </div>
+        <p class="auth-eyebrow">CONSTRUIMOS NUEVOS COMIENZOS</p>
+        <h2 class="auth-panel-title">Cada material.<br /><span>Una posibilidad.</span></h2>
+        <img class="auth-illustration" src="images/materiales-circulares.svg" width="520" height="440" alt="Bloques de construcción con una nueva vida" />
         <p class="auth-tagline">{{ lema() }}</p>
         @if (stats(); as s) {
           <div class="auth-stats">

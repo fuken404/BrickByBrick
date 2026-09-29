@@ -1,3 +1,4 @@
+import { AuthHeaderComponent } from '../auth-header/auth-header.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -23,7 +24,7 @@ const ROLES: { id: Rol; label: string; color: string; prefijo: string }[] = [
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, MatIconModule, AuthPanelComponent, CampoErrorComponent],
+  imports: [AuthHeaderComponent, ReactiveFormsModule, RouterLink, MatIconModule, AuthPanelComponent, CampoErrorComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './login.component.html',
 })
