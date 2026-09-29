@@ -72,7 +72,7 @@ export class AdminConfiguracionComponent implements OnInit {
     });
   }
 
-  nueva(): void { this.editando.set({ id: null, nombre: '', colorHex: '#C0392B', icono: 'category' }); }
+  nueva(): void { this.editando.set({ id: null, nombre: '', colorHex: '#AD5138', icono: 'category' }); }
 
   editar(c: CategoriaMaterial): void { this.editando.set({ id: c.id, nombre: c.nombre, colorHex: c.colorHex, icono: c.icono }); }
 

@@ -4,8 +4,7 @@ import { RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthStore } from '../../core/auth/auth.store';
 import { UserApiService } from '../../core/services/user-api.service';
-import { MaterialApiService } from '../../core/services/material-api.service';
-import { EstadisticasPublicas, Material } from '../../core/models';
+import { EstadisticasPublicas } from '../../core/models';
 
 @Component({
   selector: 'app-landing',
@@ -17,24 +16,28 @@ import { EstadisticasPublicas, Material } from '../../core/models';
 })
 export class LandingComponent {
   protected readonly auth = inject(AuthStore);
+  /** Cifras reales de la plataforma; la sección no se muestra si el servicio no responde. */
   protected readonly stats = signal<EstadisticasPublicas | null>(null);
-  protected readonly materiales = signal<Material[]>([]);
   protected readonly anio = new Date().getFullYear();
 
-  protected readonly pasos = [
-    { icon: 'business', title: 'Las constructoras publican excedentes', desc: 'Registran el material sobrante con fotos, cantidad, valor de referencia y condiciones de retiro.', color: '#C0392B', bg: 'rgba(192,57,43,.08)' },
-    { icon: 'search', title: 'Los beneficiarios solicitan lo que necesitan', desc: 'Exploran el catálogo por categoría y localidad, y cuentan para qué usarán el material.', color: '#2E86AB', bg: 'rgba(46,134,171,.08)' },
-    { icon: 'fact_check', title: 'Entrega trazable y constancia', desc: 'La empresa aprueba, entrega y obtiene la constancia de donación; el beneficiario confirma la recepción.', color: '#27AE60', bg: 'rgba(39,174,96,.08)' },
+  readonly steps = [
+    { number: '01', icon: 'inventory_2', title: 'Publica lo que puede servir.', description: 'Las constructoras comparten sus materiales excedentes con fotos, cantidades y condiciones de retiro.' },
+    { number: '02', icon: 'search', title: 'Encuentra lo que hace falta.', description: 'Explora materiales y envía una solicitud según las necesidades de tu hogar o proyecto comunitario.' },
+    { number: '03', icon: 'handshake', title: 'Conecta y construye.', description: 'Coordina la entrega con la empresa y dale un nuevo propósito a cada material que recibes.' },
   ];
-
-  protected readonly beneficiosTributarios = [
-    { icon: 'calculate', title: 'Estimación del descuento', desc: 'Calculamos el 25 % del valor donado y el tope sobre tu impuesto de renta.' },
-    { icon: 'picture_as_pdf', title: 'Constancia por cada entrega', desc: 'Documento PDF con el material, el valor de referencia y el beneficiario.' },
-    { icon: 'timeline', title: 'Resumen anual', desc: 'Todas tus donaciones del año listas para tu contador.' },
+  readonly materials = [
+    { name: 'Ladrillos', label: 'ESTRUCTURA', style: 'bricks' },
+    { name: 'Madera', label: 'VERSATILIDAD', style: 'wood' },
+    { name: 'Cerámica', label: 'ACABADOS', style: 'tiles' },
+    { name: 'Concreto', label: 'SOLIDEZ', style: 'concrete' },
+  ];
+  readonly beneficios = [
+    { number: '01', icon: 'fact_check', title: 'Entregas trazables.', description: 'Apruebas cada solicitud, registras la entrega y el beneficiario confirma la recepción.' },
+    { number: '02', icon: 'picture_as_pdf', title: 'Constancia por entrega.', description: 'Documento PDF con el material, la cantidad, el valor de referencia y el beneficiario.' },
+    { number: '03', icon: 'calculate', title: 'Resumen anual estimado.', description: 'El 25 % del valor donado y su tope sobre el impuesto, listos para revisar con tu contador.' },
   ];
 
   constructor() {
     inject(UserApiService).estadisticasPublicas().subscribe({ next: (r) => this.stats.set(r.data), error: () => undefined });
-    inject(MaterialApiService).catalogo({ limit: 4 }).subscribe({ next: (r) => this.materiales.set(r.data.items), error: () => undefined });
   }
 }

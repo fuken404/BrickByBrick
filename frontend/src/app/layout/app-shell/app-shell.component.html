@@ -1,21 +1,27 @@
 <a class="skip-link" href="#contenido">Saltar al contenido</a>
 
-<div class="shell" [class.sidebar-collapsed]="colapsado()">
-  <!-- Sidebar -->
-  <aside class="sidebar" [class.dark]="oscuro()" [class.collapsed]="colapsado()" [class.drawer-open]="drawerAbierto()"
+<div class="shell" [class.sidebar-collapsed]="colapsado() && !esMovil()" [class.mobile-open]="drawerAbierto()">
+  @if (drawerAbierto()) { <div class="drawer-backdrop" (click)="cerrarMenu()" aria-hidden="true"></div> }
+
+  <!-- Barra lateral (en móvil es el menú completo) -->
+  <aside id="navegacion" class="sidebar" [class.collapsed]="colapsado() && !esMovil()"
+         [cdkTrapFocus]="drawerAbierto()" [cdkTrapFocusAutoCapture]="false"
+         [attr.role]="drawerAbierto() ? 'dialog' : null" [attr.aria-modal]="drawerAbierto() ? true : null"
          aria-label="Navegación principal">
     <a class="sidebar-logo" [routerLink]="[prefijo(), 'dashboard']">
-      <div class="logo-icon"><mat-icon>layers</mat-icon></div>
+      <img class="logo-icon" src="favicon.svg" width="36" height="36" alt="" />
       <div class="logo-text">
         <span class="brand">BrickByBrick</span>
         <span class="role-label">{{ etiquetaRol() }}</span>
       </div>
     </a>
+    <button #botonCerrar type="button" class="drawer-close" (click)="cerrarMenu()" aria-label="Cerrar menú"><mat-icon>close</mat-icon></button>
 
-    <nav class="sidebar-nav">
+    <div class="nav-caption">TU ESPACIO DE TRABAJO</div>
+    <nav class="sidebar-nav" aria-label="Secciones">
       @for (item of items(); track item.ruta) {
-        <a class="nav-item" [routerLink]="[prefijo(), item.ruta]" routerLinkActive="active"
-           [matTooltip]="colapsado() ? item.label : ''" matTooltipPosition="right">
+        <a class="nav-item" [routerLink]="[prefijo(), item.ruta]" routerLinkActive="active" ariaCurrentWhenActive="page"
+           [matTooltip]="colapsado() && !esMovil() ? item.label : ''" matTooltipPosition="right">
           <mat-icon>{{ item.icon }}</mat-icon>
           <span class="nav-label">{{ item.label }}</span>
           @if (contador(item) > 0) {
@@ -25,9 +31,11 @@
       }
     </nav>
 
+    <div class="sidebar-purpose"><mat-icon>all_inclusive</mat-icon><strong>Cada material cuenta.</strong><span>Construyamos su siguiente historia.</span></div>
+
     <div class="sidebar-user">
       <a class="user-info" [routerLink]="[prefijo(), 'usuarios', auth.user()?.id]" matTooltip="Ver mi perfil público">
-        <app-avatar [name]="auth.nombre() || 'Usuario'" [src]="auth.user()?.avatarUrl ?? auth.user()?.perfil?.logoUrl" [size]="32" />
+        <app-avatar [name]="auth.nombre() || 'Usuario'" [src]="auth.user()?.avatarUrl ?? auth.user()?.perfil?.logoUrl" [size]="34" />
         <div class="user-details">
           <span class="user-name">{{ auth.nombre() }}</span>
           <span class="user-email">{{ auth.user()?.email }}</span>
@@ -38,18 +46,16 @@
       </button>
     </div>
   </aside>
-  @if (drawerAbierto()) { <div class="drawer-backdrop" (click)="drawerAbierto.set(false)"></div> }
 
-  <!-- Main -->
-  <div class="main">
+  <div class="main" [attr.inert]="drawerAbierto() ? '' : null">
     <header class="topbar">
-      <button type="button" class="menu-toggle desktop-only" (click)="colapsado.update(v => !v)"
-              [attr.aria-label]="colapsado() ? 'Expandir menú' : 'Contraer menú'">
-        <mat-icon>{{ colapsado() ? 'menu_open' : 'menu' }}</mat-icon>
+      <button #botonMenu type="button" class="menu-toggle" (click)="alternarMenu()" aria-controls="navegacion"
+              [attr.aria-expanded]="esMovil() ? drawerAbierto() : !colapsado()"
+              [attr.aria-label]="esMovil() ? 'Abrir menú' : (colapsado() ? 'Expandir menú' : 'Contraer menú')">
+        <mat-icon>{{ colapsado() && !esMovil() ? 'menu_open' : 'menu' }}</mat-icon>
       </button>
-      <button type="button" class="menu-toggle mobile-only" (click)="drawerAbierto.set(true)" aria-label="Abrir menú">
-        <mat-icon>menu</mat-icon>
-      </button>
+
+      <div class="breadcrumb"><span>{{ etiquetaRol() }}</span><mat-icon>chevron_right</mat-icon><strong>{{ seccionActual() }}</strong></div>
 
       <form class="search-wrapper" role="search" (ngSubmit)="buscar()">
         <mat-icon class="search-icon">search</mat-icon>
@@ -66,7 +72,7 @@
         }
 
         <div class="dropdown-host" (clickOutside)="panelNotif.set(false)">
-          <button type="button" class="icon-btn badge-host" (click)="alternarNotificaciones()"
+          <button type="button" class="icon-btn badge-host notif-btn" (click)="alternarNotificaciones()"
                   [attr.aria-expanded]="panelNotif()" aria-label="Notificaciones">
             <mat-icon>notifications_none</mat-icon>
             @if (contadores.noLeidas() > 0) { <span class="dot-count">{{ contadores.noLeidas() > 99 ? '99+' : contadores.noLeidas() }}</span> }
@@ -152,14 +158,15 @@
   </div>
 </div>
 
-<nav class="mobile-nav" aria-label="Navegación rápida">
+<nav class="mobile-nav" aria-label="Accesos rápidos" [attr.inert]="drawerAbierto() ? '' : null">
   @for (item of itemsMovil(); track item.ruta) {
-    <a class="mobile-nav-item" [routerLink]="[prefijo(), item.ruta]" routerLinkActive="active">
+    <a class="mobile-nav-item" [routerLink]="[prefijo(), item.ruta]" routerLinkActive="active" ariaCurrentWhenActive="page">
       <mat-icon>{{ item.icon }}</mat-icon>
       <span>{{ item.label }}</span>
     </a>
   }
-  <button type="button" class="mobile-nav-item" (click)="drawerAbierto.set(true)">
-    <mat-icon>more_horiz</mat-icon><span>Más</span>
+  <button type="button" class="mobile-nav-item mobile-more" (click)="alternarMenu()" aria-controls="navegacion"
+          [attr.aria-expanded]="drawerAbierto()" aria-label="Abrir todas las secciones">
+    <mat-icon>menu</mat-icon><span>Más</span>
   </button>
 </nav>

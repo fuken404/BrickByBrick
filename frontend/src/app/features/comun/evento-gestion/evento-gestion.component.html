@@ -45,10 +45,10 @@
     }
 
     <div class="grid-kpi">
-      <app-kpi-card label="Inscritos" [value]="e.inscritos" icon="how_to_reg" color="#2E86AB" [sub]="e.capacidadMaxima ? 'de ' + e.capacidadMaxima + ' cupos' : 'Sin límite de cupos'" />
-      <app-kpi-card label="Participación (IPE)" [value]="ipe()" formato="pct" icon="donut_large" color="#C0392B" sub="Inscripciones / cupos" />
-      <app-kpi-card label="Asistieron" [value]="asistieron()" icon="task_alt" color="#27AE60" />
-      <app-kpi-card label="Materiales asociados" [value]="e.materiales?.length ?? 0" icon="inventory_2" color="#E67E22" />
+      <app-kpi-card label="Inscritos" [value]="e.inscritos" icon="how_to_reg" color="#48635A" [sub]="e.capacidadMaxima ? 'de ' + e.capacidadMaxima + ' cupos' : 'Sin límite de cupos'" />
+      <app-kpi-card label="Participación (IPE)" [value]="ipe()" formato="pct" icon="donut_large" color="#AD5138" sub="Inscripciones / cupos" />
+      <app-kpi-card label="Asistieron" [value]="asistieron()" icon="task_alt" color="#38745B" />
+      <app-kpi-card label="Materiales asociados" [value]="e.materiales?.length ?? 0" icon="inventory_2" color="#996923" />
     </div>
 
     <div class="split">

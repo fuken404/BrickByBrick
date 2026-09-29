@@ -3,9 +3,9 @@
 
 // =============================================================
 // BrickByBrick — Tema Angular Material personalizado
-// Primary: ladrillo (#C0392B)
-// Secondary/Accent: acero (#2E86AB)
-// Warn: danger (#E74C3C)
+// Primary: ladrillo (#AD5138)
+// Secondary/Accent: acero (#48635A)
+// Warn: danger (#B53F36)
 // =============================================================
 
 // Paleta primaria: Ladrillo
@@ -15,7 +15,7 @@ $primary-palette: (
   200: #f19f97,
   300: #eb796e,
   400: #e75c4d,
-  500: #C0392B,   // base
+  500: #AD5138,   // base
   600: #b83226,
   700: #ae2a20,
   800: #a6231a,
@@ -49,7 +49,7 @@ $accent-palette: (
   200: #94c6e0,
   300: #68afd3,
   400: #479ec9,
-  500: #2E86AB,   // base
+  500: #48635A,   // base
   600: #277ea4,
   700: #1f739a,
   800: #196991,
@@ -138,6 +138,6 @@ $bbb-theme: mat.define-theme((
 
 // Chips
 .mat-mdc-chip.mat-primary {
-  --mdc-chip-elevated-container-color: rgba(192, 57, 43, 0.1);
+  --mdc-chip-elevated-container-color: rgba(173, 81, 56, 0.1);
   --mdc-chip-label-text-color: #{$primary};
 }

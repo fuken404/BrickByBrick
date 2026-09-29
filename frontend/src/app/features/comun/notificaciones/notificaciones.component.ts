@@ -12,31 +12,31 @@ import { FechaRelativaPipe } from '../../../shared/pipes/fecha-relativa.pipe';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 const ICONOS: Partial<Record<TipoNotificacion, { icon: string; color: string }>> = {
-  material_nuevo: { icon: 'inventory_2', color: '#C0392B' },
-  solicitud_nueva: { icon: 'assignment', color: '#E67E22' },
-  solicitud_aprobada: { icon: 'check_circle', color: '#27AE60' },
-  solicitud_rechazada: { icon: 'cancel', color: '#E74C3C' },
-  solicitud_entregada: { icon: 'local_shipping', color: '#2E86AB' },
-  solicitud_cancelada: { icon: 'block', color: '#6B6B6B' },
-  recepcion_confirmada: { icon: 'task_alt', color: '#27AE60' },
-  evento_nuevo: { icon: 'event', color: '#2E86AB' },
-  evento_inscripcion: { icon: 'event_available', color: '#2E86AB' },
-  evento_cupos_bajos: { icon: 'warning', color: '#E67E22' },
-  evento_cancelado: { icon: 'event_busy', color: '#E74C3C' },
-  evento_actualizado: { icon: 'update', color: '#E67E22' },
-  comentario: { icon: 'comment', color: '#8E44AD' },
-  comentario_respuesta: { icon: 'reply', color: '#8E44AD' },
-  like: { icon: 'favorite', color: '#E74C3C' },
-  repost: { icon: 'repeat', color: '#27AE60' },
-  seguidor_nuevo: { icon: 'person_add', color: '#2E86AB' },
-  mensaje_nuevo: { icon: 'chat', color: '#2E86AB' },
+  material_nuevo: { icon: 'inventory_2', color: '#AD5138' },
+  solicitud_nueva: { icon: 'assignment', color: '#996923' },
+  solicitud_aprobada: { icon: 'check_circle', color: '#38745B' },
+  solicitud_rechazada: { icon: 'cancel', color: '#B53F36' },
+  solicitud_entregada: { icon: 'local_shipping', color: '#48635A' },
+  solicitud_cancelada: { icon: 'block', color: '#687069' },
+  recepcion_confirmada: { icon: 'task_alt', color: '#38745B' },
+  evento_nuevo: { icon: 'event', color: '#48635A' },
+  evento_inscripcion: { icon: 'event_available', color: '#48635A' },
+  evento_cupos_bajos: { icon: 'warning', color: '#996923' },
+  evento_cancelado: { icon: 'event_busy', color: '#B53F36' },
+  evento_actualizado: { icon: 'update', color: '#996923' },
+  comentario: { icon: 'comment', color: '#716453' },
+  comentario_respuesta: { icon: 'reply', color: '#716453' },
+  like: { icon: 'favorite', color: '#B53F36' },
+  repost: { icon: 'repeat', color: '#38745B' },
+  seguidor_nuevo: { icon: 'person_add', color: '#48635A' },
+  mensaje_nuevo: { icon: 'chat', color: '#48635A' },
   grupo_invitacion: { icon: 'group_add', color: '#16A085' },
   grupo_solicitud: { icon: 'how_to_reg', color: '#16A085' },
-  verificacion: { icon: 'verified', color: '#27AE60' },
-  documento_revisado: { icon: 'description', color: '#2E86AB' },
-  reporte_resuelto: { icon: 'shield', color: '#6B6B6B' },
-  material_vence: { icon: 'schedule', color: '#E67E22' },
-  cuenta: { icon: 'manage_accounts', color: '#6B6B6B' },
+  verificacion: { icon: 'verified', color: '#38745B' },
+  documento_revisado: { icon: 'description', color: '#48635A' },
+  reporte_resuelto: { icon: 'shield', color: '#687069' },
+  material_vence: { icon: 'schedule', color: '#996923' },
+  cuenta: { icon: 'manage_accounts', color: '#687069' },
 };
 
 @Component({
@@ -85,7 +85,7 @@ const ICONOS: Partial<Record<TipoNotificacion, { icon: string; color: string }>>
     </div>
   `,
   styles: [`
-    .notif.unread { background: rgba(192,57,43,.035); }
+    .notif.unread { background: rgba(173,81,56,.035); }
     .notif-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .punto { width: 9px; height: 9px; border-radius: 50%; background: var(--primary); margin-top: 6px; flex-shrink: 0; }
   `],
@@ -111,7 +111,7 @@ export class NotificacionesComponent implements OnInit {
 
   ngOnInit(): void { this.cargar(); }
 
-  icono(n: Notificacion) { return ICONOS[n.tipo] ?? { icon: 'notifications', color: '#6B6B6B' }; }
+  icono(n: Notificacion) { return ICONOS[n.tipo] ?? { icon: 'notifications', color: '#687069' }; }
 
   filtrar(v: boolean): void { this.soloNoLeidas.set(v); this.cargar(); }
 

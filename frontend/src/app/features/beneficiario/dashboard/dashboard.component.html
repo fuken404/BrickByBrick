@@ -19,10 +19,10 @@
     <app-skeleton-loader type="kpi" [count]="4" />
   } @else {
     <div class="grid-kpi">
-      <app-kpi-card label="Solicitudes activas" [value]="activas()" icon="assignment" color="#E67E22" [sub]="(resumen()?.pendiente ?? 0) + ' pendientes · ' + (resumen()?.aprobada ?? 0) + ' aprobadas'" />
-      <app-kpi-card label="Materiales recibidos" [value]="resumen()?.entregada ?? 0" icon="inventory" color="#27AE60" />
-      <app-kpi-card label="Próximos eventos" [value]="misEventos().length" icon="event_available" color="#2E86AB" sub="Eventos en los que estás inscrito" />
-      <app-kpi-card label="Materiales disponibles" [value]="disponibles()" icon="inventory_2" color="#C0392B" sub="En el catálogo ahora" />
+      <app-kpi-card label="Solicitudes activas" [value]="activas()" icon="assignment" color="#996923" [sub]="(resumen()?.pendiente ?? 0) + ' pendientes · ' + (resumen()?.aprobada ?? 0) + ' aprobadas'" />
+      <app-kpi-card label="Materiales recibidos" [value]="resumen()?.entregada ?? 0" icon="inventory" color="#38745B" />
+      <app-kpi-card label="Próximos eventos" [value]="misEventos().length" icon="event_available" color="#48635A" sub="Eventos en los que estás inscrito" />
+      <app-kpi-card label="Materiales disponibles" [value]="disponibles()" icon="inventory_2" color="#AD5138" sub="En el catálogo ahora" />
     </div>
 
     @if (porConfirmar() > 0) {

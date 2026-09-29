@@ -10,7 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
     <div class="kpi-card card">
       <div class="kpi-header">
         <span class="kpi-label">{{ label() }}</span>
-        <div class="kpi-icon" [style.background]="color() + '18'">
+        <div class="kpi-icon">
           <mat-icon [style.color]="color()">{{ icon() }}</mat-icon>
         </div>
       </div>
@@ -19,12 +19,12 @@ import { MatIconModule } from '@angular/material/icon';
     </div>
   `,
   styles: [`
-    .kpi-card { padding: 18px 20px; height: 100%; }
+    .kpi-card { padding: 24px; height: 100%; min-height: 150px; border-radius: 12px; box-shadow: none; }
     .kpi-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 8px; }
     .kpi-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
-    .kpi-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    .kpi-icon { width: 40px; height: 40px; border-radius: 8px; background: #f1f3eb; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
       mat-icon { font-size: 20px; width: 20px; height: 20px; } }
-    .kpi-value { font-family: var(--font-display); font-size: 28px; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
+    .kpi-value { font-family: var(--font-display); font-size: clamp(24px, 2.4vw, 34px); font-weight: 500; letter-spacing: -1.2px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; color: var(--text-primary); line-height: 1.1; }
     .kpi-sub { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
   `],
 })
@@ -33,7 +33,7 @@ export class KpiCardComponent {
   readonly value = input<number | string | null>(0);
   readonly formato = input<'numero' | 'cop' | 'pct' | 'texto'>('numero');
   readonly icon = input('analytics');
-  readonly color = input('#C0392B');
+  readonly color = input('#AD5138');
   readonly sub = input('');
 
   protected readonly texto = computed(() => {

@@ -71,7 +71,7 @@
 .status-icon { width: 72px; height: 72px; border-radius: 50%; @include flex-center; margin: 0 auto 20px;
   mat-icon { font-size: 36px; width: 36px; height: 36px; }
   &.ok { background: rgba($accent, .1); mat-icon { color: $accent; } }
-  &.err { background: $danger-light; mat-icon { color: $danger; } }
+  &.err, &.error { background: $danger-light; mat-icon { color: $danger; } }
   &.neutro { background: $bg-base; mat-icon { color: $text-secondary; } } }
 
 .password-meter { display: flex; gap: 4px; margin-top: 6px;
@@ -84,4 +84,45 @@
   .auth-left { display: none; }
   .register-card { padding: 22px; }
   .step-item { min-width: 70px; }
+}
+
+// =============================================================
+// Capa editorial del rediseño (ver frontend/docs/REDESIGN.md):
+// fondos cálidos, panel en piedra/salvia y tipografía más ligera.
+// =============================================================
+.auth-layout { grid-template-columns: 46% 54%; background: #faf9f6; }
+.auth-left, .auth-left.empresa { background: #e9ebdf; padding: 64px; align-items: center; }
+.auth-left::before {
+  opacity: .25;
+  background-image: linear-gradient(#bac2af 1px, transparent 1px), linear-gradient(90deg, #bac2af 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+.auth-left::after { content: ''; position: absolute; width: 210px; height: 120px; bottom: -28px; right: -28px; border: 24px solid #c3a38b; transform: rotate(-25deg); }
+.auth-left-inner { max-width: 400px; text-align: left; color: $text-primary; }
+.auth-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 22px;
+  .brand-icon { width: 48px; height: 48px; background: $primary; border-radius: 12px; margin: 0; }
+  h1 { color: $text-primary; font-size: clamp(30px, 3vw, 44px); font-weight: 600; letter-spacing: -1.7px; margin: 0; } }
+.auth-tagline { font-size: 22px; line-height: 1.6; color: $secondary; max-width: 330px; margin-bottom: 48px; }
+.stat-item { background: transparent; padding: 14px 0; border-top: 1px solid #cbd2c1; border-radius: 0;
+  span, mat-icon { color: $secondary; }
+  span { font-size: 12px; } }
+.auth-right { background: #faf9f6; padding: 64px 40px; }
+.auth-form-container h2 { font-size: 32px; font-weight: 500; letter-spacing: -1px; }
+.auth-subtitle { font-size: 13px; margin-top: 10px; }
+.role-tabs { background: #eeeee7; border: 1px solid $border; border-radius: 8px; padding: 4px; gap: 3px;
+  button { font-size: 11px; border-radius: 5px; height: 36px; } }
+.auth-form { gap: 22px; }
+.auth-layout .form-input { height: 48px; }
+.auth-layout .input-group .form-input { padding-right: 48px; }
+.back-link { font-size: 12px; }
+.type-card { background: #fff; border-width: 1px; padding: 24px;
+  &:hover { transform: none; box-shadow: 0 4px 20px #262c2808; } }
+
+@media (max-width: 1023px) { .auth-layout { grid-template-columns: 1fr; } }
+@media (max-width: 767px) {
+  .auth-right { padding: 42px 24px; align-items: flex-start; min-height: 100dvh; }
+  .auth-form-container::before { content: 'BrickByBrick.'; display: block; color: $primary; font-size: 18px; font-weight: 800; letter-spacing: -.5px; margin-bottom: 48px; }
+  .auth-form-container h2 { font-size: 28px; }
+  .type-card { padding: 18px; gap: 12px; }
+  .type-icon { width: 38px; height: 38px; }
 }

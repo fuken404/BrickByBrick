@@ -57,7 +57,7 @@ export class MaterialDetalleComponent {
 
   protected readonly vence = computed(() => formatearDia(this.material()?.fechaLimite));
   protected readonly disponible = computed(() => this.material()?.estadoPublicacion === 'activo');
-  protected readonly color = computed(() => this.material()?.categoria.colorHex ?? '#6B6B6B');
+  protected readonly color = computed(() => this.material()?.categoria.colorHex ?? '#687069');
 
   constructor() {
     effect(() => {

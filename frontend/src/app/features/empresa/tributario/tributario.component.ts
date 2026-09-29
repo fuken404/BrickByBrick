@@ -27,7 +27,7 @@ const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'O
   styles: [`
     .req { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
     .req:last-child { border-bottom: none; }
-    .req mat-icon.ok { color: var(--accent); } .req mat-icon.no { color: #E67E22; }
+    .req mat-icon.ok { color: var(--accent); } .req mat-icon.no { color: #996923; }
     .chart { position: relative; height: 260px; }
   `],
 })
@@ -49,7 +49,7 @@ export class TributarioComponent implements OnInit {
     const porMes = new Map((r?.porMes ?? []).map((m) => [m.mes, m.valorDonadoCop]));
     return {
       labels: MESES,
-      datasets: [{ label: 'Valor donado (COP)', data: MESES.map((_, i) => porMes.get(i + 1) ?? 0), backgroundColor: '#C0392B', borderRadius: 6 }],
+      datasets: [{ label: 'Valor donado (COP)', data: MESES.map((_, i) => porMes.get(i + 1) ?? 0), backgroundColor: '#AD5138', borderRadius: 6 }],
     };
   });
   protected readonly opciones: ChartConfiguration<'bar'>['options'] = {

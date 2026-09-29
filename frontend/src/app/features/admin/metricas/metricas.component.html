@@ -21,17 +21,17 @@
     <section class="section">
       <h2 class="section-title">Indicadores del proyecto</h2>
       <div class="grid-kpi">
-        <app-kpi-card label="IPE — Participación en eventos" [value]="x.ipe.ipe" formato="pct" icon="groups" color="#2E86AB"
+        <app-kpi-card label="IPE — Participación en eventos" [value]="x.ipe.ipe" formato="pct" icon="groups" color="#48635A"
           [sub]="x.ipe.inscripciones + ' inscripciones / ' + x.ipe.cupos + ' cupos en ' + x.ipe.eventos + ' eventos · asistencia ' + (x.ipe.tasaAsistencia | number:'1.0-1') + ' %'" />
-        <app-kpi-card label="TPA — Días hasta la entrega" [value]="x.tpa.tpaDias" icon="timer" color="#E67E22"
+        <app-kpi-card label="TPA — Días hasta la entrega" [value]="x.tpa.tpaDias" icon="timer" color="#996923"
           [sub]="'Promedio publicación → entrega (' + x.tpa.entregas + ' entregas) · respuesta: ' + (x.tpa.respuestaDias | number:'1.0-1') + ' días'" />
-        <app-kpi-card [label]="'TEA — Efectividad de acceso (' + x.periodoTeaDias + ' días)'" [value]="x.tea.tea" formato="pct" icon="login" color="#27AE60"
+        <app-kpi-card [label]="'TEA — Efectividad de acceso (' + x.periodoTeaDias + ' días)'" [value]="x.tea.tea" formato="pct" icon="login" color="#38745B"
           [sub]="x.tea.validos + ' válidos de ' + x.tea.intentos + ' intentos · MFA ' + x.tea.mfaExitosos + ' ok / ' + x.tea.mfaFallidos + ' fallidos'" />
         @if (trp(); as t) {
-          <app-kpi-card label="TRP — Tiempo de respuesta" [value]="t.trpPromedioMs + ' ms'" formato="texto" icon="speed" color="#8E44AD"
+          <app-kpi-card label="TRP — Tiempo de respuesta" [value]="t.trpPromedioMs + ' ms'" formato="texto" icon="speed" color="#716453"
             [sub]="'p95: ' + t.trpP95Ms + ' ms · ' + t.peticiones + ' peticiones desde ' + (t.desde | date:'short')" />
         } @else {
-          <app-kpi-card label="TRP — Tiempo de respuesta" [value]="null" icon="speed" color="#8E44AD" sub="No disponible" />
+          <app-kpi-card label="TRP — Tiempo de respuesta" [value]="null" icon="speed" color="#716453" sub="No disponible" />
         }
       </div>
     </section>
@@ -39,9 +39,9 @@
     <section class="section">
       <h2 class="section-title">Impacto</h2>
       <div class="grid-kpi">
-        <app-kpi-card label="Valor donado" [value]="x.impacto.valorDonadoCop" formato="cop" icon="savings" color="#C0392B" />
-        <app-kpi-card label="Descuento tributario estimado" [value]="x.impacto.descuentoEstimadoCop" formato="cop" icon="receipt_long" color="#2E86AB" sub="Orientativo (Art. 255 E.T.)" />
-        <app-kpi-card label="Beneficiarios atendidos" [value]="x.impacto.beneficiariosAtendidos" icon="people" color="#27AE60" />
+        <app-kpi-card label="Valor donado" [value]="x.impacto.valorDonadoCop" formato="cop" icon="savings" color="#AD5138" />
+        <app-kpi-card label="Descuento tributario estimado" [value]="x.impacto.descuentoEstimadoCop" formato="cop" icon="receipt_long" color="#48635A" sub="Orientativo (Art. 255 E.T.)" />
+        <app-kpi-card label="Beneficiarios atendidos" [value]="x.impacto.beneficiariosAtendidos" icon="people" color="#38745B" />
         <app-kpi-card label="Satisfacción" [value]="x.impacto.calificacionPromedio !== null ? (x.impacto.calificacionPromedio | number:'1.1-1') + ' / 5' : null" formato="texto" icon="star" color="#F1C40F"
           [sub]="x.impacto.calificaciones + ' calificaciones · ' + x.impacto.constructorasActivasMes + ' constructoras activas este mes'" />
       </div>

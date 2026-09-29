@@ -89,7 +89,7 @@
 
 @if (m.rol !== 'ADMINISTRADOR') {
   <section class="card card-pad-lg stack" style="border-color:rgba(231,76,60,.35)">
-    <h2 class="section-title" style="color:var(--danger, #E74C3C)"><mat-icon>delete_forever</mat-icon>Eliminar cuenta</h2>
+    <h2 class="section-title" style="color:var(--danger, #B53F36)"><mat-icon>delete_forever</mat-icon>Eliminar cuenta</h2>
     <p class="small muted">Se anonimizan tus datos personales y se cierran tus sesiones. Tus solicitudes activas se cancelarán. Esta acción no se puede deshacer.</p>
     @if (!eliminarAbierto()) {
       <button type="button" class="btn btn-sm btn-danger-outline" style="align-self:flex-start" (click)="eliminarAbierto.set(true)">Quiero eliminar mi cuenta</button>

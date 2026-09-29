@@ -9,7 +9,7 @@ import { KpiCardComponent } from '../../../shared/components/kpi-card/kpi-card.c
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
 
 const COLORES_ESTADO: Record<EstadoSolicitud, string> = {
-  pendiente: '#E67E22', aprobada: '#27AE60', entregada: '#2E86AB', rechazada: '#E74C3C', cancelada: '#95A5A6',
+  pendiente: '#996923', aprobada: '#38745B', entregada: '#48635A', rechazada: '#B53F36', cancelada: '#95A5A6',
 };
 
 @Component({
@@ -43,11 +43,11 @@ const COLORES_ESTADO: Record<EstadoSolicitud, string> = {
         }
 
         <div class="grid-kpi">
-          <app-kpi-card label="Beneficiarios" [value]="x.beneficiarios" icon="people" color="#2E86AB" [sub]="x.beneficiariosAtendidos + ' atendidos con entregas'" />
-          <app-kpi-card label="Constructoras" [value]="x.constructoras" icon="business" color="#C0392B" [sub]="x.constructorasVerificadas + ' verificadas · ' + x.constructorasActivasMes + ' activas este mes'" />
-          <app-kpi-card label="Materiales activos" [value]="x.materialesActivos" icon="inventory_2" color="#E67E22" [sub]="x.totalMateriales + ' publicados en total'" />
-          <app-kpi-card label="Entregas" [value]="x.solicitudesEntregadas" icon="local_shipping" color="#27AE60" [sub]="x.totalSolicitudes + ' solicitudes en total'" />
-          <app-kpi-card label="Valor donado" [value]="x.valorDonadoCop" formato="cop" icon="savings" color="#8E44AD" />
+          <app-kpi-card label="Beneficiarios" [value]="x.beneficiarios" icon="people" color="#48635A" [sub]="x.beneficiariosAtendidos + ' atendidos con entregas'" />
+          <app-kpi-card label="Constructoras" [value]="x.constructoras" icon="business" color="#AD5138" [sub]="x.constructorasVerificadas + ' verificadas · ' + x.constructorasActivasMes + ' activas este mes'" />
+          <app-kpi-card label="Materiales activos" [value]="x.materialesActivos" icon="inventory_2" color="#996923" [sub]="x.totalMateriales + ' publicados en total'" />
+          <app-kpi-card label="Entregas" [value]="x.solicitudesEntregadas" icon="local_shipping" color="#38745B" [sub]="x.totalSolicitudes + ' solicitudes en total'" />
+          <app-kpi-card label="Valor donado" [value]="x.valorDonadoCop" formato="cop" icon="savings" color="#716453" />
           <app-kpi-card label="Eventos activos" [value]="x.eventosActivos" icon="event" color="#16A085" [sub]="x.totalEventos + ' eventos creados'" />
           <app-kpi-card label="Satisfacción" [value]="x.calificacionPromedio !== null ? x.calificacionPromedio.toFixed(1) + ' / 5' : null" formato="texto" icon="star" color="#F1C40F" [sub]="x.calificaciones + ' calificaciones'" />
           <app-kpi-card label="Publicaciones" [value]="x.publicaciones" icon="forum" color="#6D4C41" [sub]="x.usuariosSuspendidos + ' usuarios suspendidos'" />
@@ -76,10 +76,10 @@ export class AdminDashboardComponent implements OnInit {
     return {
       labels: s.map((x) => x.mes),
       datasets: [
-        { label: 'Solicitudes', data: s.map((x) => x.solicitudes), borderColor: '#E67E22', backgroundColor: '#E67E2222', tension: .3, fill: true },
-        { label: 'Entregas', data: s.map((x) => x.entregas), borderColor: '#27AE60', backgroundColor: '#27AE6022', tension: .3, fill: true },
-        { label: 'Materiales', data: s.map((x) => x.materiales), borderColor: '#C0392B', tension: .3 },
-        { label: 'Usuarios nuevos', data: s.map((x) => x.usuarios), borderColor: '#2E86AB', tension: .3 },
+        { label: 'Solicitudes', data: s.map((x) => x.solicitudes), borderColor: '#996923', backgroundColor: '#99692322', tension: .3, fill: true },
+        { label: 'Entregas', data: s.map((x) => x.entregas), borderColor: '#38745B', backgroundColor: '#38745B22', tension: .3, fill: true },
+        { label: 'Materiales', data: s.map((x) => x.materiales), borderColor: '#AD5138', tension: .3 },
+        { label: 'Usuarios nuevos', data: s.map((x) => x.usuarios), borderColor: '#48635A', tension: .3 },
       ],
     };
   });

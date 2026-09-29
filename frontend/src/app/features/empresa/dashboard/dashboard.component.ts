@@ -44,10 +44,10 @@ import { FechaRelativaPipe } from '../../../shared/pipes/fecha-relativa.pipe';
         <app-skeleton-loader type="kpi" [count]="4" />
       } @else {
         <div class="grid-kpi">
-          <app-kpi-card label="Materiales publicados" [value]="activos()" icon="inventory_2" color="#C0392B" sub="Disponibles en el catálogo" />
-          <app-kpi-card label="Solicitudes por responder" [value]="resumen()?.pendiente ?? 0" icon="pending_actions" color="#E67E22" [sub]="(resumen()?.aprobada ?? 0) + ' aprobadas por entregar'" />
-          <app-kpi-card label="Entregas realizadas" [value]="resumen()?.entregada ?? 0" icon="local_shipping" color="#27AE60" />
-          <app-kpi-card [label]="'Valor donado ' + anio" [value]="tributario()?.valorDonadoCop ?? 0" formato="cop" icon="savings" color="#2E86AB"
+          <app-kpi-card label="Materiales publicados" [value]="activos()" icon="inventory_2" color="#AD5138" sub="Disponibles en el catálogo" />
+          <app-kpi-card label="Solicitudes por responder" [value]="resumen()?.pendiente ?? 0" icon="pending_actions" color="#996923" [sub]="(resumen()?.aprobada ?? 0) + ' aprobadas por entregar'" />
+          <app-kpi-card label="Entregas realizadas" [value]="resumen()?.entregada ?? 0" icon="local_shipping" color="#38745B" />
+          <app-kpi-card [label]="'Valor donado ' + anio" [value]="tributario()?.valorDonadoCop ?? 0" formato="cop" icon="savings" color="#48635A"
             [sub]="'Descuento estimado: ' + ((tributario()?.descuentoEstimadoCop ?? 0) | number:'1.0-0') + ' COP'" />
         </div>
 

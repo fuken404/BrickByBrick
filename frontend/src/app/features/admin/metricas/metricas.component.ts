@@ -34,8 +34,8 @@ export class AdminMetricasComponent implements OnInit {
     return {
       labels: s.map((x) => x.mes),
       datasets: [
-        { label: 'Solicitudes', data: s.map((x) => x.solicitudes), backgroundColor: '#E67E22', borderRadius: 4 },
-        { label: 'Entregas', data: s.map((x) => x.entregas), backgroundColor: '#27AE60', borderRadius: 4 },
+        { label: 'Solicitudes', data: s.map((x) => x.solicitudes), backgroundColor: '#996923', borderRadius: 4 },
+        { label: 'Entregas', data: s.map((x) => x.entregas), backgroundColor: '#38745B', borderRadius: 4 },
       ],
     };
   });
@@ -43,7 +43,7 @@ export class AdminMetricasComponent implements OnInit {
     const s = this.m()?.series ?? [];
     return {
       labels: s.map((x) => x.mes),
-      datasets: [{ label: 'Valor donado (COP)', data: s.map((x) => x.valorDonadoCop), borderColor: '#C0392B', backgroundColor: '#C0392B22', fill: true, tension: .3 }],
+      datasets: [{ label: 'Valor donado (COP)', data: s.map((x) => x.valorDonadoCop), borderColor: '#AD5138', backgroundColor: '#AD513822', fill: true, tension: .3 }],
     };
   });
   protected readonly categorias = computed<ChartConfiguration<'doughnut'>['data']>(() => {

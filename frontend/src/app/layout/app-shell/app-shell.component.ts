@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, HostListener, computed, inject, signal, viewChild } from '@angular/core';
+import { A11yModule } from '@angular/cdk/a11y';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
@@ -68,7 +69,7 @@ const BUSQUEDA: Record<RolUsuario, { ruta: string; placeholder: string }> = {
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, MatIconModule, MatTooltipModule, AvatarComponent, ClickOutsideDirective, FechaRelativaPipe],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, FormsModule, A11yModule, MatIconModule, MatTooltipModule, AvatarComponent, ClickOutsideDirective, FechaRelativaPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
@@ -83,6 +84,10 @@ export class AppShellComponent {
 
   protected readonly colapsado = signal(false);
   protected readonly drawerAbierto = signal(false);
+  protected readonly esMovil = signal(typeof window !== 'undefined' && window.innerWidth < 1024);
+  private readonly botonMenu = viewChild<ElementRef<HTMLButtonElement>>('botonMenu');
+  private readonly botonCerrar = viewChild<ElementRef<HTMLButtonElement>>('botonCerrar');
+  private readonly url = signal('');
   protected readonly panelNotif = signal(false);
   protected readonly menuUsuario = signal(false);
   protected readonly ultimas = signal<Notificacion[]>([]);
@@ -97,6 +102,11 @@ export class AppShellComponent {
   protected readonly oscuro = computed(() => this.rol() === 'ADMINISTRADOR');
   protected readonly buscador = computed(() => BUSQUEDA[this.rol()]);
   protected readonly etiquetaRol = computed(() => ({ BENEFICIARIO: 'Beneficiario', CONSTRUCTORA: 'Constructora', ADMINISTRADOR: 'Administrador' })[this.rol()]);
+  /** Sección actual para la miga de pan de la barra superior. */
+  protected readonly seccionActual = computed(() => {
+    const url = this.url();
+    return this.items().find((i) => url.startsWith(`${this.prefijo()}/${i.ruta}`))?.label ?? 'Mi espacio';
+  });
   protected readonly empresaPendiente = computed(() => {
     const p = this.auth.user()?.perfil;
     return p?.tipo === 'constructora' && !p.verificada;
@@ -104,7 +114,9 @@ export class AppShellComponent {
 
   constructor() {
     this.ajustarAncho();
-    this.router.events.pipe(filter((e) => e instanceof NavigationEnd), takeUntilDestroyed(inject(DestroyRef))).subscribe(() => {
+    this.url.set(this.router.url);
+    this.router.events.pipe(filter((e) => e instanceof NavigationEnd), takeUntilDestroyed(inject(DestroyRef))).subscribe((e) => {
+      this.url.set(e.urlAfterRedirects);
       this.drawerAbierto.set(false);
       this.panelNotif.set(false);
       this.menuUsuario.set(false);
@@ -167,15 +179,39 @@ export class AppShellComponent {
     this.auth.cerrarSesion().subscribe(() => this.router.navigate(['/login']));
   }
 
+  /** En escritorio contrae la barra lateral; en móvil abre el menú completo. */
+  protected alternarMenu(): void {
+    if (!this.esMovil()) {
+      this.colapsado.update((v) => !v);
+      return;
+    }
+    if (this.drawerAbierto()) {
+      this.cerrarMenu();
+    } else {
+      this.drawerAbierto.set(true);
+      setTimeout(() => this.botonCerrar()?.nativeElement.focus());
+    }
+  }
+
+  /** Cierra el menú móvil y devuelve el foco al botón que lo abrió. */
+  protected cerrarMenu(): void {
+    if (!this.drawerAbierto()) return;
+    this.drawerAbierto.set(false);
+    this.botonMenu()?.nativeElement.focus();
+  }
+
   @HostListener('window:resize')
   protected ajustarAncho(): void {
-    if (typeof window !== 'undefined' && window.innerWidth < 1280 && window.innerWidth >= 1024) this.colapsado.set(true);
+    if (typeof window === 'undefined') return;
+    this.esMovil.set(window.innerWidth < 1024);
+    if (!this.esMovil()) this.drawerAbierto.set(false);
+    if (window.innerWidth < 1280 && window.innerWidth >= 1024) this.colapsado.set(true);
   }
 
   @HostListener('document:keydown.escape')
   protected cerrarPaneles(): void {
     this.panelNotif.set(false);
     this.menuUsuario.set(false);
-    this.drawerAbierto.set(false);
+    this.cerrarMenu();
   }
 }

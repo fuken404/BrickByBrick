@@ -27,10 +27,10 @@
     <app-skeleton-loader type="kpi" [count]="4" />
   } @else if (resumen(); as r) {
     <div class="grid-kpi">
-      <app-kpi-card label="Valor donado" [value]="r.valorDonadoCop" formato="cop" icon="savings" color="#C0392B" [sub]="r.entregas + ' entregas · ' + r.beneficiarios + ' beneficiarios'" />
-      <app-kpi-card [label]="'Descuento estimado (' + r.porcentaje + ' %)'" [value]="r.descuentoEstimadoCop" formato="cop" icon="percent" color="#2E86AB" />
-      <app-kpi-card [label]="'Tope (' + r.topePorcentaje + ' % del impuesto)'" [value]="r.topeCop" formato="cop" icon="vertical_align_top" color="#E67E22" [sub]="r.impuestoEstimadoCop ? '' : 'Ingresa tu impuesto estimado'" />
-      <app-kpi-card label="Descuento aplicable" [value]="r.descuentoAplicableCop" formato="cop" icon="verified" color="#27AE60" />
+      <app-kpi-card label="Valor donado" [value]="r.valorDonadoCop" formato="cop" icon="savings" color="#AD5138" [sub]="r.entregas + ' entregas · ' + r.beneficiarios + ' beneficiarios'" />
+      <app-kpi-card [label]="'Descuento estimado (' + r.porcentaje + ' %)'" [value]="r.descuentoEstimadoCop" formato="cop" icon="percent" color="#48635A" />
+      <app-kpi-card [label]="'Tope (' + r.topePorcentaje + ' % del impuesto)'" [value]="r.topeCop" formato="cop" icon="vertical_align_top" color="#996923" [sub]="r.impuestoEstimadoCop ? '' : 'Ingresa tu impuesto estimado'" />
+      <app-kpi-card label="Descuento aplicable" [value]="r.descuentoAplicableCop" formato="cop" icon="verified" color="#38745B" />
     </div>
 
     <div class="split">

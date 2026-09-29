@@ -1,52 +1,52 @@
 // =============================================================
 // BrickByBrick — Variables SCSS
-// Extraídas de /designs/design-system.css
+// Identidad editorial: terracota, piedra y salvia
 // =============================================================
 
 // --- Colores principales ---
-$primary:        #C0392B;
-$primary-dark:   #922B21;
-$secondary:      #2E86AB;
-$secondary-dark: #1a6080;
-$accent:         #27AE60;
-$accent-light:   #d5f5e3;
+$primary:        #AD5138;
+$primary-dark:   #8C3E29;
+$secondary:      #48635A;
+$secondary-dark: #344C43;
+$accent:         #38745B;
+$accent-light:   #E6F0E9;
 
 // --- Fondos ---
-$bg-base:   #F5F0EB;
+$bg-base:   #F6F5F1;
 $bg-card:   #FFFFFF;
-$bg-dark:   #1C1C1E;
+$bg-dark:   #252B27;
 
 // --- Texto ---
-$text-primary:    #1A1A1A;
-$text-secondary:  #6B6B6B;
+$text-primary:    #262C28;
+$text-secondary:  #687069;
 $text-on-primary: #FFFFFF;
 
 // --- Bordes ---
-$border: #DDD5CC;
+$border: #E2E4DC;
 
 // --- Estados / semántica ---
-$warning:        #E67E22;
-$warning-light:  #fdebd0;
-$danger:         #E74C3C;
-$danger-light:   #fde8e7;
+$warning:        #996923;
+$warning-light:  #F5EDDA;
+$danger:         #B53F36;
+$danger-light:   #FAEAE6;
 
 // --- Radios ---
-$radius-card: 8px;
-$radius-btn:  6px;
+$radius-card: 14px;
+$radius-btn:  8px;
 $radius-pill: 24px;
-$radius-lg:   12px;
+$radius-lg:   18px;
 
 // --- Sombras ---
-$shadow-card:     0 2px 12px rgba(0, 0, 0, 0.08);
-$shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.14);
+$shadow-card:     0 2px 4px rgba(38, 44, 40, 0.02);
+$shadow-elevated: 0 12px 36px rgba(38, 44, 40, 0.08);
 
 // --- Layout ---
-$sidebar-width:  240px;
-$topbar-height:  64px;
-$content-max-w:  1200px;
+$sidebar-width:  252px;
+$topbar-height:  76px;
+$content-max-w:  1440px;
 
 // --- Tipografía ---
-$font-display: 'Playfair Display', Georgia, serif;
+$font-display: 'DM Sans', 'Helvetica Neue', sans-serif;
 $font-body:    'DM Sans', 'Helvetica Neue', sans-serif;
 
 $font-size-base: 15px;
@@ -69,37 +69,3 @@ $z-topbar:     90;
 $z-dropdown:  200;
 $z-modal:    1000;
 $z-toast:    2000;
-
-// =============================================================
-// CSS Custom Properties (para compatibilidad con legacy CSS)
-// =============================================================
-:root {
-  --primary:        #{$primary};
-  --primary-dark:   #{$primary-dark};
-  --secondary:      #{$secondary};
-  --secondary-dark: #{$secondary-dark};
-  --accent:         #{$accent};
-  --accent-light:   #{$accent-light};
-  --bg-base:        #{$bg-base};
-  --bg-card:        #{$bg-card};
-  --bg-dark:        #{$bg-dark};
-  --text-primary:   #{$text-primary};
-  --text-secondary: #{$text-secondary};
-  --text-on-primary:#{$text-on-primary};
-  --border:         #{$border};
-  --warning:        #{$warning};
-  --warning-light:  #{$warning-light};
-  --danger:         #{$danger};
-  --danger-light:   #{$danger-light};
-  --radius-card:    #{$radius-card};
-  --radius-btn:     #{$radius-btn};
-  --radius-pill:    #{$radius-pill};
-  --shadow-card:    #{$shadow-card};
-  --shadow-elevated:#{$shadow-elevated};
-  --sidebar-width:  #{$sidebar-width};
-  --topbar-height:  #{$topbar-height};
-  --font-display:   #{$font-display};
-  --font-body:      #{$font-body};
-  --transition-fast:  #{$transition-fast};
-  --transition-modal: #{$transition-modal};
-}

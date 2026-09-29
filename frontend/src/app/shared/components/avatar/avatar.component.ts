@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { UploadUrlPipe } from '../../pipes/upload-url.pipe';
 
-const PALETA = ['#C0392B', '#2E86AB', '#27AE60', '#E67E22', '#8E44AD', '#16A085'];
+const PALETA = ['#AD5138', '#48635A', '#38745B', '#996923', '#716453', '#16A085'];
 
 @Component({
   selector: 'app-avatar',

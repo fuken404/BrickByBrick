@@ -19,7 +19,7 @@ export class MaterialCardComponent {
   readonly material = input.required<Material>();
   readonly abrir = output<Material>();
 
-  protected readonly color = computed(() => this.material().categoria?.colorHex ?? '#6B6B6B');
-  protected readonly fondo = computed(() => `linear-gradient(145deg, ${this.color()}18 0%, ${this.color()}38 100%)`);
+  protected readonly color = computed(() => this.material().categoria?.colorHex ?? '#687069');
+  protected readonly fondo = computed(() => `${this.color()}14`);
   protected readonly vence = computed(() => formatearDia(this.material().fechaLimite));
 }

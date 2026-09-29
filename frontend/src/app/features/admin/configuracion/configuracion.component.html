@@ -107,7 +107,7 @@
             @for (x of s.servicios; track x.servicio) {
               <tr>
                 <td>{{ x.servicio }}</td>
-                <td><span class="dot" [style.background]="x.status === 'ok' ? 'var(--accent)' : '#E74C3C'"></span> {{ x.status }}</td>
+                <td><span class="dot" [style.background]="x.status === 'ok' ? 'var(--accent)' : '#B53F36'"></span> {{ x.status }}</td>
                 <td>{{ x.db ?? '—' }}</td>
                 <td>{{ x.latenciaMs }} ms</td>
               </tr>

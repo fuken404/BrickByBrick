@@ -53,8 +53,8 @@ import { AuthPanelComponent } from '../auth-panel/auth-panel.component';
     .type-card { display: flex; gap: 16px; padding: 20px; text-decoration: none; color: inherit; align-items: flex-start; transition: border-color .2s, transform .2s;
       &:hover { border-color: var(--primary); transform: translateY(-2px); } }
     .type-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-      &.rojo { background: rgba(192,57,43,.1); mat-icon { color: var(--primary); } }
-      &.azul { background: rgba(46,134,171,.12); mat-icon { color: var(--secondary); } } }
+      &.rojo { background: rgba(173,81,56,.1); mat-icon { color: var(--primary); } }
+      &.azul { background: rgba(72,99,90,.12); mat-icon { color: var(--secondary); } } }
     .type-title { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
     .type-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
     .type-perks { list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: 13px;

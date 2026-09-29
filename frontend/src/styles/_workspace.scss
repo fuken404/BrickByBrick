@@ -1,0 +1,49 @@
+@use 'variables' as *;
+// Shared layout contract for every authenticated route.
+app-shell .shell {
+  .page, .dashboard { width: 100%; margin: 0 auto; }
+  .page-header, .page-header-row, .welcome-header { padding-bottom: 26px; margin-bottom: 28px; border-bottom: 1px solid $border; gap: 16px; flex-wrap: wrap; }
+  .page-title { font-size: clamp(26px, 2.4vw, 34px); font-weight: 500; letter-spacing: -1.1px; line-height: 1.2; }
+  .page-subtitle { font-size: 13px; margin-top: 9px; line-height: 1.7; }
+  .section-title { letter-spacing: -.5px; font-weight: 500; }
+  .kpi-grid { gap: 16px; }
+  .kpi-section-title { font-size: 10px; letter-spacing: 1.4px; font-weight: 600; }
+  .filters-bar { box-shadow: none; border-radius: 12px; }
+  .search-input { min-width: 0; }
+  .table-card { border-radius: 12px; }
+  .empty-msg { padding: 48px 24px; border-style: dashed; background: transparent; font-size: 13px; }
+  .section-header { flex-wrap: wrap; gap: 12px; }
+  .header-actions { flex-wrap: wrap; }
+  .data-table th { background: #f9faf6; padding: 16px 20px; font-size: 10px; letter-spacing: 1px; font-weight: 600; }
+  .data-table td { padding: 18px 20px; font-size: 13px; }
+  .data-table tr:hover td { background: #fafbf7; }
+  .data-table th, .data-table td { border-bottom-color: #edf0e7; }
+}
+@media (min-width: 1024px) and (max-width: 1250px) {
+  app-shell .shell .cards-grid, app-shell .shell .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 767px) {
+  app-shell .shell .page-header, app-shell .shell .welcome-header { padding-bottom: 22px; }
+  app-shell .shell .page, app-shell .shell .dashboard { padding: 0; }
+  app-shell .shell .filters-bar { padding: 16px; }
+  app-shell .shell .kpi-grid, app-shell .shell .kpi-grid.kpi-4 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px; }
+  app-shell .shell .kpi-card { padding: 16px; min-height: 132px; }
+  app-shell .shell .kpi-header { gap: 6px; }
+  app-shell .shell .kpi-label { font-size: 11px; }
+  app-shell .shell .kpi-icon { width: 26px; height: 26px; flex-shrink: 0; }
+  app-shell .shell .kpi-icon mat-icon { font-size: 16px; }
+  app-shell .shell .kpi-value { font-size: 27px; overflow-wrap: anywhere; }
+  app-shell .shell .data-table { min-width: 640px; }
+  app-shell .shell .table-card { overflow-x: auto; }
+  app-shell .shell .form-card, app-shell .shell .profile-card { padding: 20px; }
+}
+
+app-shell .shell .dashboard {
+  .welcome-header, > .page-header { background: #e9eddf; border: 1px solid #dce1d2; border-radius: 12px; padding: 30px; position: relative; }
+  .dashboard-eyebrow { font-size: 9px; font-weight: 600; letter-spacing: 1.6px; color: #5c6b50; margin-bottom: 14px; }
+  .page-title { font-size: clamp(25px, 2.2vw, 32px); font-weight: 500; }
+  .page-subtitle { font-size: 13px; }
+}
+@media (max-width: 767px) {
+  app-shell .shell .dashboard .welcome-header, app-shell .shell .dashboard > .page-header { padding: 24px 20px; }
+}

@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthApiService } from '../../../core/services/auth-api.service';
+import { AuthStore } from '../../../core/auth/auth.store';
 import { ToastService } from '../../../core/services/toast.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { erroresPorCampo, mensajeError } from '../../../core/utils/http';
@@ -68,6 +69,7 @@ type Estado = 'validando' | 'valido' | 'invalido';
 export class ResetPasswordComponent implements OnInit {
   readonly token = input.required<string>();
   private readonly api = inject(AuthApiService);
+  private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   protected readonly form = inject(FormBuilder).nonNullable.group({
@@ -95,7 +97,12 @@ export class ResetPasswordComponent implements OnInit {
     this.cargando.set(true);
     this.error.set('');
     this.api.resetPassword(this.token(), this.form.controls.password.value).subscribe({
-      next: (r) => { this.toast.exito(r.message); this.router.navigate(['/login']); },
+      next: (r) => {
+        // El servidor cierra todas las sesiones (y borra la cookie de este navegador): se limpia también la local
+        this.auth.limpiar();
+        this.toast.exito(r.message);
+        this.router.navigate(['/login']);
+      },
       error: (e: unknown) => {
         this.cargando.set(false);
         this.error.set(mensajeError(e));
