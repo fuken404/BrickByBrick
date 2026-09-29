@@ -10,7 +10,7 @@
       </div>
     }
     <span class="badge tipo-badge">{{ evento().tipoEvento | etiqueta:'tipoEvento' }}</span>
-    @if (mostrarEstado()) {
+    @if (mostrarEstado() || evento().estado === 'cancelado' || evento().estado === 'finalizado') {
       @let est = evento().estado | estadoBadge:'evento';
       <span class="badge status-badge" [class]="est.cssClass">{{ est.label }}</span>
     } @else if (inscrito()) {

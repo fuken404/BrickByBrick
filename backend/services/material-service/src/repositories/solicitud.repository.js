@@ -28,7 +28,7 @@ const INCLUDE_BENEFICIARIO = {
 
 /** Vista de la constructora: contacto del beneficiario solo si la solicitud está aprobada/entregada. */
 const INCLUDE_CONSTRUCTORA = {
-  material: MATERIAL_BASICO,
+  material: { select: { ...MATERIAL_BASICO.select, condicionesRetiro: true } },
   beneficiario: {
     select: {
       id: true, usuarioId: true, nombreCompleto: true, cedula: true,

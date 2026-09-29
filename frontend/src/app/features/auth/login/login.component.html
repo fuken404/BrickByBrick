@@ -51,7 +51,7 @@
         <h2>Verificación en dos pasos</h2>
         <p class="auth-subtitle">Enviamos un código de 6 dígitos a <strong>{{ desafio()!.email }}</strong>. Vence en 10 minutos.</p>
 
-        <form class="auth-form" (ngSubmit)="verificar()" novalidate>
+        <form class="auth-form" (submit)="$event.preventDefault(); verificar()" novalidate>
           <div class="form-group">
             <label class="form-label" for="codigo">Código de verificación</label>
             <input id="codigo" class="form-input otp-input" [formControl]="codigo" inputmode="numeric" autocomplete="one-time-code"

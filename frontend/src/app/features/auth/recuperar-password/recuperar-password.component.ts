@@ -18,7 +18,7 @@ import { CampoErrorComponent } from '../../../shared/components/campo-error.comp
           <div class="status-icon neutro"><mat-icon>lock_reset</mat-icon></div>
           <h2 class="center mb-8">Recuperar contraseña</h2>
           <p class="muted center mb-24">Escribe el correo con el que te registraste y te enviaremos un enlace para crear una nueva contraseña.</p>
-          <form class="stack" (ngSubmit)="enviar()" novalidate>
+          <form class="stack" (submit)="$event.preventDefault(); enviar()" novalidate>
             <div class="form-group">
               <label class="form-label" for="email">Correo electrónico</label>
               <input id="email" class="form-input" type="email" [formControl]="email" autocomplete="email" placeholder="correo@ejemplo.com" />

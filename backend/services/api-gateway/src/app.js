@@ -75,7 +75,8 @@ function crearGateway() {
         },
       },
     });
-    app.use(prefijos.map((p) => new RegExp(`^${p.replace(/\//g, '\\/')}(\\/|$)`)), medir(NOMBRES[clave]));
+    // Lookahead: la barra no debe formar parte del prefijo montado o Express descarta las subrutas
+    app.use(prefijos.map((p) => new RegExp(`^${p.replace(/\//g, '\\/')}(?=\\/|$)`)), medir(NOMBRES[clave]));
     app.use(proxy);
   }
 

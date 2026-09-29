@@ -39,6 +39,15 @@ function filtros(f) {
   return and;
 }
 
+const CERRADOS = ['finalizado', 'cancelado'];
+
+/** Alcance temporal para las vistas de gestión (constructora y administración). */
+function alcanceGestion(alcance) {
+  if (alcance === 'proximos') return [{ estado: { notIn: CERRADOS } }, { OR: [{ fechaFin: { gte: new Date() } }, { estado: 'borrador' }] }];
+  if (alcance === 'pasados') return [{ OR: [{ estado: { in: CERRADOS } }, { AND: [{ fechaFin: { lt: new Date() } }, { estado: { not: 'borrador' } }] }] }];
+  return [];
+}
+
 async function paginar(where, orderBy, { skip, limit }) {
   const [total, items] = await prisma.$transaction([
     prisma.evento.count({ where }),
@@ -49,20 +58,22 @@ async function paginar(where, orderBy, { skip, limit }) {
 
 const eventoRepository = {
   listarPublico(f, pag) {
+    const porDefecto = f.alcance === 'proximos' ? ['publicado', 'en_curso'] : ['publicado', 'en_curso', 'finalizado'];
     const estados = f.estado && ['publicado', 'en_curso', 'finalizado', 'cancelado'].includes(f.estado)
-      ? [f.estado] : ['publicado', 'en_curso'];
+      ? [f.estado] : porDefecto;
     const where = { AND: [{ estado: { in: estados } }, ...filtros(f)] };
     return paginar(where, [{ fechaInicio: f.alcance === 'pasados' ? 'desc' : 'asc' }], pag);
   },
 
+  /** Vista de gestión: incluye borradores; los cancelados/finalizados cuentan como pasados. */
   listarDeConstructora(constructoraId, f, pag) {
-    const where = { AND: [{ constructoraId }, ...(f.estado ? [{ estado: f.estado }] : []), ...filtros({ ...f, alcance: f.alcance === 'proximos' && !f.estado ? 'todos' : f.alcance })] };
-    return paginar(where, [{ fechaInicio: 'desc' }], pag);
+    const where = { AND: [{ constructoraId }, ...(f.estado ? [{ estado: f.estado }] : []), ...filtros({ ...f, alcance: 'todos' }), ...alcanceGestion(f.alcance)] };
+    return paginar(where, [{ fechaInicio: f.alcance === 'proximos' ? 'asc' : 'desc' }], pag);
   },
 
   listarAdmin(f, pag) {
-    const where = { AND: [...(f.estado ? [{ estado: f.estado }] : []), ...filtros({ ...f, alcance: f.alcance === 'proximos' ? 'todos' : f.alcance })] };
-    return paginar(where, [{ fechaInicio: 'desc' }], pag);
+    const where = { AND: [...(f.estado ? [{ estado: f.estado }] : []), ...filtros({ ...f, alcance: 'todos' }), ...alcanceGestion(f.alcance)] };
+    return paginar(where, [{ fechaInicio: f.alcance === 'proximos' ? 'asc' : 'desc' }], pag);
   },
 
   findById(id) {
@@ -84,8 +95,8 @@ const eventoRepository = {
     const where = {
       beneficiarioId,
       estado: { in: ['inscrito', 'asistio', 'no_asistio'] },
-      ...(alcance === 'proximos' ? { evento: { fechaFin: { gte: new Date() } } } : {}),
-      ...(alcance === 'pasados' ? { evento: { fechaFin: { lt: new Date() } } } : {}),
+      ...(alcance === 'proximos' ? { evento: { fechaFin: { gte: new Date() }, estado: { in: ['publicado', 'en_curso'] } } } : {}),
+      ...(alcance === 'pasados' ? { evento: { OR: [{ fechaFin: { lt: new Date() } }, { estado: { in: ['finalizado', 'cancelado'] } }] } } : {}),
     };
     return prisma.$transaction([
       prisma.inscripcionEvento.count({ where }),

@@ -19,7 +19,7 @@ export interface ConfirmDialogData {
   imports: [ReactiveFormsModule, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <form class="dialog" (ngSubmit)="aceptar()">
+    <form class="dialog" (submit)="$event.preventDefault(); aceptar()">
       <h2>{{ data.titulo }}</h2>
       <p class="muted pre-line">{{ data.mensaje }}</p>
       @if (data.campo) {
