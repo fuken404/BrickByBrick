@@ -1,6 +1,13 @@
 -- =============================================================
--- BrickByBrick — Datos Iniciales (Seed)
--- Ejecutar DESPUÉS de schema.sql
+-- BrickByBrick — Catálogos iniciales (SQL plano)
+--
+-- Equivale a la parte de catálogos de backend/prisma/seed.js y es
+-- idempotente (ON CONFLICT DO NOTHING). Ejecutar DESPUÉS de schema.sql.
+--
+-- Los usuarios (administrador y cuentas de demostración) NO se crean aquí:
+-- sus contraseñas deben quedar hasheadas con bcrypt, así que se crean con
+--   cd backend && npm run db:seed                 (catálogos + administrador)
+--   cd backend && SEED_DEMO=true npm run db:seed  (además datos de demostración)
 -- =============================================================
 
 -- =============================================================
@@ -27,64 +34,39 @@ INSERT INTO localidades (nombre) VALUES
   ('La Candelaria'),
   ('Rafael Uribe Uribe'),
   ('Ciudad Bolívar'),
-  ('Sumapaz');
+  ('Sumapaz')
+ON CONFLICT (nombre) DO NOTHING;
 
 -- =============================================================
--- CATEGORÍAS DE MATERIALES
--- Iconos: Material Icons (Google)
+-- CATEGORÍAS DE MATERIALES (íconos de Material Icons)
 -- =============================================================
 
 INSERT INTO categorias_material (nombre, color_hex, icono) VALUES
-  ('Ladrillo',  '#C0392B', 'construction'),
-  ('Concreto',  '#7F8C8D', 'texture'),
-  ('Madera',    '#8B4513', 'forest'),
-  ('Cerámica',  '#E67E22', 'grid_on'),
-  ('Hierro',    '#2C3E50', 'hardware'),
-  ('Vidrio',    '#2E86AB', 'window'),
-  ('Pintura',   '#27AE60', 'format_color_fill'),
-  ('Acero',     '#95A5A6', 'straighten'),
-  ('PVC',       '#F39C12', 'plumbing'),
-  ('Otro',      '#BDC3C7', 'category');
+  ('Ladrillo y bloque',        '#C0392B', 'grid_view'),
+  ('Cemento y concreto',       '#7F8C8D', 'texture'),
+  ('Arena, grava y agregados', '#D4A017', 'landscape'),
+  ('Madera',                   '#8B4513', 'forest'),
+  ('Acero y hierro',           '#2C3E50', 'hardware'),
+  ('Cerámica y porcelanato',   '#E67E22', 'grid_on'),
+  ('Vidrio y ventanería',      '#2E86AB', 'window'),
+  ('Pintura y acabados',       '#27AE60', 'format_paint'),
+  ('Tubería y plomería',       '#16A085', 'plumbing'),
+  ('Material eléctrico',       '#B7950B', 'electrical_services'),
+  ('Puertas y carpintería',    '#6D4C41', 'door_front'),
+  ('Otros',                    '#95A5A6', 'category')
+ON CONFLICT (nombre) DO NOTHING;
 
 -- =============================================================
--- USUARIOS DE PRUEBA
---
--- Admin:         admin@brickbybrick.co      / Admin@BrickByBrick2024
--- Beneficiarios: beneficiario1@test.co      / Test@1234
---                beneficiario2@test.co      / Test@1234
---                beneficiario3@test.co      / Test@1234
--- Constructoras: constructora1@test.co      / Test@1234
---                constructora2@test.co      / Test@1234
---
--- Hashes generados con bcryptjs (rounds=12) — compatibles con auth-service
+-- CONFIGURACIÓN DEL SISTEMA (editable desde Administración → Configuración)
 -- =============================================================
 
--- ── Admin ──────────────────────────────────────────────────────
-INSERT INTO usuarios (id, email, password_hash, rol, estado)
-VALUES (
-  'a0000000-0000-0000-0000-000000000001',
-  'admin@brickbybrick.co',
-  '$2a$12$kbt8XS9VgvHVn.hrGYm4d.xY1fhVl4U/rzlMEPnlWuoqCp4CFGlK6',
-  'ADMINISTRADOR',
-  'activo'
-);
-
--- ── Beneficiarios ──────────────────────────────────────────────
-INSERT INTO usuarios (id, email, password_hash, rol, estado) VALUES
-  ('b0000000-0000-0000-0000-000000000001', 'beneficiario1@test.co', '$2a$12$i6GP1EqpQgbG1cjlo6OxnOgYD9oNBPv5wm3uByGGAfEeODavWex0W', 'BENEFICIARIO', 'activo'),
-  ('b0000000-0000-0000-0000-000000000002', 'beneficiario2@test.co', '$2a$12$i6GP1EqpQgbG1cjlo6OxnOgYD9oNBPv5wm3uByGGAfEeODavWex0W', 'BENEFICIARIO', 'activo'),
-  ('b0000000-0000-0000-0000-000000000003', 'beneficiario3@test.co', '$2a$12$i6GP1EqpQgbG1cjlo6OxnOgYD9oNBPv5wm3uByGGAfEeODavWex0W', 'BENEFICIARIO', 'activo');
-
-INSERT INTO beneficiarios (id, usuario_id, nombre_completo, cedula, estrato, localidad_id, es_alimentador_web) VALUES
-  (gen_random_uuid(), 'b0000000-0000-0000-0000-000000000001', 'María García López',   '1020304050', 2, 7,  false),
-  (gen_random_uuid(), 'b0000000-0000-0000-0000-000000000002', 'Carlos Rincón Pérez',  '1030405060', 3, 8,  true),
-  (gen_random_uuid(), 'b0000000-0000-0000-0000-000000000003', 'Ana Moreno Castillo',  '1040506070', 1, 19, false);
-
--- ── Constructoras ──────────────────────────────────────────────
-INSERT INTO usuarios (id, email, password_hash, rol, estado) VALUES
-  ('c0000000-0000-0000-0000-000000000001', 'constructora1@test.co', '$2a$12$i6GP1EqpQgbG1cjlo6OxnOgYD9oNBPv5wm3uByGGAfEeODavWex0W', 'CONSTRUCTORA', 'activo'),
-  ('c0000000-0000-0000-0000-000000000002', 'constructora2@test.co', '$2a$12$i6GP1EqpQgbG1cjlo6OxnOgYD9oNBPv5wm3uByGGAfEeODavWex0W', 'CONSTRUCTORA', 'activo');
-
-INSERT INTO constructoras (id, usuario_id, razon_social, nit, representante_legal, cargo_representante, direccion, localidad_id, verificada) VALUES
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000001', 'Constructora Bogotá S.A.S',  '900111222-1', 'Jorge Vargas Díaz',    'Gerente General',  'Cra 15 # 93-47, Chapinero',   2,  true),
-  (gen_random_uuid(), 'c0000000-0000-0000-0000-000000000002', 'Edificaciones Modernas Ltda', '900333444-5', 'Lucía Bermúdez Torres', 'Representante Legal', 'Av. Boyacá # 72-15, Engativá', 10, false);
+INSERT INTO configuracion_sistema (clave, valor) VALUES
+  ('maxSolicitudesActivasBeneficiario', '5'),
+  ('maxFotosMaterial',                  '5'),
+  ('diasRecordatorioVencimiento',       '3'),
+  ('umbralReportesOcultar',             '5'),
+  ('porcentajeDescuentoTributario',     '25'),
+  ('topeDescuentoSobreImpuesto',        '25'),
+  ('emailSoporte',                      '"soporte@brickbybrick.co"'),
+  ('modoMantenimiento',                 'false')
+ON CONFLICT (clave) DO NOTHING;

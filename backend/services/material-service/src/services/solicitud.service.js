@@ -123,23 +123,28 @@ const solicitudService = {
     if (data.cantidadSolicitada > Number(m.cantidad)) {
       throw new BadRequestError(`Solo hay ${Number(m.cantidad)} ${m.unidadMedida} disponibles`);
     }
-    if (await solicitudRepository.activaDeBeneficiario(materialId, b.id)) {
-      throw new ConflictError('Ya tienes una solicitud activa para este material');
-    }
     const limite = Number(await configSistema.obtenerParametro('maxSolicitudesActivasBeneficiario'));
-    if ((await solicitudRepository.contarActivasBeneficiario(b.id)) >= limite) {
-      throw new ConflictError(`Puedes tener máximo ${limite} solicitudes activas. Espera respuesta o cancela alguna.`);
-    }
-    if (m.maxSolicitudes && (await materialRepository.contarSolicitudesActivas(materialId)) >= m.maxSolicitudes) {
-      throw new ConflictError('Este material ya alcanzó el máximo de solicitudes que la empresa puede atender');
-    }
 
-    const solicitud = await solicitudRepository.create({
-      materialId,
-      beneficiarioId: b.id,
-      cantidadSolicitada: data.cantidadSolicitada,
-      propositoUso: data.propositoUso,
-      descripcionProyecto: data.descripcionProyecto ?? null,
+    // Las comprobaciones y la creación van en una transacción con bloqueo para
+    // que dos envíos simultáneos no dupliquen la solicitud ni superen los límites.
+    const solicitud = await prisma.$transaction(async (tx) => {
+      await solicitudRepository.bloquearParaSolicitud(tx, materialId, b.id);
+      if (await solicitudRepository.activaDeBeneficiario(materialId, b.id, tx)) {
+        throw new ConflictError('Ya tienes una solicitud activa para este material');
+      }
+      if ((await solicitudRepository.contarActivasBeneficiario(b.id, tx)) >= limite) {
+        throw new ConflictError(`Puedes tener máximo ${limite} solicitudes activas. Espera respuesta o cancela alguna.`);
+      }
+      if (m.maxSolicitudes && (await materialRepository.contarSolicitudesActivas(materialId, tx)) >= m.maxSolicitudes) {
+        throw new ConflictError('Este material ya alcanzó el máximo de solicitudes que la empresa puede atender');
+      }
+      return solicitudRepository.create({
+        materialId,
+        beneficiarioId: b.id,
+        cantidadSolicitada: data.cantidadSolicitada,
+        propositoUso: data.propositoUso,
+        descripcionProyecto: data.descripcionProyecto ?? null,
+      }, tx);
     });
 
     createNotification({

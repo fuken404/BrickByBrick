@@ -1,191 +1,188 @@
 # BrickByBrick
 
-Plataforma digital para la donación de materiales de construcción excedentes en Bogotá. Conecta constructoras donadoras con beneficiarios bajo el marco legal del **Art. 255, Ley 1819/2016** (beneficios tributarios).
+Plataforma digital para la donación de materiales de construcción excedentes en Bogotá. Conecta constructoras donantes con beneficiarios (familias, emprendimientos y comunidades), les da trazabilidad a las entregas y genera constancias que apoyan la planeación del beneficio tributario del **Art. 255 del Estatuto Tributario (Ley 1819 de 2016)**.
+
+> **Aviso tributario.** El descuento del Art. 255 aplica a donaciones hechas a entidades sin ánimo de lucro (ESAL) del Régimen Tributario Especial y exige la certificación de la entidad donataria (Art. 257 E.T.). Las constancias y los valores que muestra la plataforma son **orientativos**: sirven para la planeación de la constructora, pero no reemplazan esa certificación ni la asesoría de un contador.
 
 ---
 
-## Stack tecnológico
+## Funcionalidades
+
+| Módulo | Qué incluye |
+|---|---|
+| **Donaciones** | Catálogo con filtros (categoría, localidad, estado, texto), solicitud con propósito de uso, flujo `pendiente → aprobada → entregada` con cancelación y rechazo motivados, reserva atómica de stock, confirmación de recepción y calificación. |
+| **Tributario** | Valor unitario declarado por material, constancia PDF por entrega (`BBB-<año>-<nnnnnn>`), resumen anual PDF, estimado del 25 % con tope sobre el impuesto y checklist de requisitos. |
+| **Eventos** | Entregas masivas, talleres y ferias con cupos, materiales asociados, inscripción y cancelación, asistencia, exportación CSV y avisos a la localidad. |
+| **Comunidad** | Publicaciones con fotos, likes, comentarios y respuestas, like a comentarios, reposts, seguidores, portafolios de emprendimientos, grupos (públicos o privados) con chat en tiempo real y mensajes directos. |
+| **Cuenta** | Registro de beneficiarios y constructoras (RUT y Cámara de Comercio), verificación de correo, recuperación de contraseña, verificación en dos pasos por correo (obligatoria para administradores), preferencias de notificación y eliminación de cuenta. |
+| **Administración** | Dashboard, métricas del proyecto (IPE, TPA, TEA, TRP), usuarios (suspender, reactivar, creador destacado), verificación de constructoras y documentos, moderación de reportes, configuración, estado de los servicios, auditoría y exportaciones CSV. |
+
+### Roles
+
+| Rol | Capacidades |
+|---|---|
+| `BENEFICIARIO` | Solicitar materiales, inscribirse a eventos, publicar en la comunidad y mantener un portafolio. El distintivo **Creador destacado** (antes "Alimentador Web") lo asigna el administrador. |
+| `CONSTRUCTORA` | Publicar materiales y eventos (una vez verificada), gestionar solicitudes, registrar entregas y consultar el módulo tributario. |
+| `ADMINISTRADOR` | Acceso total, con MFA obligatorio. |
+
+### Métricas del proyecto
+
+| Sigla | Indicador | Cálculo |
+|---|---|---|
+| IPE | Índice de participación en eventos | inscripciones vigentes / cupos ofrecidos |
+| TPA | Tiempo promedio de atención | días entre la publicación del material y la entrega |
+| TEA | Tasa de efectividad de acceso | inicios de sesión válidos / intentos |
+| TRP | Tiempo de respuesta de la plataforma | latencia medida en el API Gateway (promedio, p95 y % bajo 3 s) |
+
+---
+
+## Arquitectura
+
+```
+                ┌──────────────┐
+  Angular SPA ──►  API Gateway │ :3000  /api/v1/*  ·  /ws  ·  /uploads  ·  /health
+                └──────┬───────┘
+      ┌────────┬───────┼────────┬──────────┬──────────────┐
+   auth :3001  user :3002  material :3003  event :3004  publication :3005  notification :3006
+      └────────┴───────┴────────┴──────────┴──────────────┘
+                         PostgreSQL (Prisma)
+```
 
 | Capa | Tecnología |
-|------|-----------|
-| Frontend | Angular 17+, Angular Material, SCSS |
-| Backend | Node.js + Express (microservicios) |
-| Base de datos | PostgreSQL (Neon serverless) |
-| ORM | Prisma |
-| Autenticación | JWT (access token 15 min + refresh token 7 días) |
-| Tiempo real | Socket.io (notificaciones) |
-
----
-
-## Estructura del proyecto
+|---|---|
+| Frontend | Angular 21 (standalone, signals, `@ngrx/signals`), Angular Material, SCSS, ng2-charts, Socket.io client |
+| Backend | Node.js 20 + Express, microservicios en un monorepo con npm workspaces |
+| Datos | PostgreSQL 16 + Prisma (migraciones versionadas) |
+| Validación | Zod en todas las entradas |
+| Autenticación | JWT de acceso (15 min, en memoria) + refresh rotativo (7 días, cookie httpOnly) con detección de reutilización |
+| Tiempo real | Socket.io a través del gateway (notificaciones, chat de grupos y mensajes directos) |
+| Tareas programadas | node-cron (zona America/Bogota): vencimiento de materiales, estados de eventos y recordatorios |
 
 ```
 BrickByBrick/
-├── frontend/                    # Angular app
+├── frontend/                     Angular (core, shared, features por rol, layout)
 ├── backend/
 │   ├── services/
-│   │   ├── auth-service/        # Puerto 3001 — login, registro, JWT
-│   │   ├── user-service/        # Puerto 3002 — beneficiarios, constructoras, admin
-│   │   ├── material-service/    # Puerto 3003 — materiales, solicitudes
-│   │   ├── event-service/       # Puerto 3004 — eventos, inscripciones
-│   │   ├── publication-service/ # Puerto 3005 — publicaciones, comentarios
-│   │   └── notification-service/# Puerto 3006 — notificaciones, websockets
-│   ├── shared/                  # Middleware, utils y cliente Prisma compartidos
-│   ├── prisma/                  # Schema de base de datos
-│   └── uploads/                 # Archivos subidos (generado automáticamente)
-└── database/                    # Scripts SQL de referencia
+│   │   ├── api-gateway/          :3000 proxy, WebSocket, uploads, salud y métrica TRP
+│   │   ├── auth-service/         :3001 registro, login, MFA, sesiones
+│   │   ├── user-service/         :3002 perfiles, administración, métricas
+│   │   ├── material-service/     :3003 materiales, solicitudes, categorías, tributario
+│   │   ├── event-service/        :3004 eventos e inscripciones
+│   │   ├── publication-service/  :3005 comunidad, grupos, mensajes, reportes
+│   │   └── notification-service/ :3006 notificaciones y Socket.io
+│   ├── shared/                   app factory, middleware, errores, utilidades, cliente Prisma
+│   ├── prisma/                   schema, migraciones y seed
+│   └── test/                     configuración y helpers de las pruebas
+├── database/                     schema.sql y seed.sql de referencia
+└── designs/                      diseños de referencia
 ```
+
+Cada servicio sigue la misma estructura: `routes → controllers (finos) → services (lógica) → repositories (Prisma)`, con validadores Zod por ruta.
 
 ---
 
-## Requisitos previos
+## Puesta en marcha (desarrollo)
 
-- **Node.js** v20 o superior
-- **npm** v10 o superior
-- Cuenta en [Neon](https://neon.tech) (PostgreSQL serverless) o una instancia PostgreSQL propia
+**Requisitos:** Node.js 20+, npm 10+ y Docker (para PostgreSQL local).
 
----
-
-## Instalación y ejecución local
-
-### 1. Clonar el repositorio
-
-```bash
-git clone <url-del-repositorio>
-cd BrickByBrick
-```
-
-### 2. Configurar variables de entorno
-
-Crea el archivo `backend/.env` con el siguiente contenido y completa los valores:
-
-```env
-# Base de datos (Neon u otro PostgreSQL)
-DATABASE_URL="postgresql://usuario:password@host/db?sslmode=require"
-
-# JWT — usa strings aleatorios seguros (mínimo 32 caracteres)
-JWT_SECRET="reemplaza_con_un_string_seguro_de_32_chars"
-JWT_REFRESH_SECRET="reemplaza_con_otro_string_seguro_diferente"
-
-# SMTP (opcional — para emails de recuperación de contraseña)
-SMTP_HOST="smtp.gmail.com"
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER="tu_email@gmail.com"
-SMTP_PASS="tu_app_password_de_gmail"
-EMAIL_FROM="BrickByBrick <noreply@brickbybrick.co>"
-
-# Puertos de los microservicios
-PORT_AUTH=3001
-PORT_USERS=3002
-PORT_MATERIALS=3003
-PORT_EVENTS=3004
-PORT_PUBS=3005
-PORT_NOTIF=3006
-
-# URL del frontend (para CORS)
-FRONTEND_URL="http://localhost:4200"
-
-# Clave interna entre servicios
-INTERNAL_API_KEY="clave_interna_segura_aleatoria"
-
-NODE_ENV=development
-```
-
-> **Las variables de SMTP son opcionales.** Sin ellas la recuperación de contraseña no funcionará, pero el resto de la aplicación sí.
-
-### 3. Instalar dependencias del backend
+### 1. Base de datos local
 
 ```bash
 cd backend
-npm install
+docker compose up -d postgres
 ```
 
-### 4. Inicializar la base de datos
+Levanta PostgreSQL 16 en el puerto **5434** (usuario `brickbybrick`, base `brickbybrick`, volumen `brickbybrick_pgdata`). Cambia el puerto con `DB_PORT` si está ocupado.
+
+### 2. Variables de entorno
 
 ```bash
-# Genera el cliente Prisma
+cp .env.example .env
+```
+
+Para Docker local usa `DATABASE_URL="postgresql://brickbybrick:brickbybrick_dev@localhost:5434/brickbybrick"` y genera secretos propios para `JWT_SECRET`, `JWT_REFRESH_SECRET` e `INTERNAL_API_KEY`. Con `MAIL_TRANSPORT=log` los correos (incluidos los códigos MFA) se imprimen en la consola del backend en lugar de enviarse.
+
+### 3. Dependencias, migraciones y datos
+
+```bash
+npm install
 npm run db:generate
-
-# Crea las tablas en la base de datos
-npm run db:push
+npm run db:migrate                 # aplica prisma/migrations
+SEED_DEMO=true npm run db:seed     # catálogos, administrador y datos de demostración
 ```
 
-### 5. Ejecutar el backend
+Sin `SEED_DEMO` solo se cargan los catálogos, la configuración y el administrador. Las credenciales de prueba están documentadas en la cabecera de `backend/prisma/seed.js` (solo para desarrollo).
+
+### 4. Backend
 
 ```bash
-npm run dev
+npm run dev      # gateway + 6 servicios con recarga automática
 ```
 
-Esto levanta los 6 microservicios en paralelo. Verifica que estén corriendo:
+Comprueba `http://localhost:3000/health`: debe responder `status: "ok"` con los seis servicios. La documentación Swagger de cada servicio está en `http://localhost:<puerto>/api-docs`.
 
-```
-http://localhost:3001/health  →  auth-service
-http://localhost:3002/health  →  user-service
-http://localhost:3003/health  →  material-service
-http://localhost:3004/health  →  event-service
-http://localhost:3005/health  →  publication-service
-http://localhost:3006/health  →  notification-service
-```
-
-### 6. Instalar dependencias del frontend
-
-En otra terminal:
+### 5. Frontend
 
 ```bash
-cd frontend
+cd ../frontend
 npm install
-```
-
-### 7. Ejecutar el frontend
-
-```bash
 npm start
 ```
 
-La aplicación estará disponible en **http://localhost:4200**
+Abre **http://localhost:4200**. El servidor de desarrollo redirige `/api`, `/ws`, `/uploads` y `/health` al gateway (`proxy.conf.json`), así todo funciona desde el mismo origen.
 
 ---
 
-## Crear el primer usuario administrador
-
-Con el backend corriendo, ejecuta desde la carpeta `backend/`:
+## Docker Compose (stack completo)
 
 ```bash
-node -e "
-const { prisma } = require('./shared');
-const bcrypt = require('bcryptjs');
-async function main() {
-  const hash = await bcrypt.hash('TuPasswordSeguro.', 10);
-  const user = await prisma.usuario.create({
-    data: { email: 'admin@tudominio.com', passwordHash: hash, rol: 'ADMINISTRADOR', estado: 'activo' }
-  });
-  console.log('Admin creado:', user.email);
-  await prisma.\$disconnect();
-}
-main();
-"
+cd backend
+docker compose --profile app up --build
 ```
 
----
-
-## Roles de usuario
-
-| Rol | Capacidades |
-|-----|-------------|
-| `BENEFICIARIO` | Solicitar materiales, inscribirse a eventos, publicar en comunidad |
-| `CONSTRUCTORA` | Publicar materiales, crear eventos, gestionar solicitudes recibidas |
-| `ADMINISTRADOR` | Acceso total — usuarios, materiales, eventos, reportes y configuración |
+Construye una imagen para los servicios, ejecuta las migraciones y el seed (`migraciones`) y levanta el gateway en `:3000` junto con los seis servicios. Los archivos subidos se guardan en el volumen `uploads`.
 
 ---
 
-## Variables de entorno — resumen
+## Pruebas
+
+```bash
+cd backend && npm test          # integración con PostgreSQL real
+cd frontend && npm test -- --watch=false
+```
+
+- **Backend (Jest + Supertest):** usan una base aislada `brickbybrick_test`, derivada de `DATABASE_URL` o definida con `TEST_DATABASE_URL`. La configuración se niega a correr contra una base cuyo nombre no termine en `_test`. Antes de cada ejecución se aplican las migraciones, se vacían las tablas y se cargan los catálogos. Cubren autenticación y sesiones, la máquina de estados de solicitudes y su concurrencia, el módulo tributario, eventos y cupos, la capa social, la administración y el enrutamiento del gateway.
+- **Frontend (Vitest):** interceptor de autenticación (refresh single-flight), guards, pipes, utilidades, validadores y el diálogo de confirmación.
+
+---
+
+## Scripts del backend
+
+| Script | Descripción |
+|---|---|
+| `npm run dev` / `npm start` | Gateway y servicios (con o sin recarga automática) |
+| `npm run db:generate` | Genera el cliente Prisma |
+| `npm run db:migrate` | Aplica las migraciones pendientes (`prisma migrate deploy`) |
+| `npm run db:migrate:dev` | Crea una migración nueva a partir de cambios en `schema.prisma` |
+| `npm run db:seed` | Catálogos, configuración y administrador (`SEED_DEMO=true` agrega datos de demostración) |
+| `npm run db:reset` | Recrea la base de desarrollo desde cero |
+| `npm run db:sql` | Regenera `database/schema.sql` a partir del schema de Prisma |
+| `npm test` | Pruebas de integración |
+
+---
+
+## Variables de entorno
 
 | Variable | Requerida | Descripción |
-|----------|-----------|-------------|
+|---|---|---|
 | `DATABASE_URL` | Sí | Cadena de conexión PostgreSQL |
-| `JWT_SECRET` | Sí | Secreto para firmar access tokens |
-| `JWT_REFRESH_SECRET` | Sí | Secreto para firmar refresh tokens |
-| `FRONTEND_URL` | Sí | URL del frontend (para CORS) |
-| `INTERNAL_API_KEY` | Sí | Clave para comunicación interna entre servicios |
-| `SMTP_*` | No | Configuración de email (recuperación de contraseña) |
+| `JWT_SECRET`, `JWT_REFRESH_SECRET` | Sí | Secretos distintos de al menos 32 caracteres |
+| `INTERNAL_API_KEY` | Sí | Clave de la comunicación interna entre servicios (mín. 16) |
+| `FRONTEND_URL` | Sí | Origen permitido por CORS y base de los enlaces de los correos |
+| `PORT_GATEWAY`, `PORT_AUTH` … `PORT_NOTIF` | No | Puertos (3000–3006 por defecto) |
+| `*_SERVICE_URL` | No | URLs internas de los servicios (Docker las define con el nombre del contenedor) |
+| `MAIL_TRANSPORT` | No | `log` para imprimir los correos, `smtp` para enviarlos con `SMTP_*` |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | Solo con SMTP | Envío de correos (verificación, MFA, recuperación, avisos) |
+| `UPLOADS_DIR`, `MAX_UPLOAD_MB` | No | Carpeta y tamaño máximo de los archivos subidos |
+| `TEST_DATABASE_URL` | No | Base para las pruebas (debe terminar en `_test`) |
+| `LOG_LEVEL` | No | Nivel del logger (`debug` en desarrollo, `error` en pruebas, `warn` en producción) |

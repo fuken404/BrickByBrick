@@ -113,8 +113,8 @@ const materialRepository = {
     return prisma.fotoMaterial.delete({ where: { id } });
   },
 
-  contarSolicitudesActivas(materialId) {
-    return prisma.solicitudMaterial.count({ where: { materialId, estado: { in: ['pendiente', 'aprobada'] } } });
+  contarSolicitudesActivas(materialId, db = prisma) {
+    return db.solicitudMaterial.count({ where: { materialId, estado: { in: ['pendiente', 'aprobada'] } } });
   },
 
   /** Destinatarios del aviso de material nuevo: seguidores + beneficiarios de la localidad. */

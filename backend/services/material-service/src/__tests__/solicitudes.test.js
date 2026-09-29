@@ -119,6 +119,15 @@ describe('máquina de estados de solicitudes', () => {
     await solicitar(tb, m.id, 1).expect(409);
   });
 
+  it('un doble envío simultáneo crea una sola solicitud', async () => {
+    const { constructora } = await crearConstructora();
+    const { beneficiario, token: tb } = await crearBeneficiario();
+    const m = await crearMaterial(constructora, { cantidad: 50 });
+    const res = await Promise.all([1, 2, 3].map(() => solicitar(tb, m.id, 2)));
+    expect(res.map((r) => r.status).sort()).toEqual([201, 409, 409]);
+    expect(await prisma.solicitudMaterial.count({ where: { materialId: m.id, beneficiarioId: beneficiario.id } })).toBe(1);
+  });
+
   it('permite volver a solicitar tras un rechazo', async () => {
     const { constructora, token: tc } = await crearConstructora();
     const { token: tb } = await crearBeneficiario();

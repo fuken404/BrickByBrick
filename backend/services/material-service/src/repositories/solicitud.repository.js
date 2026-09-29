@@ -105,18 +105,27 @@ const solicitudRepository = {
 
   INCLUDE_BENEFICIARIO,
 
-  activaDeBeneficiario(materialId, beneficiarioId) {
-    return prisma.solicitudMaterial.findFirst({
+  activaDeBeneficiario(materialId, beneficiarioId, db = prisma) {
+    return db.solicitudMaterial.findFirst({
       where: { materialId, beneficiarioId, estado: { in: ['pendiente', 'aprobada'] } },
     });
   },
 
-  contarActivasBeneficiario(beneficiarioId) {
-    return prisma.solicitudMaterial.count({ where: { beneficiarioId, estado: { in: ['pendiente', 'aprobada'] } } });
+  contarActivasBeneficiario(beneficiarioId, db = prisma) {
+    return db.solicitudMaterial.count({ where: { beneficiarioId, estado: { in: ['pendiente', 'aprobada'] } } });
   },
 
-  create(data) {
-    return prisma.solicitudMaterial.create({ data });
+  create(data, db = prisma) {
+    return db.solicitudMaterial.create({ data });
+  },
+
+  /**
+   * Bloquea las filas del material y del beneficiario hasta el fin de la
+   * transacción: serializa las solicitudes concurrentes (doble envío, límites).
+   */
+  async bloquearParaSolicitud(tx, materialId, beneficiarioId) {
+    await tx.$queryRaw`SELECT id FROM materiales WHERE id = ${materialId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT id FROM beneficiarios WHERE id = ${beneficiarioId}::uuid FOR UPDATE`;
   },
 
   update(id, data) {

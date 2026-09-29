@@ -14,7 +14,7 @@
     "db:migrate:dev": "prisma migrate dev --schema=prisma/schema.prisma",
     "db:seed": "node prisma/seed.js",
     "db:reset": "prisma migrate reset --force --schema=prisma/schema.prisma",
-    "db:sql": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > ../database/schema.sql",
+    "db:sql": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > ../database/schema.sql && cat prisma/sql/objetos-adicionales.sql >> ../database/schema.sql",
     "db:studio": "prisma studio --schema=prisma/schema.prisma",
     "test": "jest --runInBand",
     "test:coverage": "jest --runInBand --coverage"
