@@ -12,6 +12,7 @@ const prisma = require('./utils/prisma.client');
 const logger = require('./utils/logger');
 const errorHandler = require('./middleware/error.handler');
 const { generalLimiter } = require('./middleware/rate.limiter');
+const modoMantenimiento = require('./middleware/mantenimiento.middleware');
 const { sendError } = require('./utils/response.utils');
 
 /**
@@ -64,6 +65,7 @@ function createApp({ name, title, routes, serviceDir, configure }) {
   if (configure) configure(app);
 
   app.use(generalLimiter);
+  app.use(modoMantenimiento);
   for (const [base, router] of routes) app.use(base, router);
 
   app.use((req, res) => sendError(res, `Ruta no encontrada: ${req.method} ${req.path}`, 404));
