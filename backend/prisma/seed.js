@@ -86,6 +86,11 @@ async function catalogos() {
 async function administrador({ restablecer = false } = {}) {
   const produccion = process.env.NODE_ENV === 'production';
   const email = (process.env.ADMIN_EMAIL || 'admin@brickbybrick.co').trim().toLowerCase();
+  // Si el administrador ya existe y no hay que restablecerlo, no se toca (ni se valida ADMIN_PASSWORD):
+  // por ejemplo, cuando la base de producción se cargó con datos existentes.
+  const existe = await prisma.usuario.findUnique({ where: { email }, select: { id: true } });
+  if (existe && !restablecer) return;
+
   const password = process.env.ADMIN_PASSWORD || (produccion ? null : PASSWORD_ADMIN);
   if (!password) {
     // eslint-disable-next-line no-console
@@ -95,9 +100,6 @@ async function administrador({ restablecer = false } = {}) {
   if (password.length < 10 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
     throw new Error('ADMIN_PASSWORD debe tener al menos 10 caracteres, con mayúscula, minúscula y número.');
   }
-  // Si ya existe y no hay que restablecerlo, no se calcula el hash (bcrypt es lento en instancias pequeñas)
-  const existe = await prisma.usuario.findUnique({ where: { email }, select: { id: true } });
-  if (existe && !restablecer) return;
   const passwordHash = await hash(password);
   await prisma.usuario.upsert({
     where: { email },
