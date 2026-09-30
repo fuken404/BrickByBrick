@@ -7,13 +7,14 @@
 # Plan gratis: se apaga tras 15 min sin visitas y no tiene disco persistente;
 # por eso los archivos subidos se guardan en la base de datos (STORAGE_DRIVER=db).
 # La base de datos es externa (Neon recomendado): la de Render gratis expira a los 30 días.
+# Elige la región de Render igual (o cercana) a la de tu base de datos en Neon.
 # =============================================================
 services:
   - type: web
     name: brickbybrick
     runtime: docker
     plan: free
-    region: oregon
+    region: virginia        # misma región que la base de datos en Neon (AWS us-east-1)
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health

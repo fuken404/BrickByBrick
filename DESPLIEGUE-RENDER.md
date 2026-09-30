@@ -81,7 +81,7 @@ Render despliega lo que está en GitHub, no lo que tienes en tu computador.
 
 1. Entra a <https://console.neon.tech>.
 2. Crea una base **nueva y vacía**. Tienes dos opciones:
-   - **Opción A (recomendada):** botón **New Project** → nombre `brickbybrick-prod` → región **AWS US West (Oregon)**, la misma región donde `render.yaml` crea la aplicación (así las consultas son más rápidas) → **Create**.
+   - **Opción A (recomendada):** botón **New Project** → nombre `brickbybrick-prod` → región **AWS US East 1 (N. Virginia)**, la misma región donde `render.yaml` crea la aplicación (`region: virginia`; así las consultas son más rápidas) → **Create**.
    - **Opción B:** dentro de tu proyecto actual → **Databases** → **New Database** → nombre `brickbybrick_prod`.
 
    > **No uses la base que ya tenías en Neon:** se creó con la versión anterior del proyecto y sin migraciones, y el arranque fallaría con el error `P3005`. Si necesitas conservar esos datos, primero hay que migrarlos (ver `database/README.md`).
@@ -234,7 +234,7 @@ Cada `git push origin main` hace que Render construya y despliegue la nueva vers
 ## Anexo A · Crear el servicio sin Blueprint
 
 1. **New +** → **Web Service** → elige el repositorio `BrickByBrick`.
-2. **Name:** `brickbybrick` · **Branch:** `main` · **Language / Runtime:** **Docker** · **Region:** Oregon · **Instance Type:** **Free**.
+2. **Name:** `brickbybrick` · **Branch:** `main` · **Language / Runtime:** **Docker** · **Region:** Virginia (la misma de tu base en Neon) · **Instance Type:** **Free**.
 3. **Environment Variables** → agrega (usa **Generate** para los tres secretos si aparece el botón; si no, genéralos en la Terminal con `openssl rand -base64 32`):
 
    ```env
@@ -295,3 +295,31 @@ Si la app va a tener usuarios reales:
 | `backend/scripts/iniciar-todo.js` | Lanza los 6 microservicios y, cuando responden en `/health`, el gateway. Con `PROCESOS=uno` los ejecuta en un solo proceso. |
 
 Medido emulando la instancia gratis (0,1 CPU, 512 MB): primer arranque con base vacía ≈ 60 s; arranque tras inactividad ≈ 30 s (más el tiempo que tarda Render en despertar el servicio); memoria ≈ 50 MB; login ≈ 2 s.
+
+---
+
+## Anexo E · Llevar a producción los datos de desarrollo
+
+Si quieres que producción empiece con los mismos datos que tienes en tu base local de desarrollo (usuarios, materiales, solicitudes, eventos, publicaciones…), hazlo **antes del paso 4**, con la base de Neon todavía vacía:
+
+1. Crea el volcado de tu base local (con Docker encendido):
+
+   ```bash
+   docker exec brickbybrick_db pg_dump -U brickbybrick -d brickbybrick -Fc --no-owner --no-privileges --exclude-table-data=tokens_usuario > ~/brickbybrick-desarrollo.dump
+   ```
+
+   Se excluyen las sesiones y códigos temporales (`tokens_usuario`), que no sirven en producción.
+
+2. Restáuralo en Neon:
+
+   ```bash
+   sh backend/scripts/restaurar-en-produccion.sh ~/brickbybrick-desarrollo.dump
+   ```
+
+   El script pide la cadena de conexión de Neon sin mostrarla, **se niega a continuar si la base ya tiene tablas** y al final muestra cuántos usuarios, materiales, etc. quedaron.
+
+3. Continúa con el paso 4. Al arrancar, la app detecta que las migraciones ya están aplicadas y que el administrador ya existe, así que no modifica esos datos. Usa en `ADMIN_EMAIL` el mismo correo del administrador de desarrollo para que no se cree uno adicional.
+
+> **Importante:** las cuentas copiadas conservan sus contraseñas de desarrollo, que están publicadas en el repositorio. Cámbialas apenas la app esté en línea (*Mi cuenta → Cambiar contraseña*) o suspende las que no vayas a usar.
+
+Borra el archivo `.dump` cuando termines: contiene datos personales y hashes de contraseñas.
