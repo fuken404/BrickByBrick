@@ -1,4 +1,5 @@
 const fs = require('fs');
+const http = require('http');
 const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
@@ -27,6 +28,9 @@ const NOMBRES = {
   auth: 'auth-service', users: 'user-service', materials: 'material-service',
   events: 'event-service', pubs: 'publication-service', notif: 'notification-service',
 };
+
+/** Conexiones persistentes hacia los microservicios (compartidas por todas las rutas). */
+const agenteServicios = new http.Agent({ keepAlive: true, maxSockets: 256, keepAliveMsecs: 10_000 });
 
 function crearGateway() {
   const app = express();
@@ -100,6 +104,10 @@ function crearGateway() {
       target: config.services[clave],
       changeOrigin: true,
       xfwd: true,
+      // Reutiliza las conexiones hacia los microservicios. Sin agente, el proxy abre una
+      // conexión por petición y responde "Connection: close", lo que también corta la
+      // conexión persistente del navegador y, con carga, provoca ECONNRESET.
+      agent: agenteServicios,
       // Coincidencia por segmento completo: '/api/v1/public' no debe atrapar '/api/v1/publicaciones'
       pathFilter: (path) => prefijos.some((p) => path === p || path.startsWith(`${p}/`) || path.startsWith(`${p}?`)),
       on: {
