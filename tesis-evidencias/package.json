@@ -1,0 +1,6 @@
+{
+  "name": "brickbybrick-tesis-evidencias",
+  "private": true,
+  "description": "Pruebas de desempeño y seguridad para el Capítulo 4 de la tesis",
+  "dependencies": { "autocannon": "7.15.0" }
+}

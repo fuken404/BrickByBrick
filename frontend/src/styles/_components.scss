@@ -38,7 +38,7 @@
 .grid-cards-sm { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
 .grid-kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; }
 .split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 24px; align-items: start; }
-@include tablet-down { .split { grid-template-columns: 1fr; } }
+@include tablet-down { .split { grid-template-columns: minmax(0, 1fr); } }
 
 .card-pad { padding: 20px; }
 .card-pad-lg { padding: 28px; }
@@ -137,7 +137,7 @@
   &.ok { background: $accent; } &.warn { background: $warning; } &.err { background: $danger; } }
 
 // ─── Tablas ─────────────────────────────────────────────────
-.table-wrap { @include card-base; overflow-x: auto;
+.table-wrap { @include card-base; overflow-x: auto; position: relative;
   .data-table { min-width: 720px; }
   .data-table td .row { flex-wrap: nowrap; }
 }
